@@ -1,0 +1,22 @@
+[project]
+name = "learn-bg"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff]
+lint.select = ["E", "F", "B", "I", "SIM",]
+exclude = ["settings.py","migrations"]
+line-length = 79
+
+[tool.mypy]
+exclude= []
+strict = true
+ignore_missing_imports = true
+disallow_untyped_decorators = false
+disable_error_code = ["import-untyped"]

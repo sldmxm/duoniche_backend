@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Union
 
-from app.core.value_objects.exercise_vo import (
+from app.core.value_objects.exercise import (
     FillInTheBlankExerciseData,
     MultipleChoiceExerciseData,
     SentenceConstructionExerciseData,

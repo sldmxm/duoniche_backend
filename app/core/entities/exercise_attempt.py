@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, Dict
+
+from app.core.value_objects.answer import Answer
 
 
 @dataclass
@@ -7,6 +8,7 @@ class ExerciseAttempt:
     attempt_id: int
     exercise_id: int
     user_id: int
-    attempt_data: Dict[str, Any]
+    answer: Answer
     is_correct: bool
     feedback: str | None = None
+    correct_answer_id: int | None = None

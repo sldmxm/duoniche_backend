@@ -22,5 +22,11 @@ class ExerciseAttemptRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_by_correct_answer_id(
+        self, correct_answer_id: int
+    ) -> List[ExerciseAttempt] | None:
+        raise NotImplementedError
+
+    @abstractmethod
     def save(self, exercise_attempt: ExerciseAttempt) -> ExerciseAttempt:
         raise NotImplementedError

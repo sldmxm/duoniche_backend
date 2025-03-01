@@ -1,0 +1,120 @@
+from typing import List
+
+from app.core.entities.correct_answer import CorrectAnswer
+from app.core.entities.exercise import Exercise
+from app.core.entities.exercise_attempt import ExerciseAttempt
+from app.core.entities.user import User
+from app.core.repositories.correct_answer import CorrectAnswerRepository
+from app.core.repositories.exercise import ExerciseRepository
+from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
+from app.core.services.llm import LLMService
+from app.core.value_objects.answer import Answer
+
+
+class ExerciseService:
+    def __init__(
+        self,
+        exercise_repository: ExerciseRepository,
+        exercise_attempt_repository: ExerciseAttemptRepository,
+        correct_answer_repository: CorrectAnswerRepository,
+        llm_service: LLMService,
+    ):
+        self.exercise_repository = exercise_repository
+        self.exercise_attempt_repository = exercise_attempt_repository
+        self.correct_answer_repository = correct_answer_repository
+        self.llm_service = llm_service
+
+    def get_new_exercise(
+        self, user: User, language_level: str, exercise_type: str
+    ) -> Exercise | None:
+        exercise = self.exercise_repository.get_new_exercise(
+            user, language_level, exercise_type
+        )
+        if not exercise:
+            exercise = self.llm_service.generate_exercise(
+                user, language_level, exercise_type
+            )
+            self.save_exercise(exercise)
+
+        return exercise
+
+    def get_exercise_for_repetition(
+        self, user: User, language_level: str, exercise_type: str
+    ) -> Exercise | None:
+        exercise = self.exercise_repository.get_exercise_for_repetition(
+            user, language_level, exercise_type
+        )
+        if not exercise:
+            return None
+        return exercise
+
+    def get_exercise_by_id(self, exercise_id: int) -> Exercise | None:
+        return self.exercise_repository.get_by_id(exercise_id)
+
+    def save_exercise(self, exercise: Exercise) -> Exercise:
+        return self.exercise_repository.save(exercise)
+
+    def validate_exercise_attempt(
+        self, user: User, exercise: Exercise, answer: Answer
+    ) -> ExerciseAttempt:
+        is_correct = False
+        feedback = None
+        correct_answer_obj: CorrectAnswer | None = None
+        correct_answers: List[CorrectAnswer] | None = (
+            self.correct_answer_repository.get_by_exercise_id(
+                exercise.exercise_id
+            )
+        )
+        if correct_answers:
+            for correct_answer in correct_answers:
+                if (
+                    correct_answer.answer.get_answer_text()
+                    == answer.get_answer_text()
+                ):
+                    is_correct = True
+                    correct_answer_obj = correct_answer
+                    break
+        if not is_correct:
+            is_correct, feedback = self.llm_service.validate_attempt(
+                user, exercise, answer
+            )
+        # TODO: Вынести в константы/enum все эти статусы ответов
+        if not is_correct:
+            feedback = 'Wrong!'
+        exercise_attempt = ExerciseAttempt(
+            attempt_id=0,  # This will be updated by the repository
+            user_id=user.user_id,
+            exercise_id=exercise.exercise_id,
+            answer=answer,
+            is_correct=is_correct,
+            feedback=feedback,
+        )
+
+        if is_correct and correct_answer_obj:
+            exercise_attempt.correct_answer_id = (
+                correct_answer_obj.correct_answer_id
+            )
+        elif is_correct:
+            self.add_correct_answer(
+                exercise=exercise,
+                answer=answer,
+                created_by=f'LLM:user:{user.user_id}',
+            )
+
+        return self.save_exercise_attempt(exercise_attempt)
+
+    def save_exercise_attempt(
+        self, exercise_attempt: ExerciseAttempt
+    ) -> ExerciseAttempt:
+        return self.exercise_attempt_repository.save(exercise_attempt)
+
+    def add_correct_answer(
+        self, exercise: Exercise, answer: Answer, created_by: str
+    ) -> CorrectAnswer:
+        correct_answer = CorrectAnswer(
+            correct_answer_id=0,
+            exercise_id=exercise.exercise_id,
+            answer=answer,
+            created_by=created_by,
+        )
+        return self.correct_answer_repository.save(correct_answer)

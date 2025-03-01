@@ -4,7 +4,17 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "aiogram>=3.18.0",
+    "alembic>=1.14.1",
+    "fastapi[standard]>=0.115.10",
+    "langchain>=0.3.19",
+    "psycopg2-binary>=2.9.10",
+    "pydantic>=2.0",
+    "python-dotenv>=1.0.1",
+    "sqlalchemy>=2.0",
+    "uvicorn>=0.34.0",
+]
 
 [tool.ruff.format]
 quote-style = "single"
@@ -15,8 +25,13 @@ exclude = ["settings.py","migrations"]
 line-length = 79
 
 [tool.mypy]
-exclude= []
+exclude = ["tests/"]
 strict = true
 ignore_missing_imports = true
 disallow_untyped_decorators = false
 disable_error_code = ["import-untyped"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+]

@@ -1,9 +1,8 @@
-from app.core.entities.correct_answer import CorrectAnswer
+from app.core.entities.cached_answer import CachedAnswer
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
-from app.core.factories.exercise_factory import ExerciseFactory
-from app.core.repositories.correct_answer import CorrectAnswerRepository
+from app.core.repositories.cached_answer import CachedAnswerRepository
 from app.core.repositories.exercise import ExerciseRepository
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
 from app.core.services.llm import LLMService
@@ -15,12 +14,12 @@ class ExerciseService:
         self,
         exercise_repository: ExerciseRepository,
         exercise_attempt_repository: ExerciseAttemptRepository,
-        correct_answer_repository: CorrectAnswerRepository,
+        cached_answer_repository: CachedAnswerRepository,
         llm_service: LLMService,
     ):
         self.exercise_repository = exercise_repository
         self.exercise_attempt_repository = exercise_attempt_repository
-        self.correct_answer_repository = correct_answer_repository
+        self.cached_answer_repository = cached_answer_repository
         self.llm_service = llm_service
 
     def get_new_exercise(
@@ -56,66 +55,39 @@ class ExerciseService:
     def validate_exercise_attempt(
         self, user: User, exercise: Exercise, answer: Answer
     ) -> ExerciseAttempt:
-        # Получаем обработчик для типа упражнения
-        exercise_handler = ExerciseFactory.get_handler(exercise.exercise_type)
-
-        # Проверяем ответ через кэш правильных ответов
-        is_correct = False
-        feedback = None
-        correct_answer_obj = None
-
-        # Проверяем через кэш
-        correct_answers = self.correct_answer_repository.get_by_exercise_id(
-            exercise.exercise_id
+        cached_answer = (
+            self.cached_answer_repository.get_by_exercise_and_answer(
+                exercise.exercise_id, answer
+            )
         )
-
-        if correct_answers:
-            for correct_answer in correct_answers:
-                if exercise_handler.validate_answer(
-                    exercise, answer, correct_answer
-                ):
-                    is_correct = True
-                    correct_answer_obj = correct_answer
-                    break
-
-        # Если ответ не найден в кэше, проверяем через LLM
-        if not is_correct:
+        if not cached_answer:
             is_correct, feedback = self.llm_service.validate_attempt(
                 user, exercise, answer
             )
-
-        # Создаем попытку
-        exercise_attempt = ExerciseAttempt(
-            attempt_id=0,
-            user_id=user.user_id,
-            exercise_id=exercise.exercise_id,
-            answer=answer,
-            is_correct=is_correct,
-            feedback=feedback or ('Correct!' if is_correct else 'Wrong!'),
-        )
-
-        # Сохраняем правильный ответ в кэш
-        if is_correct and not correct_answer_obj:
-            self.add_correct_answer(
-                exercise=exercise,
+            cached_answer = CachedAnswer(
+                answer_id=0,
+                exercise_id=exercise.exercise_id,
                 answer=answer,
+                is_correct=is_correct,
+                feedback=feedback,
                 created_by=f'LLM:user:{user.user_id}',
             )
 
-        return self.save_exercise_attempt(exercise_attempt)
+            cached_answer = self.cached_answer_repository.save(cached_answer)
+
+        return self.save_exercise_attempt(
+            ExerciseAttempt(
+                attempt_id=0,
+                user_id=user.user_id,
+                exercise_id=exercise.exercise_id,
+                answer=answer,
+                is_correct=cached_answer.is_correct,
+                feedback=cached_answer.feedback,
+                cached_answer_id=cached_answer.answer_id,
+            )
+        )
 
     def save_exercise_attempt(
         self, exercise_attempt: ExerciseAttempt
     ) -> ExerciseAttempt:
         return self.exercise_attempt_repository.save(exercise_attempt)
-
-    def add_correct_answer(
-        self, exercise: Exercise, answer: Answer, created_by: str
-    ) -> CorrectAnswer:
-        correct_answer = CorrectAnswer(
-            correct_answer_id=0,
-            exercise_id=exercise.exercise_id,
-            answer=answer,
-            created_by=created_by,
-        )
-        return self.correct_answer_repository.save(correct_answer)

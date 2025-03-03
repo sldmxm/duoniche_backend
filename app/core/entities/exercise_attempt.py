@@ -11,4 +11,4 @@ class ExerciseAttempt:
     answer: Answer
     is_correct: bool
     feedback: str | None = None
-    correct_answer_id: int | None = None
+    cached_answer_id: int | None = None

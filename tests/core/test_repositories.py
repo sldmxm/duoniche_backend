@@ -144,31 +144,45 @@ def test_exercise_attempt_repository_save(
     )
 
 
-def test_exercise_attempt_repository_get_by_correct_answer_id(
-    mock_exercise_attempt_repository, exercise_attempt, correct_answer
+def test_cached_answer_repository_get_by_id(
+    mock_cached_answer_repository, cached_answer
 ):
-    mock_exercise_attempt_repository.get_by_correct_answer_id.return_value = [
-        exercise_attempt
-    ]
-    retrieved_exercise_attempts = (
-        mock_exercise_attempt_repository.get_by_correct_answer_id(
-            correct_answer.correct_answer_id
+    mock_cached_answer_repository.get_by_id.return_value = cached_answer
+    retrieved_cached_answer = mock_cached_answer_repository.get_by_id(
+        cached_answer.answer_id
+    )
+    assert retrieved_cached_answer == cached_answer
+    mock_cached_answer_repository.get_by_id.assert_called_once_with(
+        cached_answer.answer_id
+    )
+
+
+def test_cached_answer_repository_get_by_exercise_and_answer(
+    mock_cached_answer_repository,
+    cached_answer,
+    sentence_construction_answer,
+    sentence_construction_exercise,
+):
+    mock_cached_answer_repository.get_by_exercise_and_answer.return_value = (
+        cached_answer
+    )
+    retrieved_cached_answer = (
+        mock_cached_answer_repository.get_by_exercise_and_answer(
+            sentence_construction_exercise.exercise_id,
+            sentence_construction_answer,
         )
     )
-    assert retrieved_exercise_attempts == [exercise_attempt]
-    mock_exercise_attempt_repository.get_by_correct_answer_id.assert_called_once_with(
-        correct_answer.correct_answer_id
+    assert retrieved_cached_answer == cached_answer
+    mock_cached_answer_repository.get_by_exercise_and_answer.assert_called_once_with(
+        sentence_construction_exercise.exercise_id,
+        sentence_construction_answer,
     )
 
 
-def test_correct_answer_repository_get_by_id(
-    mock_correct_answer_repository, correct_answer
+def test_cached_answer_repository_save(
+    mock_cached_answer_repository, cached_answer
 ):
-    mock_correct_answer_repository.get_by_id.return_value = correct_answer
-    retrieved_correct_answer = mock_correct_answer_repository.get_by_id(
-        correct_answer.correct_answer_id
-    )
-    assert retrieved_correct_answer == correct_answer
-    mock_correct_answer_repository.get_by_id.assert_called_once_with(
-        correct_answer.correct_answer_id
-    )
+    mock_cached_answer_repository.save.return_value = cached_answer
+    saved_cached_answer = mock_cached_answer_repository.save(cached_answer)
+    assert saved_cached_answer == cached_answer
+    mock_cached_answer_repository.save.assert_called_once_with(cached_answer)

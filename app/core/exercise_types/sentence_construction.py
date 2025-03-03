@@ -1,6 +1,5 @@
 from typing import Any, Dict
 
-from app.core.entities.correct_answer import CorrectAnswer
 from app.core.entities.exercise import Exercise
 from app.core.enums import ExerciseType as ExerciseTypeEnum
 from app.core.interfaces.exercise_type import ExerciseType
@@ -9,13 +8,6 @@ from app.core.value_objects.exercise import SentenceConstructionExerciseData
 
 
 class SentenceConstructionExerciseType(ExerciseType):
-    def validate_answer(
-        self, exercise: Exercise, answer: Answer, correct_answer: CorrectAnswer
-    ) -> bool:
-        return (
-            answer.get_answer_text() == correct_answer.answer.get_answer_text()
-        )
-
     def generate_feedback(self, exercise: Exercise, answer: Answer) -> str:
         # TODO: Implement feedback generation
         return 'Keep trying!'

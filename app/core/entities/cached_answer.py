@@ -5,9 +5,11 @@ from app.core.value_objects.answer import Answer
 
 
 @dataclass
-class CorrectAnswer:
-    correct_answer_id: int
+class CachedAnswer:
+    answer_id: int
     exercise_id: int
     answer: Answer
+    is_correct: bool
+    feedback: str | None = None
     created_at: datetime | None = None
     created_by: str | None = None

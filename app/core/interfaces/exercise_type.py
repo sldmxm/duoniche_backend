@@ -7,12 +7,6 @@ from app.core.value_objects.answer import Answer
 
 class ExerciseType(ABC):
     @abstractmethod
-    def validate_answer(
-        self, exercise: Exercise, answer: Answer, correct_answer: Any
-    ) -> bool:
-        pass
-
-    @abstractmethod
     def generate_feedback(self, exercise: Exercise, answer: Answer) -> str:
         pass
 
@@ -22,4 +16,5 @@ class ExerciseType(ABC):
 
     @abstractmethod
     def create_exercise(self, **kwargs: Dict[str, Any]) -> Exercise:
+        """Creates a new exercise of this type"""
         pass

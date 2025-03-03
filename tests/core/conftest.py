@@ -2,12 +2,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.core.entities.correct_answer import CorrectAnswer
+from app.core.entities.cached_answer import CachedAnswer
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
 from app.core.enums import ExerciseType, LanguageLevel
-from app.core.repositories.correct_answer import CorrectAnswerRepository
+from app.core.repositories.cached_answer import CachedAnswerRepository
 from app.core.repositories.exercise import ExerciseRepository
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
 from app.core.repositories.user import UserRepository
@@ -77,18 +77,20 @@ def exercise_attempt(
         exercise_id=sentence_construction_exercise.exercise_id,
         answer=sentence_construction_answer,
         is_correct=True,
+        cached_answer_id=1,
     )
 
 
 @pytest.fixture
-def correct_answer(
+def cached_answer(
     sentence_construction_exercise, sentence_construction_answer
 ):
-    return CorrectAnswer(
-        correct_answer_id=1,
+    return CachedAnswer(
+        answer_id=1,
         exercise_id=sentence_construction_exercise.exercise_id,
         answer=sentence_construction_answer,
-        created_by='test',
+        is_correct=True,
+        feedback='Correct!',
     )
 
 
@@ -108,5 +110,5 @@ def mock_exercise_attempt_repository():
 
 
 @pytest.fixture
-def mock_correct_answer_repository():
-    return MagicMock(spec=CorrectAnswerRepository)
+def mock_cached_answer_repository():
+    return MagicMock(spec=CachedAnswerRepository)

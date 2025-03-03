@@ -1,9 +1,8 @@
-from typing import List
-
 from app.core.entities.correct_answer import CorrectAnswer
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
+from app.core.factories.exercise_factory import ExerciseFactory
 from app.core.repositories.correct_answer import CorrectAnswerRepository
 from app.core.repositories.exercise import ExerciseRepository
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
@@ -57,44 +56,46 @@ class ExerciseService:
     def validate_exercise_attempt(
         self, user: User, exercise: Exercise, answer: Answer
     ) -> ExerciseAttempt:
+        # Получаем обработчик для типа упражнения
+        exercise_handler = ExerciseFactory.get_handler(exercise.exercise_type)
+
+        # Проверяем ответ через кэш правильных ответов
         is_correct = False
         feedback = None
-        correct_answer_obj: CorrectAnswer | None = None
-        correct_answers: List[CorrectAnswer] | None = (
-            self.correct_answer_repository.get_by_exercise_id(
-                exercise.exercise_id
-            )
+        correct_answer_obj = None
+
+        # Проверяем через кэш
+        correct_answers = self.correct_answer_repository.get_by_exercise_id(
+            exercise.exercise_id
         )
+
         if correct_answers:
             for correct_answer in correct_answers:
-                if (
-                    correct_answer.answer.get_answer_text()
-                    == answer.get_answer_text()
+                if exercise_handler.validate_answer(
+                    exercise, answer, correct_answer
                 ):
                     is_correct = True
                     correct_answer_obj = correct_answer
                     break
+
+        # Если ответ не найден в кэше, проверяем через LLM
         if not is_correct:
             is_correct, feedback = self.llm_service.validate_attempt(
                 user, exercise, answer
             )
-        # TODO: Вынести в константы/enum все эти статусы ответов
-        if not is_correct:
-            feedback = 'Wrong!'
+
+        # Создаем попытку
         exercise_attempt = ExerciseAttempt(
-            attempt_id=0,  # This will be updated by the repository
+            attempt_id=0,
             user_id=user.user_id,
             exercise_id=exercise.exercise_id,
             answer=answer,
             is_correct=is_correct,
-            feedback=feedback,
+            feedback=feedback or ('Correct!' if is_correct else 'Wrong!'),
         )
 
-        if is_correct and correct_answer_obj:
-            exercise_attempt.correct_answer_id = (
-                correct_answer_obj.correct_answer_id
-            )
-        elif is_correct:
+        # Сохраняем правильный ответ в кэш
+        if is_correct and not correct_answer_obj:
             self.add_correct_answer(
                 exercise=exercise,
                 answer=answer,

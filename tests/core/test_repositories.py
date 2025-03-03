@@ -21,50 +21,66 @@ def test_user_repository_save(mock_user_repository, user):
     mock_user_repository.save.assert_called_once_with(user)
 
 
-def test_exercise_repository_get_by_id(mock_exercise_repository, exercise):
-    mock_exercise_repository.get_by_id.return_value = exercise
+def test_exercise_repository_get_by_id(
+    mock_exercise_repository, multiple_choice_exercise
+):
+    mock_exercise_repository.get_by_id.return_value = multiple_choice_exercise
     retrieved_exercise = mock_exercise_repository.get_by_id(
-        exercise.exercise_id
+        multiple_choice_exercise.exercise_id
     )
-    assert retrieved_exercise == exercise
+    assert retrieved_exercise == multiple_choice_exercise
     mock_exercise_repository.get_by_id.assert_called_once_with(
-        exercise.exercise_id
+        multiple_choice_exercise.exercise_id
     )
 
 
 def test_exercise_repository_get_new_exercise(
-    mock_exercise_repository, user, exercise
+    mock_exercise_repository, user, multiple_choice_exercise
 ):
-    mock_exercise_repository.get_new_exercise.return_value = exercise
-    retrieved_exercise = mock_exercise_repository.get_new_exercise(
-        user, exercise.language_level, exercise.exercise_type
+    mock_exercise_repository.get_new_exercise.return_value = (
+        multiple_choice_exercise
     )
-    assert retrieved_exercise == exercise
+    retrieved_exercise = mock_exercise_repository.get_new_exercise(
+        user,
+        multiple_choice_exercise.language_level,
+        multiple_choice_exercise.exercise_type,
+    )
+    assert retrieved_exercise == multiple_choice_exercise
     mock_exercise_repository.get_new_exercise.assert_called_once_with(
-        user, exercise.language_level, exercise.exercise_type
+        user,
+        multiple_choice_exercise.language_level,
+        multiple_choice_exercise.exercise_type,
     )
 
 
 def test_exercise_repository_get_exercise_for_repetition(
-    mock_exercise_repository, user, exercise
+    mock_exercise_repository, user, multiple_choice_exercise
 ):
     mock_exercise_repository.get_exercise_for_repetition.return_value = (
-        exercise
+        multiple_choice_exercise
     )
     retrieved_exercise = mock_exercise_repository.get_exercise_for_repetition(
-        user, exercise.language_level, exercise.exercise_type
+        user,
+        multiple_choice_exercise.language_level,
+        multiple_choice_exercise.exercise_type,
     )
-    assert retrieved_exercise == exercise
+    assert retrieved_exercise == multiple_choice_exercise
     mock_exercise_repository.get_exercise_for_repetition.assert_called_once_with(
-        user, exercise.language_level, exercise.exercise_type
+        user,
+        multiple_choice_exercise.language_level,
+        multiple_choice_exercise.exercise_type,
     )
 
 
-def test_exercise_repository_save(mock_exercise_repository, exercise):
-    mock_exercise_repository.save.return_value = exercise
-    saved_exercise = mock_exercise_repository.save(exercise)
-    assert saved_exercise == exercise
-    mock_exercise_repository.save.assert_called_once_with(exercise)
+def test_exercise_repository_save(
+    mock_exercise_repository, multiple_choice_exercise
+):
+    mock_exercise_repository.save.return_value = multiple_choice_exercise
+    saved_exercise = mock_exercise_repository.save(multiple_choice_exercise)
+    assert saved_exercise == multiple_choice_exercise
+    mock_exercise_repository.save.assert_called_once_with(
+        multiple_choice_exercise
+    )
 
 
 def test_exercise_attempt_repository_get_by_id(
@@ -81,19 +97,22 @@ def test_exercise_attempt_repository_get_by_id(
 
 
 def test_exercise_attempt_repository_get_by_user_and_exercise(
-    mock_exercise_attempt_repository, user, exercise, exercise_attempt
+    mock_exercise_attempt_repository,
+    user,
+    multiple_choice_exercise,
+    exercise_attempt,
 ):
     mock_exercise_attempt_repository.get_by_user_and_exercise.return_value = [
         exercise_attempt
     ]
     retrieved_exercise_attempts = (
         mock_exercise_attempt_repository.get_by_user_and_exercise(
-            user.user_id, exercise.exercise_id
+            user.user_id, multiple_choice_exercise.exercise_id
         )
     )
     assert retrieved_exercise_attempts == [exercise_attempt]
     mock_exercise_attempt_repository.get_by_user_and_exercise.assert_called_once_with(
-        user.user_id, exercise.exercise_id
+        user.user_id, multiple_choice_exercise.exercise_id
     )
 
 

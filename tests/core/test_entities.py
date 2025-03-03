@@ -36,12 +36,12 @@ def test_exercise_creation():
 
 
 def test_exercise_attempt_creation(
-    user, exercise, sentence_construction_answer
+    user, multiple_choice_exercise, sentence_construction_answer
 ):
     exercise_attempt = ExerciseAttempt(
         attempt_id=1,
         user_id=user.user_id,
-        exercise_id=exercise.exercise_id,
+        exercise_id=multiple_choice_exercise.exercise_id,
         answer=sentence_construction_answer,
         is_correct=True,
     )

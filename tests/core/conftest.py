@@ -6,13 +6,17 @@ from app.core.entities.correct_answer import CorrectAnswer
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
+from app.core.enums import ExerciseType, LanguageLevel
 from app.core.repositories.correct_answer import CorrectAnswerRepository
 from app.core.repositories.exercise import ExerciseRepository
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
 from app.core.repositories.user import UserRepository
 from app.core.services.llm import LLMService
 from app.core.value_objects.answer import SentenceConstructionAnswer
-from app.core.value_objects.exercise import SentenceConstructionExerciseData
+from app.core.value_objects.exercise import (
+    MultipleChoiceExerciseData,
+    SentenceConstructionExerciseData,
+)
 
 
 @pytest.fixture
@@ -31,35 +35,58 @@ def sentence_construction_answer():
 
 
 @pytest.fixture
-def exercise():
+def sentence_construction_exercise():
     return Exercise(
         exercise_id=1,
-        exercise_type='sentence_construction',
-        language_level='beginner',
+        exercise_type=ExerciseType.SENTENCE_CONSTRUCTION.value,
+        language_level=LanguageLevel.BEGINNER.value,
         topic='general',
-        exercise_text='Make a test sentence.',
+        exercise_text='Make a sentence',
         data=SentenceConstructionExerciseData(
-            words=['this', 'is', 'a', 'test', 'sentence']
+            words=[
+                'this',
+                'is',
+                'a',
+                'test',
+            ]
         ),
     )
 
 
 @pytest.fixture
-def exercise_attempt(user, exercise, sentence_construction_answer):
+def multiple_choice_exercise():
+    return Exercise(
+        exercise_id=2,
+        exercise_type=ExerciseType.MULTIPLE_CHOICE.value,
+        language_level=LanguageLevel.BEGINNER.value,
+        topic='grammar',
+        exercise_text='Choose the correct answer',
+        data=MultipleChoiceExerciseData(
+            options=['option1', 'option2', 'option3']
+        ),
+    )
+
+
+@pytest.fixture
+def exercise_attempt(
+    user, sentence_construction_exercise, sentence_construction_answer
+):
     return ExerciseAttempt(
         attempt_id=1,
         user_id=user.user_id,
-        exercise_id=exercise.exercise_id,
+        exercise_id=sentence_construction_exercise.exercise_id,
         answer=sentence_construction_answer,
         is_correct=True,
     )
 
 
 @pytest.fixture
-def correct_answer(exercise, sentence_construction_answer):
+def correct_answer(
+    sentence_construction_exercise, sentence_construction_answer
+):
     return CorrectAnswer(
         correct_answer_id=1,
-        exercise_id=exercise.exercise_id,
+        exercise_id=sentence_construction_exercise.exercise_id,
         answer=sentence_construction_answer,
         created_by='test',
     )

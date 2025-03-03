@@ -77,15 +77,21 @@ def test_user_service_save_user(mock_user_repository, user_service, user):
 
 
 def test_exercise_service_get_new_exercise_from_repo(
-    mock_exercise_repository, exercise_service, user, exercise
+    mock_exercise_repository, exercise_service, user, multiple_choice_exercise
 ):
-    mock_exercise_repository.get_new_exercise.return_value = exercise
-    retrieved_exercise = exercise_service.get_new_exercise(
-        user, exercise.language_level, exercise.exercise_type
+    mock_exercise_repository.get_new_exercise.return_value = (
+        multiple_choice_exercise
     )
-    assert retrieved_exercise == exercise
+    retrieved_exercise = exercise_service.get_new_exercise(
+        user,
+        multiple_choice_exercise.language_level,
+        multiple_choice_exercise.exercise_type,
+    )
+    assert retrieved_exercise == multiple_choice_exercise
     mock_exercise_repository.get_new_exercise.assert_called_once_with(
-        user, exercise.language_level, exercise.exercise_type
+        user,
+        multiple_choice_exercise.language_level,
+        multiple_choice_exercise.exercise_type,
     )
 
 
@@ -94,59 +100,73 @@ def test_exercise_service_get_new_exercise_from_llm(
     mock_llm_service,
     exercise_service,
     user,
-    exercise,
+    multiple_choice_exercise,
 ):
     mock_exercise_repository.get_new_exercise.return_value = None
-    mock_llm_service.generate_exercise.return_value = exercise
-    mock_exercise_repository.save.return_value = exercise
+    mock_llm_service.generate_exercise.return_value = multiple_choice_exercise
+    mock_exercise_repository.save.return_value = multiple_choice_exercise
     retrieved_exercise = exercise_service.get_new_exercise(
-        user, exercise.language_level, exercise.exercise_type
+        user,
+        multiple_choice_exercise.language_level,
+        multiple_choice_exercise.exercise_type,
     )
-    assert retrieved_exercise == exercise
+    assert retrieved_exercise == multiple_choice_exercise
     mock_exercise_repository.get_new_exercise.assert_called_once_with(
-        user, exercise.language_level, exercise.exercise_type
+        user,
+        multiple_choice_exercise.language_level,
+        multiple_choice_exercise.exercise_type,
     )
     mock_llm_service.generate_exercise.assert_called_once_with(
-        user, exercise.language_level, exercise.exercise_type
+        user,
+        multiple_choice_exercise.language_level,
+        multiple_choice_exercise.exercise_type,
     )
-    mock_exercise_repository.save.assert_called_once_with(exercise)
+    mock_exercise_repository.save.assert_called_once_with(
+        multiple_choice_exercise
+    )
 
 
 def test_exercise_service_get_exercise_for_repetition(
-    mock_exercise_repository, exercise_service, user, exercise
+    mock_exercise_repository, exercise_service, user, multiple_choice_exercise
 ):
     mock_exercise_repository.get_exercise_for_repetition.return_value = (
-        exercise
+        multiple_choice_exercise
     )
     retrieved_exercise = exercise_service.get_exercise_for_repetition(
-        user, exercise.language_level, exercise.exercise_type
+        user,
+        multiple_choice_exercise.language_level,
+        multiple_choice_exercise.exercise_type,
     )
-    assert retrieved_exercise == exercise
+    assert retrieved_exercise == multiple_choice_exercise
     mock_exercise_repository.get_exercise_for_repetition.assert_called_once_with(
-        user, exercise.language_level, exercise.exercise_type
+        user,
+        multiple_choice_exercise.language_level,
+        multiple_choice_exercise.exercise_type,
     )
 
 
 def test_exercise_service_get_exercise_by_id(
-    mock_exercise_repository, exercise_service, exercise
+    mock_exercise_repository, exercise_service, multiple_choice_exercise
 ):
-    mock_exercise_repository.get_by_id.return_value = exercise
+    mock_exercise_repository.get_by_id.return_value = multiple_choice_exercise
     retrieved_exercise = exercise_service.get_exercise_by_id(
-        exercise.exercise_id
+        multiple_choice_exercise.exercise_id
     )
-    assert retrieved_exercise == exercise
+    assert retrieved_exercise == multiple_choice_exercise
     mock_exercise_repository.get_by_id.assert_called_once_with(
-        exercise.exercise_id
+        multiple_choice_exercise.exercise_id
     )
 
 
 def test_exercise_service_save_exercise(
-    mock_exercise_repository, exercise_service, exercise
+    mock_exercise_repository, exercise_service, multiple_choice_exercise
 ):
-    mock_exercise_repository.save.return_value = exercise
-    saved_exercise = exercise_service.save_exercise(exercise)
-    assert saved_exercise == exercise
-    mock_exercise_repository.save.assert_called_once_with(exercise)
+    mock_exercise_repository.save.return_value = multiple_choice_exercise
+    saved_exercise = exercise_service.save_exercise(multiple_choice_exercise)
+    assert saved_exercise == multiple_choice_exercise
+    mock_exercise_repository.save.assert_called_once_with(
+        multiple_choice_exercise
+    )
 
 
 def test_exercise_service_validate_exercise_attempt_correct(
@@ -154,26 +174,26 @@ def test_exercise_service_validate_exercise_attempt_correct(
     mock_exercise_attempt_repository,
     exercise_service,
     user,
-    exercise,
+    multiple_choice_exercise,
     sentence_construction_answer,
 ):
     mock_llm_service.validate_attempt.return_value = True, 'Correct!'
-    exercise.data.correct_sentences = [
+    multiple_choice_exercise.data.correct_sentences = [
         sentence_construction_answer.sentences[0]
     ]
     new_exercise_attempt = ExerciseAttempt(
         attempt_id=1,
         user_id=user.user_id,
-        exercise_id=exercise.exercise_id,
+        exercise_id=multiple_choice_exercise.exercise_id,
         answer=sentence_construction_answer,
         is_correct=True,
     )
     mock_exercise_attempt_repository.save.return_value = new_exercise_attempt
     exercise_attempt = exercise_service.validate_exercise_attempt(
-        user, exercise, sentence_construction_answer
+        user, multiple_choice_exercise, sentence_construction_answer
     )
     mock_llm_service.validate_attempt.assert_called_once_with(
-        user, exercise, sentence_construction_answer
+        user, multiple_choice_exercise, sentence_construction_answer
     )
     assert exercise_attempt.is_correct
     assert exercise_attempt.feedback is None
@@ -185,24 +205,24 @@ def test_exercise_service_validate_exercise_attempt_llm(
     mock_exercise_attempt_repository,
     exercise_service,
     user,
-    exercise,
+    multiple_choice_exercise,
     sentence_construction_answer,
 ):
     mock_llm_service.validate_attempt.return_value = False, 'Wrong!'
     new_exercise_attempt = ExerciseAttempt(
         attempt_id=1,
         user_id=user.user_id,
-        exercise_id=exercise.exercise_id,
+        exercise_id=multiple_choice_exercise.exercise_id,
         answer=sentence_construction_answer,
         is_correct=False,
         feedback='Wrong!',
     )
     mock_exercise_attempt_repository.save.return_value = new_exercise_attempt
     exercise_attempt = exercise_service.validate_exercise_attempt(
-        user, exercise, sentence_construction_answer
+        user, multiple_choice_exercise, sentence_construction_answer
     )
     mock_llm_service.validate_attempt.assert_called_once_with(
-        user, exercise, sentence_construction_answer
+        user, multiple_choice_exercise, sentence_construction_answer
     )
     assert not exercise_attempt.is_correct
     assert exercise_attempt.feedback == 'Wrong!'
@@ -224,10 +244,108 @@ def test_exercise_service_save_exercise_attempt(
 def test_exercise_service_add_correct_answer(
     mock_correct_answer_repository,
     exercise_service,
-    exercise,
+    multiple_choice_exercise,
     sentence_construction_answer,
 ):
     exercise_service.add_correct_answer(
-        exercise, sentence_construction_answer, created_by='test'
+        multiple_choice_exercise,
+        sentence_construction_answer,
+        created_by='test',
     )
     mock_correct_answer_repository.save.assert_called_once()
+
+
+def test_validate_exercise_attempt_with_cached_correct_answer(
+    user,
+    sentence_construction_exercise,
+    sentence_construction_answer,
+    correct_answer,
+    mock_exercise_repository,
+    mock_exercise_attempt_repository,
+    mock_correct_answer_repository,
+    mock_llm_service,
+):
+    exercise_service = ExerciseService(
+        exercise_repository=mock_exercise_repository,
+        exercise_attempt_repository=mock_exercise_attempt_repository,
+        correct_answer_repository=mock_correct_answer_repository,
+        llm_service=mock_llm_service,
+    )
+
+    mock_correct_answer_repository.get_by_exercise_id.return_value = [
+        correct_answer
+    ]
+    mock_exercise_attempt_repository.save.return_value = ExerciseAttempt(
+        attempt_id=1,
+        user_id=user.user_id,
+        exercise_id=sentence_construction_exercise.exercise_id,
+        answer=sentence_construction_answer,
+        is_correct=True,
+        feedback='Correct!',
+    )
+
+    result = exercise_service.validate_exercise_attempt(
+        user=user,
+        exercise=sentence_construction_exercise,
+        answer=sentence_construction_answer,
+    )
+
+    assert result.is_correct is True
+    assert result.feedback == 'Correct!'
+
+    mock_llm_service.validate_attempt.assert_not_called()
+
+    mock_correct_answer_repository.get_by_exercise_id.assert_called_once_with(
+        sentence_construction_exercise.exercise_id
+    )
+
+    mock_exercise_attempt_repository.save.assert_called_once()
+
+
+def test_validate_exercise_attempt_no_cached_answer(
+    user,
+    sentence_construction_exercise,
+    sentence_construction_answer,
+    mock_exercise_repository,
+    mock_exercise_attempt_repository,
+    mock_correct_answer_repository,
+    mock_llm_service,
+):
+    exercise_service = ExerciseService(
+        exercise_repository=mock_exercise_repository,
+        exercise_attempt_repository=mock_exercise_attempt_repository,
+        correct_answer_repository=mock_correct_answer_repository,
+        llm_service=mock_llm_service,
+    )
+
+    mock_correct_answer_repository.get_by_exercise_id.return_value = []
+
+    mock_llm_service.validate_attempt.return_value = (True, 'Great job!')
+
+    mock_exercise_attempt_repository.save.return_value = ExerciseAttempt(
+        attempt_id=1,
+        user_id=user.user_id,
+        exercise_id=sentence_construction_exercise.exercise_id,
+        answer=sentence_construction_answer,
+        is_correct=True,
+        feedback='Great job!',
+    )
+
+    result = exercise_service.validate_exercise_attempt(
+        user=user,
+        exercise=sentence_construction_exercise,
+        answer=sentence_construction_answer,
+    )
+
+    assert result.is_correct is True
+    assert result.feedback == 'Great job!'
+
+    mock_correct_answer_repository.get_by_exercise_id.assert_called_once_with(
+        sentence_construction_exercise.exercise_id
+    )
+
+    mock_llm_service.validate_attempt.assert_called_once_with(
+        user, sentence_construction_exercise, sentence_construction_answer
+    )
+
+    mock_exercise_attempt_repository.save.assert_called_once()

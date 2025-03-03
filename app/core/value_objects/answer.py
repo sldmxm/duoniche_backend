@@ -5,6 +5,7 @@ from typing import List, Set
 
 class Answer(ABC):
     @abstractmethod
+    # TODO: брать не текст ответа для проверки, а hash?
     def get_answer_text(self) -> str:
         raise NotImplementedError
 

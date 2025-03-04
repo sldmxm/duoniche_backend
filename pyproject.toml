@@ -10,10 +10,20 @@ dependencies = [
     "fastapi[standard]>=0.115.10",
     "langchain>=0.3.19",
     "psycopg2-binary>=2.9.10",
+    "pydantic-settings>=2.8.1",
     "pydantic>=2.0",
     "python-dotenv>=1.0.1",
     "sqlalchemy>=2.0",
     "uvicorn>=0.34.0",
+    "asyncpg>=0.30.0",
+    "greenlet>=3.1.1",
+    "sqlalchemy-utils>=0.41.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=0.25.3",
+    "pytest>=8.3.4",
 ]
 
 [tool.ruff.format]
@@ -25,13 +35,15 @@ exclude = ["settings.py","migrations"]
 line-length = 79
 
 [tool.mypy]
-exclude = ["tests/"]
+exclude = ["tests/", "alembic/"]
 strict = true
 ignore_missing_imports = true
 disallow_untyped_decorators = false
 disable_error_code = ["import-untyped"]
 
-[dependency-groups]
-dev = [
-    "pytest>=8.3.4",
+[tool.pytest.ini_options]
+markers = [
+    "asyncio: mark test as using asyncio",
 ]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "session"

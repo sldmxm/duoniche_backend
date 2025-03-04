@@ -1,32 +1,34 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from typing import Optional
 
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
+from app.core.repositories.base import AsyncRepository
 
 
-class ExerciseRepository(ABC):
+class ExerciseRepository(AsyncRepository[Exercise]):
     @abstractmethod
-    def get_by_id(self, exercise_id: int) -> Exercise | None:
+    async def get_by_id(self, exercise_id: int) -> Optional[Exercise]:
         raise NotImplementedError
 
     @abstractmethod
-    def get_new_exercise(
+    async def get_new_exercise(
         self,
         user: User,
         language_level: str,
         exercise_type: str,
-    ) -> Exercise | None:
+    ) -> Optional[Exercise]:
         raise NotImplementedError
 
     @abstractmethod
-    def get_exercise_for_repetition(
+    async def get_exercise_for_repetition(
         self,
         user: User,
         language_level: str,
         exercise_type: str,
-    ) -> Exercise | None:
+    ) -> Optional[Exercise]:
         raise NotImplementedError
 
     @abstractmethod
-    def save(self, exercise: Exercise) -> Exercise:
+    async def save(self, exercise: Exercise) -> Exercise:
         raise NotImplementedError

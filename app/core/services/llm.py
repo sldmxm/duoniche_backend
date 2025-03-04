@@ -6,14 +6,14 @@ from app.core.value_objects.answer import Answer
 
 
 class LLMService:
-    def generate_exercise(
+    async def generate_exercise(
         self, user: User, language_level: str, exercise_type: str
     ) -> Exercise:
-        # TODO: Implement LLM interaction here
+        # Заглушка, в реальном приложении здесь будет вызов LLM
         raise NotImplementedError
 
-    def validate_attempt(
-        self, user: User, exercise: Exercise, attempt_data: Answer
+    async def validate_attempt(
+        self, user: User, exercise: Exercise, answer: Answer
     ) -> Tuple[bool, str]:
-        # TODO: Implement LLM interaction here
+        # Заглушка, в реальном приложении здесь будет вызов LLM
         raise NotImplementedError

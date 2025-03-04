@@ -1,0 +1,14 @@
+services:
+  db:
+    container_name: learn_bg_db
+    image: postgres:16-alpine
+    env_file: ../../.env
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data/
+      - ./init_test_db.sql:/docker-entrypoint-initdb.d/init_test_db.sql
+
+volumes:
+    pg_data:

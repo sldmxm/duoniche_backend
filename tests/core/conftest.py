@@ -1,6 +1,6 @@
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock
 
-import pytest
+import pytest_asyncio
 
 from app.core.entities.cached_answer import CachedAnswer
 from app.core.entities.exercise import Exercise
@@ -19,22 +19,22 @@ from app.core.value_objects.exercise import (
 )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def mock_llm_service():
-    return MagicMock(spec=LLMService)
+    return AsyncMock(spec=LLMService)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def user():
     return User(user_id=1, telegram_id=12345, username='testuser')
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def sentence_construction_answer():
     return SentenceConstructionAnswer(sentences=['This is a test sentence.'])
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def sentence_construction_exercise():
     return Exercise(
         exercise_id=1,
@@ -53,7 +53,7 @@ def sentence_construction_exercise():
     )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def multiple_choice_exercise():
     return Exercise(
         exercise_id=2,
@@ -67,7 +67,7 @@ def multiple_choice_exercise():
     )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def exercise_attempt(
     user, sentence_construction_exercise, sentence_construction_answer
 ):
@@ -81,7 +81,7 @@ def exercise_attempt(
     )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def cached_answer(
     sentence_construction_exercise, sentence_construction_answer
 ):
@@ -94,21 +94,21 @@ def cached_answer(
     )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def mock_user_repository():
-    return MagicMock(spec=UserRepository)
+    return AsyncMock(spec=UserRepository)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def mock_exercise_repository():
-    return MagicMock(spec=ExerciseRepository)
+    return AsyncMock(spec=ExerciseRepository)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def mock_exercise_attempt_repository():
-    return MagicMock(spec=ExerciseAttemptRepository)
+    return AsyncMock(spec=ExerciseAttemptRepository)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def mock_cached_answer_repository():
-    return MagicMock(spec=CachedAnswerRepository)
+    return AsyncMock(spec=CachedAnswerRepository)

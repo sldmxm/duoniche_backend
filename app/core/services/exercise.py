@@ -122,6 +122,9 @@ class ExerciseService:
                 answer=answer,
                 is_correct=is_correct,
                 feedback=feedback,
+                # TODO: Вынести в константу
+                #  ИЛИ добавить атрибуты в модель, чтобы понимать,
+                #  как принято решение о правильности ответа
                 created_by=f'LLM:user:{user.user_id}',
             )
 

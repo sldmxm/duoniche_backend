@@ -29,7 +29,7 @@ class CachedAnswer(Base):
     is_correct = Column(Boolean, nullable=False)
     feedback = Column(String)
     created_at = Column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=datetime.now(), nullable=False
     )
     created_by = Column(String)
 

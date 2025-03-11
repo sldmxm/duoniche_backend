@@ -54,8 +54,8 @@ def test_fill_in_the_blank_exercise_data():
 
 
 def test_translation_exercise_data():
-    data = TranslationExerciseData(source_language_text='source text')
-    assert data.source_language_text == 'source text'
+    data = TranslationExerciseData(translations=['source text'])
+    assert data.translations == ['source text']
 
 
 def test_sentence_construction_answer_serialization():

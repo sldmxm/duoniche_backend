@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import List, Tuple
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -12,6 +13,8 @@ from app.core.enums import ExerciseType
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.value_objects.answer import Answer, FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
+
+logger = logging.getLogger(__name__)
 
 
 class FillInTheBlankExerciseDataParsed(BaseModel):
@@ -44,6 +47,14 @@ class LLMService(LLMProvider):
             request_timeout=settings.openai_request_timeout,
         )
 
+    # TODO: !!!!! Сейчас генерируется сразу много предложений
+    #  и у всех только один пропуск и один ответ - правильный
+    #  (должно быть +2 неправильных слова).
+    #  Еще есть такое She _____ (to like) ice cream.
+    #  То есть надо четче поставить задачу.
+    #  Надо переделать - разбить на отдельные задания
+    #  и все записать в БД, а оттуда уже выдавать пользователю
+    #  ИЛИ просить выдать только одно предложение
     async def generate_exercise(
         self, user: User, language_level: str, exercise_type: str
     ) -> Exercise:
@@ -77,14 +88,16 @@ Topic: {topic}
             ]
         )
         chain = prompt | self.model
-        response = await chain.ainvoke(
-            {
-                'user_language': user.user_language,
-                'target_language': user.target_language,
-                'language_level': language_level,
-                'topic': 'general',  # TODO: Add topic
-            }
-        )
+        request_data = {
+            'user_language': user.user_language,
+            'target_language': user.target_language,
+            'language_level': language_level,
+            'topic': 'general',  # TODO: Add topic
+        }
+        logger.debug(f'Request to generate exercise. Data: {request_data}')
+        response = await chain.ainvoke(request_data)
+
+        logger.debug(f'Response to generate exercise: {response}')
         try:
             parsed_data = FillInTheBlankExerciseDataParsed.model_validate_json(
                 response.content
@@ -137,23 +150,21 @@ Give an answer in the form of json:
             ]
         )
         chain = prompt | self.model
+        request_data = {
+            'user_language': user.user_language,
+            'target_language': user.target_language,
+            'language_level': exercise.language_level,
+            'topic': exercise.topic,
+            'text_with_blanks': exercise.data.text_with_blanks,
+            'options': exercise.data.words,
+            'user_answer': exercise.data.get_full_exercise_text(answer),
+        }
+        logger.debug(f'Request to validate attempt. Data: {request_data}')
         try:
-            response = await chain.ainvoke(
-                {
-                    'user_language': user.user_language,
-                    'target_language': user.target_language,
-                    'language_level': exercise.language_level,
-                    'topic': exercise.topic,
-                    'text_with_blanks': exercise.data.text_with_blanks,
-                    'options': exercise.data.words,
-                    'user_answer': exercise.data.get_full_exercise_text(
-                        answer
-                    ),
-                }
-            )
+            response = await chain.ainvoke(request_data)
         except Exception as e:
             return False, str(e)
-
+        logger.debug(f'Response to validate attempt: {response}')
         try:
             parsed_response = json.loads(response.content)
             is_correct = parsed_response['is_correct']

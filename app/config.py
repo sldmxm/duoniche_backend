@@ -1,3 +1,5 @@
+import logging
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,10 +22,17 @@ class Settings(BaseSettings):  # type: ignore
     openai_max_retries: int = 6
     openai_request_timeout: int = 10
 
+    log_level: str = 'DEBUG'
+
     model_config = SettingsConfigDict(
         env_file='.env',
         env_file_encoding='utf-8',
     )
+
+    @property
+    def parsed_log_level(self) -> int:
+        """Parse string log level to int."""
+        return int(logging.getLevelName(self.log_level))
 
 
 settings = Settings()

@@ -55,7 +55,8 @@ class FillInTheBlankExerciseData(ExerciseData):
         words_count = len(answer.words)
         if words_count == 0:
             return self.text_with_blanks
-
+        # TODO: Унести в константы '___',
+        #  использовать в промпте и в тестах
         blanks = self.text_with_blanks.count('___')
         if blanks == 0:
             return self.text_with_blanks

@@ -20,7 +20,10 @@ repos:
     hooks:
       - id: mypy
         pass_filenames: false
-        args: ['.',]
+        args: ['.']
+        additional_dependencies:
+          - pydantic
+          - pydantic[mypy]
 
   - repo: local
     hooks:

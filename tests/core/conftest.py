@@ -7,11 +7,11 @@ from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
 from app.core.enums import ExerciseType, LanguageLevel
+from app.core.interfaces.llm_provider import LLMProvider
 from app.core.repositories.cached_answer import CachedAnswerRepository
 from app.core.repositories.exercise import ExerciseRepository
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
 from app.core.repositories.user import UserRepository
-from app.core.services.llm import LLMService
 from app.core.value_objects.answer import SentenceConstructionAnswer
 from app.core.value_objects.exercise import (
     MultipleChoiceExerciseData,
@@ -21,7 +21,7 @@ from app.core.value_objects.exercise import (
 
 @pytest_asyncio.fixture
 def mock_llm_service():
-    return AsyncMock(spec=LLMService)
+    return AsyncMock(spec=LLMProvider)
 
 
 @pytest_asyncio.fixture

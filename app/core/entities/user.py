@@ -1,11 +1,12 @@
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 
-@dataclass
-class User:
+class User(BaseModel):
     user_id: int
     telegram_id: int
-    name: str | None = None
-    username: str | None = None
+    username: str
+    name: str = ''
     language_level: str = 'beginner'
     is_active: bool = True
+    user_language: str | None = 'Russian'
+    target_language: str | None = 'Bulgarian'

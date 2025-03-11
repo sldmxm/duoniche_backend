@@ -8,13 +8,13 @@ from app.core.value_objects.answer import Answer
 
 class LLMProvider(ABC):
     @abstractmethod
-    def generate_exercise(
+    async def generate_exercise(
         self, user: User, language_level: str, exercise_type: str
     ) -> Exercise:
         pass
 
     @abstractmethod
-    def validate_attempt(
+    async def validate_attempt(
         self, user: User, exercise: Exercise, answer: Answer
     ) -> Tuple[bool, str]:
         pass

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import sessionmaker
 
-from app.core.config import settings
+from app.config import settings
 from app.db.models.base import Base
 
 

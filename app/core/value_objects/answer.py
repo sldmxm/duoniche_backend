@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -7,6 +9,9 @@ from typing import Any, Dict, List, Set, Type
 class Answer(ABC):
     @abstractmethod
     def get_answer_text(self) -> str:
+        """
+        Returns a string representation of the answer.
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -15,18 +20,22 @@ class Answer(ABC):
 
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> 'Answer':
+        """
+        Constructs an Answer object from a dictionary.
+        """
+        answer_type = data.get('type')
+        if not isinstance(answer_type, str):
+            raise ValueError('Missing or invalid "type" key in Answer data')
+
         answer_types: Dict[str, Type[Answer]] = {
             'SentenceConstructionAnswer': SentenceConstructionAnswer,
             'MultipleChoiceAnswer': MultipleChoiceAnswer,
             'FillInTheBlankAnswer': FillInTheBlankAnswer,
             'TranslationAnswer': TranslationAnswer,
         }
-        answer_type = data.get('type')
-        if not answer_type:
-            raise ValueError(f'Missing "type" key in Answer data: {data}')
-        answer_class = answer_types.get(answer_type)
 
-        if not answer_class:
+        answer_class = answer_types.get(answer_type)
+        if answer_class is None:
             raise ValueError(f'Unknown Answer type: {answer_type}')
 
         return answer_class.from_dict(data)
@@ -50,7 +59,10 @@ class SentenceConstructionAnswer(Answer):
 
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> 'SentenceConstructionAnswer':
-        return SentenceConstructionAnswer(sentences=data.get('sentences', []))
+        sentences = data.get('sentences')
+        if not isinstance(sentences, list):
+            raise ValueError('"sentences" must be a list')
+        return SentenceConstructionAnswer(sentences=sentences)
 
 
 @dataclass
@@ -68,9 +80,10 @@ class MultipleChoiceAnswer(Answer):
 
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> 'MultipleChoiceAnswer':
-        return MultipleChoiceAnswer(
-            option_index=set(data.get('option_index', []))
-        )
+        option_index = data.get('option_index')
+        if not isinstance(option_index, list):
+            raise ValueError('"option_index" must be a list')
+        return MultipleChoiceAnswer(option_index=set(option_index))
 
 
 @dataclass
@@ -85,7 +98,10 @@ class FillInTheBlankAnswer(Answer):
 
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> 'FillInTheBlankAnswer':
-        return FillInTheBlankAnswer(words=data.get('words', []))
+        words = data.get('words')
+        if not isinstance(words, list):
+            raise ValueError('"words" must be a list')
+        return FillInTheBlankAnswer(words=words)
 
 
 @dataclass
@@ -100,4 +116,7 @@ class TranslationAnswer(Answer):
 
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> 'TranslationAnswer':
-        return TranslationAnswer(translations=data.get('translations', []))
+        translations = data.get('translations')
+        if not isinstance(translations, list):
+            raise ValueError('"translations" must be a list')
+        return TranslationAnswer(translations=translations)

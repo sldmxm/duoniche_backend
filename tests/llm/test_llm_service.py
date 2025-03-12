@@ -10,20 +10,24 @@ from app.llm.llm_service import LLMService
 pytestmark = pytest.mark.asyncio
 
 
-async def test_generate_fill_in_the_blank_exercise():
-    llm_service = LLMService()
-
-    user = User(
+@pytest.fixture()
+def user():
+    return User(
         user_id=1,
         telegram_id=123,
         username='testuser',
         name='Test User',
-        user_language='english',
+        user_language='russian',
         target_language='english',
     )
+
+
+async def test_generate_fill_in_the_blank_exercise(user):
+    llm_service = LLMService()
+
     try:
         exercise: Exercise = await llm_service.generate_exercise(
-            user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
+            user, 'advanced', ExerciseType.FILL_IN_THE_BLANK.value
         )
     except ValueError:
         return
@@ -33,17 +37,9 @@ async def test_generate_fill_in_the_blank_exercise():
     assert exercise.data.words
 
 
-async def test_validate_attempt_correct():
+async def test_validate_attempt_correct(user):
     llm_service = LLMService()
 
-    user = User(
-        user_id=1,
-        telegram_id=123,
-        username='testuser',
-        name='Test User',
-        user_language='english',
-        target_language='english',
-    )
     exercise = Exercise(
         exercise_id=1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
@@ -62,20 +58,12 @@ async def test_validate_attempt_correct():
     )
 
     assert is_correct is True
-    assert feedback
+    assert feedback == ''
 
 
-async def test_validate_attempt_incorrect():
+async def test_validate_attempt_incorrect(user):
     llm_service = LLMService()
 
-    user = User(
-        user_id=1,
-        telegram_id=123,
-        username='testuser',
-        name='Test User',
-        user_language='english',
-        target_language='english',
-    )
     exercise = Exercise(
         exercise_id=1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,

@@ -1,12 +1,20 @@
-import json
 import logging
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple, TypeVar, Union
 
+from langchain_core.output_parsers import (
+    JsonOutputParser,
+    PydanticOutputParser,
+)
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableSerializable
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field, ValidationError
 
 from app.config import settings
+from app.core.consts import (
+    EXERCISE_FILL_IN_THE_BLANK_BLANKS,
+    EXERCISE_FILL_IN_THE_BLANK_TASK,
+)
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
 from app.core.enums import ExerciseType
@@ -16,17 +24,28 @@ from app.core.value_objects.exercise import FillInTheBlankExerciseData
 
 logger = logging.getLogger(__name__)
 
+T = TypeVar('T')
+
 
 class FillInTheBlankExerciseDataParsed(BaseModel):
-    """Class for Fill In The Blank Exercise"""
-
     text_with_blanks: str = Field(
-        description='Sentence with one or more words missing (blanks). '
-        'Use "___" for blanks.'
+        description='Sentence with one or more blanks. '
+        f'Use "{EXERCISE_FILL_IN_THE_BLANK_BLANKS}" for blanks.'
     )
     options: List[str] = Field(
-        description='A list of words including the correct '
-        'word and some incorrect words to fill the blank.'
+        description='A list of single words to fill the blanks including:\n'
+        '- the correct word(s)\n'
+        '- +2 incorrect words: one inappropriate in meaning '
+        'and another with a typo.'
+    )
+
+
+class AttemptValidationResponse(BaseModel):
+    is_correct: bool = Field(description='Whether the answer is correct')
+    feedback: str = Field(
+        description='Feedback for the user in their language. '
+        'If answer is correct, empty string. '
+        'Else just explanation of the mismatch.'
     )
 
 
@@ -40,80 +59,118 @@ class LLMService(LLMProvider):
             raise ValueError('OPENAI_API_KEY environment variable is not set')
 
         self.model = ChatOpenAI(
-            openai_api_key=openai_api_key,
-            model_name=model_name,
+            api_key=openai_api_key,
+            model=model_name,
             temperature=settings.openai_temperature,
             max_retries=settings.openai_max_retries,
-            request_timeout=settings.openai_request_timeout,
+            timeout=settings.openai_request_timeout,
         )
 
-    # TODO: !!!!! Сейчас генерируется сразу много предложений
-    #  и у всех только один пропуск и один ответ - правильный
-    #  (должно быть +2 неправильных слова).
-    #  Еще есть такое She _____ (to like) ice cream.
-    #  То есть надо четче поставить задачу.
-    #  Надо переделать - разбить на отдельные задания
-    #  и все записать в БД, а оттуда уже выдавать пользователю
-    #  ИЛИ просить выдать только одно предложение
     async def generate_exercise(
-        self, user: User, language_level: str, exercise_type: str
+        self,
+        user: User,
+        language_level: str,
+        exercise_type: str,
+        topic: str = 'general',
     ) -> Exercise:
-        """Generate exercise for user."""
-        if exercise_type == ExerciseType.FILL_IN_THE_BLANK.value:
-            return await self._generate_fill_in_the_blank_exercise(
-                user, language_level
+        """Generate exercise for user based on exercise type."""
+        exercise_generators = {
+            ExerciseType.FILL_IN_THE_BLANK.value: (
+                self._generate_fill_in_the_blank_exercise
+            ),
+        }
+
+        generator = exercise_generators.get(exercise_type)
+        if not generator:
+            raise NotImplementedError(
+                f"Exercise type '{exercise_type}' is not implemented"
+            )
+
+        return await generator(user, language_level, topic)
+
+    async def _create_llm_chain(
+        self,
+        prompt_template: str,
+        output_parser: Union[PydanticOutputParser, JsonOutputParser],
+        is_chat_prompt: bool = False,
+    ) -> RunnableSerializable:
+        """Create a standardized LLM chain with proper error handling."""
+        if is_chat_prompt:
+            prompt = ChatPromptTemplate.from_messages(
+                [('system', prompt_template)]
             )
         else:
-            raise NotImplementedError
+            from langchain_core.prompts import PromptTemplate
+
+            prompt = PromptTemplate(
+                template=prompt_template,
+                input_variables=[],
+                partial_variables={
+                    'format_instructions': (
+                        output_parser.get_format_instructions()
+                    )
+                },
+            )
+
+        chain = prompt | self.model | output_parser
+        return chain
+
+    async def _run_llm_chain(
+        self,
+        chain: RunnableSerializable,
+        input_data: Dict[str, Any],
+    ) -> Any:
+        """Execute LLM chain with standardized logging and error handling."""
+        try:
+            logger.debug(f'LLM request data: {input_data}')
+            response = await chain.ainvoke(input_data)
+            logger.debug(f'LLM response: {response}')
+            return response
+        except ValidationError as e:
+            logger.error(f'Validation error in LLM response: {e}')
+            raise ValueError(f'Invalid response format from LLM: {e}') from e
+        except Exception as e:
+            logger.error(f'Error during LLM request: {e}')
+            raise RuntimeError(f'LLM service error: {e}') from e
 
     async def _generate_fill_in_the_blank_exercise(
-        self, user: User, language_level: str
+        self, user: User, language_level: str, topic: str = 'general'
     ) -> Exercise:
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                (
-                    'system',
-                    """You are a language learning assistant.
-Generate the exercise for user.
-User language: {user_language}
-Target language: {target_language}
-Language level: {language_level}
-Topic: {topic}
-""",
-                ),
-                (
-                    'human',
-                    'Generate the Fill in the Blank exercise in json format.',
-                ),
-            ]
+        """Generate a fill-in-the-blank exercise."""
+        parser = PydanticOutputParser(
+            pydantic_object=FillInTheBlankExerciseDataParsed
         )
-        chain = prompt | self.model
+
+        prompt_template = (
+            'You are a language learning assistant.\n'
+            'Generate the exercise - '
+            'ONE sentence with one or more words missing.\n'
+            'User language: {user_language}\n'
+            'Target language: {target_language}\n'
+            'Language level: {language_level}\n'
+            'Topic: {topic}\n'
+            '{format_instructions}'
+        )
+
+        chain = await self._create_llm_chain(
+            prompt_template, parser, is_chat_prompt=False
+        )
+
         request_data = {
             'user_language': user.user_language,
             'target_language': user.target_language,
             'language_level': language_level,
-            'topic': 'general',  # TODO: Add topic
+            'topic': topic,
         }
-        logger.debug(f'Request to generate exercise. Data: {request_data}')
-        response = await chain.ainvoke(request_data)
 
-        logger.debug(f'Response to generate exercise: {response}')
-        try:
-            parsed_data = FillInTheBlankExerciseDataParsed.model_validate_json(
-                response.content
-            )
-        except ValidationError as e:
-            raise ValueError(
-                'Incorrect response from LLM to generate exercise'
-            ) from e
+        parsed_data = await self._run_llm_chain(chain, request_data)
+
         return Exercise(
             exercise_id=0,
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
             language_level=language_level,
-            topic='general',
-            # TODO: вынести тексты заданий в константы
-            #  в зависимости от языка пользователя
-            exercise_text='Заполни пробелы в предложении',
+            topic=topic,
+            exercise_text=EXERCISE_FILL_IN_THE_BLANK_TASK,
             data=FillInTheBlankExerciseData(
                 text_with_blanks=parsed_data.text_with_blanks,
                 words=parsed_data.options,
@@ -123,53 +180,50 @@ Topic: {topic}
     async def validate_attempt(
         self, user: User, exercise: Exercise, answer: Answer
     ) -> Tuple[bool, str]:
+        """Validate user's answer to the exercise."""
         if not isinstance(answer, FillInTheBlankAnswer):
-            raise NotImplementedError
+            raise NotImplementedError(
+                'Only FillInTheBlankAnswer is implemented'
+            )
+
         if not isinstance(exercise.data, FillInTheBlankExerciseData):
-            raise NotImplementedError
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                (
-                    'system',
-                    """You are a language learning assistant.
-You need to check the user's answer to the exercise.
-User language: {user_language}
-Target language: {target_language}
-Exercise language level: {language_level}
-Exercise topic: {topic}
-Options: {options}
-Exercise with blanks: {text_with_blanks}
-User answer: {user_answer}
-Give an answer in the form of json:
-{{
-"is_correct": bool,
-"feedback": str,
-}}
-""",
-                ),
-            ]
+            raise NotImplementedError(
+                'Only FillInTheBlankExerciseData is implemented'
+            )
+
+        parser = PydanticOutputParser(
+            pydantic_object=AttemptValidationResponse
         )
-        chain = prompt | self.model
+
+        prompt_template = (
+            'You are a language learning assistant.\n'
+            "You need to check the user's answer to the exercise.\n"
+            # 'You have to give feedback in user language.\n'
+            'User language: {user_language}\n'
+            'Target language: {target_language}\n'
+            # 'Exercise language level: {language_level}\n'
+            'Exercise topic: {topic}\n'
+            'Exercise task: {task}\n'
+            'Options: {options}\n'
+            'Exercise with blanks: {text_with_blanks}\n'
+            'User answer: {user_answer}\n'
+            '{format_instructions}'
+        )
+
+        chain = await self._create_llm_chain(
+            prompt_template, parser, is_chat_prompt=False
+        )
+        # TODO: сделать универсальный промпт для любых типов упражнений
         request_data = {
             'user_language': user.user_language,
             'target_language': user.target_language,
-            'language_level': exercise.language_level,
+            # 'language_level': exercise.language_level,
             'topic': exercise.topic,
+            'task': exercise.exercise_text,
             'text_with_blanks': exercise.data.text_with_blanks,
             'options': exercise.data.words,
             'user_answer': exercise.data.get_full_exercise_text(answer),
         }
-        logger.debug(f'Request to validate attempt. Data: {request_data}')
-        try:
-            response = await chain.ainvoke(request_data)
-        except Exception as e:
-            return False, str(e)
-        logger.debug(f'Response to validate attempt: {response}')
-        try:
-            parsed_response = json.loads(response.content)
-            is_correct = parsed_response['is_correct']
-            feedback = parsed_response['feedback']
 
-            return is_correct, feedback
-        except (json.JSONDecodeError, KeyError) as e:
-            return False, f'Invalid LLM Response Format: {e}'
+        validation_result = await self._run_llm_chain(chain, request_data)
+        return validation_result.is_correct, validation_result.feedback

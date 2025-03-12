@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field
 
+from app.core.consts import EXERCISE_FILL_IN_THE_BLANK_BLANKS
 from app.core.value_objects.answer import Answer, FillInTheBlankAnswer
 
 
@@ -55,13 +56,11 @@ class FillInTheBlankExerciseData(ExerciseData):
         words_count = len(answer.words)
         if words_count == 0:
             return self.text_with_blanks
-        # TODO: Унести в константы '___',
-        #  использовать в промпте и в тестах
-        blanks = self.text_with_blanks.count('___')
+        blanks = self.text_with_blanks.count(EXERCISE_FILL_IN_THE_BLANK_BLANKS)
         if blanks == 0:
             return self.text_with_blanks
 
-        parts = self.text_with_blanks.split('___')
+        parts = self.text_with_blanks.split(EXERCISE_FILL_IN_THE_BLANK_BLANKS)
         result = ''
         for i in range(len(parts)):
             result += parts[i]

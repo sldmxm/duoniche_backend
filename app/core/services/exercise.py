@@ -126,6 +126,8 @@ class ExerciseService:
         answer: Answer,
     ) -> ExerciseAttempt:
         # Проверяем, есть ли такой ответ в кэше
+        # TODO: надо еще проверять язык пользователя,
+        #  если ответ неправильный и нужен перевод комментария LLM
         cached_answer = await self._check_cached_answer(exercise_id, answer)
 
         if not cached_answer:

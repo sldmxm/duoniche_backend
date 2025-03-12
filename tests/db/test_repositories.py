@@ -109,7 +109,7 @@ async def test_exercise_attempt_repository(
         assert attempts[0].attempt_id == attempt.attempt_id
 
         # Test get all user attempts
-        all_attempts = await repo.get_all_user_attempts(1)
+        all_attempts = await repo.get_by_user_id(1)
         assert len(all_attempts) == 1
         assert all_attempts[0].attempt_id == attempt.attempt_id
 
@@ -120,7 +120,7 @@ async def test_exercise_attempt_repository_when_empty(
     async with async_session as session:
         repo = SQLAlchemyExerciseAttemptRepository(session)
         async with session.begin():
-            all_attempts = await repo.get_all_user_attempts(1)
+            all_attempts = await repo.get_by_user_id(1)
             assert len(all_attempts) == 0
 
             attempts = await repo.get_by_user_and_exercise(1, 1)

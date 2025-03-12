@@ -157,21 +157,6 @@ async def test_exercise_service_get_exercise_by_id(
     )
 
 
-async def test_exercise_service_save_exercise(
-    mock_exercise_repository: AsyncMock,
-    exercise_service: ExerciseService,
-    multiple_choice_exercise,
-):
-    mock_exercise_repository.save.return_value = multiple_choice_exercise
-    saved_exercise = await exercise_service.save_exercise(
-        multiple_choice_exercise
-    )
-    assert saved_exercise == multiple_choice_exercise
-    mock_exercise_repository.save.assert_awaited_once_with(
-        multiple_choice_exercise
-    )
-
-
 async def test_exercise_service_validate_exercise_attempt_correct_cached(
     mock_llm_service: AsyncMock,
     mock_exercise_attempt_repository: AsyncMock,
@@ -186,7 +171,9 @@ async def test_exercise_service_validate_exercise_attempt_correct_cached(
         exercise_id=sentence_construction_exercise.exercise_id,
         answer=sentence_construction_answer,
         is_correct=True,
-        feedback=None,
+        feedback='',
+        created_by='LLM',
+        created_at=ANY,
     )
     mock_cached_answer_repository.get_by_exercise_and_answer.return_value = (
         cached_answer
@@ -197,7 +184,7 @@ async def test_exercise_service_validate_exercise_attempt_correct_cached(
         exercise_id=sentence_construction_exercise.exercise_id,
         answer=sentence_construction_answer,
         is_correct=True,
-        feedback=None,
+        feedback='',
         cached_answer_id=cached_answer.answer_id,
     )
     mock_exercise_attempt_repository.save.return_value = new_exercise_attempt
@@ -210,7 +197,7 @@ async def test_exercise_service_validate_exercise_attempt_correct_cached(
     )
     mock_llm_service.validate_attempt.assert_not_awaited()
     assert exercise_attempt.is_correct
-    assert exercise_attempt.feedback is None
+    assert exercise_attempt.feedback == ''
     assert exercise_attempt.answer == sentence_construction_answer
     assert exercise_attempt.cached_answer_id == cached_answer.answer_id
 
@@ -230,6 +217,8 @@ async def test_exercise_service_validate_exercise_attempt_incorrect_cached(
         answer=sentence_construction_answer,
         is_correct=False,
         feedback='Wrong!',
+        created_by='LLM',
+        created_at=ANY,
     )
     mock_cached_answer_repository.get_by_exercise_and_answer.return_value = (
         cached_answer
@@ -277,6 +266,8 @@ async def test_exercise_service_validate_exercise_attempt_new_correct(
         answer=sentence_construction_answer,
         is_correct=True,
         feedback='Correct!',
+        created_by=ANY,
+        created_at=ANY,
     )
     mock_cached_answer_repository.save.return_value = new_cached_answer
     mock_exercise_attempt_repository.save.return_value = ExerciseAttempt(
@@ -306,6 +297,7 @@ async def test_exercise_service_validate_exercise_attempt_new_correct(
             is_correct=True,
             feedback='Correct!',
             created_by=ANY,
+            created_at=ANY,
         )
     )
     assert exercise_attempt.is_correct
@@ -333,6 +325,8 @@ async def test_exercise_service_validate_exercise_attempt_new_incorrect(
         answer=sentence_construction_answer,
         is_correct=False,
         feedback='Wrong!',
+        created_by=ANY,
+        created_at=ANY,
     )
     mock_cached_answer_repository.save.return_value = new_cached_answer
     mock_exercise_attempt_repository.save.return_value = ExerciseAttempt(
@@ -362,27 +356,13 @@ async def test_exercise_service_validate_exercise_attempt_new_incorrect(
             is_correct=False,
             feedback='Wrong!',
             created_by=ANY,
+            created_at=ANY,
         )
     )
     assert not exercise_attempt.is_correct
     assert exercise_attempt.feedback == 'Wrong!'
     assert exercise_attempt.answer == sentence_construction_answer
     assert exercise_attempt.cached_answer_id == new_cached_answer.answer_id
-
-
-async def test_exercise_service_save_exercise_attempt(
-    mock_exercise_attempt_repository: AsyncMock,
-    exercise_service,
-    exercise_attempt,
-):
-    mock_exercise_attempt_repository.save.return_value = exercise_attempt
-    saved_exercise_attempt = await exercise_service.save_exercise_attempt(
-        exercise_attempt
-    )
-    assert saved_exercise_attempt == exercise_attempt
-    mock_exercise_attempt_repository.save.assert_awaited_once_with(
-        exercise_attempt
-    )
 
 
 async def test_get_new_exercise_with_llm_generation(

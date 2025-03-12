@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from unittest.mock import ANY, AsyncMock
 
 import pytest_asyncio
 
@@ -78,6 +78,7 @@ def exercise_attempt(
         answer=sentence_construction_answer,
         is_correct=True,
         cached_answer_id=1,
+        feedback='',
     )
 
 
@@ -90,7 +91,9 @@ def cached_answer(
         exercise_id=sentence_construction_exercise.exercise_id,
         answer=sentence_construction_answer,
         is_correct=True,
-        feedback='Correct!',
+        feedback='',
+        created_by='LLM',
+        created_at=ANY,
     )
 
 

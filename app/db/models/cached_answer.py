@@ -12,7 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
-from app.db.models.base import Base
+from app.db.base import Base
 
 
 class CachedAnswer(Base):

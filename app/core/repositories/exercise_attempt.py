@@ -11,15 +11,25 @@ class ExerciseAttemptRepository(AsyncRepository[ExerciseAttempt]):
         raise NotImplementedError
 
     @abstractmethod
+    async def get_all(self) -> List[ExerciseAttempt]:
+        raise NotImplementedError
+
+    @abstractmethod
     async def get_by_user_and_exercise(
         self, user_id: int, exercise_id: int
     ) -> Optional[List[ExerciseAttempt]]:
         raise NotImplementedError
 
     @abstractmethod
-    async def get_all_user_attempts(
+    async def get_by_user_id(
         self, user_id: int
     ) -> Optional[List[ExerciseAttempt]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_by_exercise_id(
+        self, exercise_id: int
+    ) -> List[ExerciseAttempt]:
         raise NotImplementedError
 
     @abstractmethod

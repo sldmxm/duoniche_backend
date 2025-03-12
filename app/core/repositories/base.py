@@ -5,11 +5,13 @@ T = TypeVar('T')
 
 
 class AsyncRepository(ABC, Generic[T]):
-    """Base class for async repositories"""
-
     @abstractmethod
-    async def get_by_id(self, id: int) -> Optional[T]:
+    async def get_by_id(self, entity_id: int) -> Optional[T]:
         raise NotImplementedError
+
+    # @abstractmethod
+    # async def get_all(self) -> List[T]:
+    #     raise NotImplementedError
 
     @abstractmethod
     async def save(self, entity: T) -> T:

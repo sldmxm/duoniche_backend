@@ -10,5 +10,5 @@ class ExerciseAttempt:
     user_id: int
     answer: Answer
     is_correct: bool
-    feedback: str | None = None
+    feedback: str
     cached_answer_id: int | None = None

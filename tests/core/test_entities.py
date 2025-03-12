@@ -1,6 +1,7 @@
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
+from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import (
     SentenceConstructionExerciseData,
 )
@@ -35,15 +36,19 @@ def test_exercise_creation():
     )
 
 
-def test_exercise_attempt_creation(
-    user, multiple_choice_exercise, sentence_construction_answer
-):
-    exercise_attempt = ExerciseAttempt(
+def test_exercise_attempt_creation():
+    answer = FillInTheBlankAnswer(words=['test'])
+    attempt = ExerciseAttempt(
         attempt_id=1,
-        user_id=user.user_id,
-        exercise_id=multiple_choice_exercise.exercise_id,
-        answer=sentence_construction_answer,
+        exercise_id=1,
+        user_id=1,
+        answer=answer,
         is_correct=True,
+        feedback='test',
     )
-    assert exercise_attempt.attempt_id == 1
-    assert exercise_attempt.user_id == user.user_id
+    assert attempt.attempt_id == 1
+    assert attempt.exercise_id == 1
+    assert attempt.user_id == 1
+    assert attempt.answer == answer
+    assert attempt.is_correct is True
+    assert attempt.feedback == 'test'

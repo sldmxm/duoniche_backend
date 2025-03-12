@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
-from app.db.models.base import Base
+from app.db.base import Base
 
 
 async def create_clean_test_db():

@@ -3,18 +3,18 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
+    async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
-from app.db.models.base import Base
+from app.db.base import Base
 
 engine = create_async_engine(settings.database_url, echo=True)
 
 
-async def init_models(engine: AsyncEngine = engine) -> None:
-    """Initialize models."""
+async def init_db(engine: AsyncEngine = engine) -> None:
+    """Initialize db."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -29,8 +29,6 @@ async def get_async_session(
     engine: AsyncEngine = engine,
 ) -> AsyncGenerator[AsyncSession, None]:
     """Get async session."""
-    async_session_factory = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
-    async with async_session_factory() as session:
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
+    async with async_session() as session:
         yield session

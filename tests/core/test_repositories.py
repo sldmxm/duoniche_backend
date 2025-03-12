@@ -153,16 +153,14 @@ async def test_exercise_attempt_repository_get_all_user_attempts(
     user: User,
     exercise_attempt: ExerciseAttempt,
 ):
-    mock_exercise_attempt_repository.get_all_user_attempts.return_value = [
+    mock_exercise_attempt_repository.get_by_user_id.return_value = [
         exercise_attempt
     ]
     retrieved_exercise_attempts = (
-        await mock_exercise_attempt_repository.get_all_user_attempts(
-            user.user_id
-        )
+        await mock_exercise_attempt_repository.get_by_user_id(user.user_id)
     )
     assert retrieved_exercise_attempts == [exercise_attempt]
-    mock_exercise_attempt_repository.get_all_user_attempts.assert_awaited_once_with(
+    mock_exercise_attempt_repository.get_by_user_id.assert_awaited_once_with(
         user.user_id
     )
 

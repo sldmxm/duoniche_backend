@@ -10,6 +10,6 @@ class CachedAnswer:
     exercise_id: int
     answer: Answer
     is_correct: bool
-    feedback: str | None = None
-    created_at: datetime | None = None
-    created_by: str | None = None
+    feedback: str
+    created_at: datetime
+    created_by: str

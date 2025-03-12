@@ -24,6 +24,14 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
             return None
         return self._to_entity(result)
 
+    @override
+    async def get_all(self) -> List[ExerciseAttemptEntity]:
+        stmt = select(ExerciseAttempt)
+        result = await self.session.execute(stmt)
+        attempts = result.scalars().all()
+        return [self._to_entity(attempt) for attempt in attempts]
+
+    @override
     async def get_by_user_and_exercise(
         self, user_id: int, exercise_id: int
     ) -> Optional[List[ExerciseAttemptEntity]]:
@@ -35,9 +43,10 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
         attempts = result.scalars().all()
         return [self._to_entity(attempt) for attempt in attempts]
 
-    async def get_all_user_attempts(
+    @override
+    async def get_by_user_id(
         self, user_id: int
-    ) -> Optional[List[ExerciseAttemptEntity]]:
+    ) -> List[ExerciseAttemptEntity]:
         stmt = select(ExerciseAttempt).where(
             ExerciseAttempt.user_id == user_id
         )
@@ -45,6 +54,18 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
         attempts = result.scalars().all()
         return [self._to_entity(attempt) for attempt in attempts]
 
+    @override
+    async def get_by_exercise_id(
+        self, exercise_id: int
+    ) -> List[ExerciseAttemptEntity]:
+        stmt = select(ExerciseAttempt).where(
+            ExerciseAttempt.exercise_id == exercise_id
+        )
+        result = await self.session.execute(stmt)
+        attempts = result.scalars().all()
+        return [self._to_entity(attempt) for attempt in attempts]
+
+    @override
     async def save(
         self, exercise_attempt: ExerciseAttemptEntity
     ) -> ExerciseAttemptEntity:

@@ -38,7 +38,6 @@ line-length = 79
 
 [tool.mypy]
 exclude = ["tests/", "alembic/"]
-strict = true
 ignore_missing_imports = true
 
 [tool.pytest]

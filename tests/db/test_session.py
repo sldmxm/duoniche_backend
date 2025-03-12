@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import drop_models, get_async_session, init_models
+from app.db.db import drop_models, get_async_session, init_db
 
 pytestmark = pytest.mark.asyncio
 
@@ -36,7 +36,7 @@ async def test_init_and_drop_models(engine):
     """Test init_models and drop_models functions."""
     async with engine.begin() as conn:
         # Test init_models
-        await init_models(engine)
+        await init_db(engine)
         result = await conn.execute(
             text(
                 'SELECT EXISTS ('
@@ -73,10 +73,10 @@ async def test_init_models_when_tables_exists(engine):
     """Test init_models when tables exists."""
     async with engine.begin() as conn:
         # Create tables first
-        await init_models(engine)
+        await init_db(engine)
 
         # Try to create tables again
-        await init_models(engine)
+        await init_db(engine)
 
         result = await conn.execute(
             text(

@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Optional
+from typing import List, Optional
 
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
@@ -9,6 +9,14 @@ from app.core.repositories.base import AsyncRepository
 class ExerciseRepository(AsyncRepository[Exercise]):
     @abstractmethod
     async def get_by_id(self, exercise_id: int) -> Optional[Exercise]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_all(self) -> List[Exercise]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def save(self, exercise: Exercise) -> Exercise:
         raise NotImplementedError
 
     @abstractmethod
@@ -27,8 +35,4 @@ class ExerciseRepository(AsyncRepository[Exercise]):
         language_level: str,
         exercise_type: str,
     ) -> Optional[Exercise]:
-        raise NotImplementedError
-
-    @abstractmethod
-    async def save(self, exercise: Exercise) -> Exercise:
         raise NotImplementedError

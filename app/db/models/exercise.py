@@ -8,7 +8,9 @@ from app.db.base import Base
 class Exercise(Base):
     __tablename__ = 'exercises'
 
-    exercise_id = Column(Integer, primary_key=True, index=True)
+    exercise_id = Column(
+        Integer, primary_key=True, index=True, autoincrement=True
+    )
     exercise_type = Column(String, nullable=False)
     language_level = Column(String, nullable=False)
     topic = Column(String, nullable=False)

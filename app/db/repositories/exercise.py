@@ -1,12 +1,13 @@
 from typing import List, Optional, override
 
-from sqlalchemy import select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
 from app.core.repositories.exercise import ExerciseRepository
 from app.db.models import Exercise as ExerciseModel
+from app.db.models import ExerciseAttempt as ExerciseAttemptModel
 
 
 class SQLAlchemyExerciseRepository(ExerciseRepository):
@@ -49,13 +50,30 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         language_level: str,
         exercise_type: str,
     ) -> Optional[Exercise]:
-        stmt = select(ExerciseModel).where(
-            ExerciseModel.language_level == language_level,
-            ExerciseModel.exercise_type == exercise_type,
+        answered_exercise_ids_subquery = (
+            select(ExerciseAttemptModel.exercise_id)
+            .where(ExerciseAttemptModel.user_id == user.user_id)
+            .scalar_subquery()
         )
+
+        stmt = (
+            select(ExerciseModel)
+            .where(
+                and_(
+                    ExerciseModel.language_level == language_level,
+                    ExerciseModel.exercise_type == exercise_type,
+                    ExerciseModel.exercise_id.notin_(
+                        answered_exercise_ids_subquery
+                    ),
+                )
+            )
+            .order_by(func.random())
+            .limit(1)
+        )
+
         result = await self.session.execute(stmt)
         db_exercise = result.scalar_one_or_none()
-        if not db_exercise:
+        if db_exercise is None:
             return None
         return self._to_entity(db_exercise)
 

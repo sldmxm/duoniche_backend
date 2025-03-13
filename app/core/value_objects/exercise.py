@@ -63,7 +63,7 @@ class FillInTheBlankExerciseData(ExerciseData):
         parts = self.text_with_blanks.split(EXERCISE_FILL_IN_THE_BLANK_BLANKS)
         result = ''
         for i in range(len(parts)):
-            result += parts[i]
+            result += parts[i].replace('_', '')
             if i < len(answer.words):
                 result += answer.words[i]
 

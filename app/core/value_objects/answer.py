@@ -1,12 +1,11 @@
-from __future__ import annotations
-
 import json
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from abc import abstractmethod
 from typing import Any, Dict, List, Set, Type
 
+from pydantic import BaseModel, Field
 
-class Answer(ABC):
+
+class Answer(BaseModel):
     @abstractmethod
     def get_answer_text(self) -> str:
         """
@@ -44,7 +43,6 @@ class Answer(ABC):
         return json.dumps(self.to_dict())
 
 
-@dataclass
 class SentenceConstructionAnswer(Answer):
     sentences: List[str]
 
@@ -65,7 +63,6 @@ class SentenceConstructionAnswer(Answer):
         return SentenceConstructionAnswer(sentences=sentences)
 
 
-@dataclass
 class MultipleChoiceAnswer(Answer):
     option_index: Set[int]
 
@@ -86,9 +83,8 @@ class MultipleChoiceAnswer(Answer):
         return MultipleChoiceAnswer(option_index=set(option_index))
 
 
-@dataclass
 class FillInTheBlankAnswer(Answer):
-    words: List[str]
+    words: List[str] = Field(description='Words to fill in the blanks')
 
     def get_answer_text(self) -> str:
         return ';'.join(self.words)
@@ -104,7 +100,6 @@ class FillInTheBlankAnswer(Answer):
         return FillInTheBlankAnswer(words=words)
 
 
-@dataclass
 class TranslationAnswer(Answer):
     translations: List[str]
 

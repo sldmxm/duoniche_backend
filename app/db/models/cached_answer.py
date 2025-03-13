@@ -18,7 +18,9 @@ from app.db.base import Base
 class CachedAnswer(Base):
     __tablename__ = 'cached_answers'
 
-    answer_id = Column(Integer, primary_key=True, index=True)
+    answer_id = Column(
+        Integer, primary_key=True, index=True, autoincrement=True
+    )
     exercise_id = Column(
         Integer,
         ForeignKey('exercises.exercise_id', ondelete='CASCADE'),

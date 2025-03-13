@@ -33,19 +33,27 @@ class FillInTheBlankExerciseDataParsed(BaseModel):
         f'Use "{EXERCISE_FILL_IN_THE_BLANK_BLANKS}" for blanks.'
     )
     options: List[str] = Field(
-        description='A list of single words to fill the blanks including:\n'
-        '- the correct word(s)\n'
-        '- +2 incorrect words: one inappropriate in meaning '
-        'and another with a typo.'
+        description=(
+            'A list of single UNIQUE words to fill the blanks including:\n'
+            '- the correct word(s)\n'
+            '- +2 incorrect words: one inappropriate in meaning '
+            'and another with a spelling error. \n'
+            'Check that there are no repetitions, each word occurs only once '
+            'and does not contain only letters '
+        )
     )
 
 
 class AttemptValidationResponse(BaseModel):
     is_correct: bool = Field(description='Whether the answer is correct')
     feedback: str = Field(
-        description='Feedback for the user in their language. '
+        description="Feedback for the user in USER'S language. "
         'If answer is correct, empty string. '
-        'Else just explanation of the mismatch.'
+        'Else clearly explain grammatical, spelling, '
+        'syntactic, semantic or other errors. '
+        'Don\'t write "Wrong answer", "Try again" '
+        'or other phrases that provide '
+        'no practical benefit to the user.'
     )
 
 
@@ -166,7 +174,7 @@ class LLMService(LLMProvider):
         parsed_data = await self._run_llm_chain(chain, request_data)
 
         return Exercise(
-            exercise_id=0,
+            exercise_id=None,
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
             language_level=language_level,
             topic=topic,
@@ -198,15 +206,14 @@ class LLMService(LLMProvider):
         prompt_template = (
             'You are a language learning assistant.\n'
             "You need to check the user's answer to the exercise.\n"
-            # 'You have to give feedback in user language.\n'
             'User language: {user_language}\n'
-            'Target language: {target_language}\n'
-            # 'Exercise language level: {language_level}\n'
+            'Exercise language: {target_language}\n'
             'Exercise topic: {topic}\n'
             'Exercise task: {task}\n'
             'Options: {options}\n'
-            'Exercise with blanks: {text_with_blanks}\n'
+            'Exercise: {exercise}\n'
             'User answer: {user_answer}\n'
+            'You have to give feedback in {user_language}.\n'
             '{format_instructions}'
         )
 
@@ -217,10 +224,9 @@ class LLMService(LLMProvider):
         request_data = {
             'user_language': user.user_language,
             'target_language': user.target_language,
-            # 'language_level': exercise.language_level,
             'topic': exercise.topic,
             'task': exercise.exercise_text,
-            'text_with_blanks': exercise.data.text_with_blanks,
+            'exercise': exercise.data.text_with_blanks,
             'options': exercise.data.words,
             'user_answer': exercise.data.get_full_exercise_text(answer),
         }

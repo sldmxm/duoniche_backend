@@ -8,7 +8,9 @@ from app.db.base import Base
 class ExerciseAttempt(Base):
     __tablename__ = 'exercise_attempts'
 
-    attempt_id = Column(Integer, primary_key=True, index=True)
+    attempt_id = Column(
+        Integer, primary_key=True, index=True, autoincrement=True
+    )
     user_id = Column(Integer, nullable=False)
     exercise_id = Column(
         Integer,

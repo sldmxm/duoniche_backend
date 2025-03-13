@@ -18,7 +18,7 @@ class Settings(BaseSettings):  # type: ignore
 
     openai_api_key: str = ''
     openai_model_name: str = ''
-    openai_temperature: float = 0.7
+    openai_temperature: float = 0.3
     openai_max_retries: int = 6
     openai_request_timeout: int = 10
 

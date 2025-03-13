@@ -1,6 +1,13 @@
-from typing import Annotated
+import logging
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    HTTPException,
+    status,
+)
 from fastapi.routing import APIRoute
 
 from app.api.dependencies import get_exercise_service
@@ -13,9 +20,9 @@ from app.core.services.exercise import ExerciseService
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.schemas.answer import FillInTheBlankAnswerSchema
 from app.schemas.exercise import ExerciseSchema
-from app.schemas.user import UserSchema
 from app.schemas.validation_result import ValidationResultSchema
 
+logger = logging.getLogger(__name__)
 router = APIRouter(route_class=APIRoute)
 
 
@@ -23,60 +30,124 @@ router = APIRouter(route_class=APIRoute)
     '/new',
     response_model=ExerciseSchema,
     response_model_exclude_none=True,
+    summary='Get a new exercise',
+    description=(
+        'Returns a new exercise '
+        "based on user's language level and exercise type"
+    ),
 )
-async def get_new_exercise(
-    user: UserSchema,
+async def get_or_create_new_exercise(
     exercise_service: Annotated[
         ExerciseService, Depends(get_exercise_service)
     ],
-    language_level_query: Annotated[
-        str | None, Query(description='Language level')
-    ] = None,
-    exercise_type_query: Annotated[
-        ExerciseType | None, Query(description='Type of exercise')
-    ] = None,
+    language_level: Annotated[str, Body(description='Language level')],
+    exercise_type: Annotated[
+        ExerciseType, Body(description='Type of exercise')
+    ],
+    user_id: Annotated[str, Body()],
+    telegram_id: Annotated[str, Body()],
+    user_language: Annotated[str, Body()],
+    target_language: Annotated[str, Body()],
+    username: Annotated[Optional[str], Body()] = '',
+    name: Annotated[Optional[str], Body()] = '',
 ) -> ExerciseSchema:
-    language_level = language_level_query or ''
-    exercise_type = exercise_type_query or ExerciseType.FILL_IN_THE_BLANK
-    exercise: Exercise | None = await exercise_service.get_new_exercise(
-        User(**user.model_dump()), language_level, exercise_type.value
-    )
-    if not exercise:
-        raise NotFoundError('Exercise not found')
-    return ExerciseSchema.model_validate(exercise)
+    """
+    Get or create a new exercise for the user based on their
+    language level and preferred exercise type.
+
+    Returns a 404 error if no suitable exercise is found.
+    """
+    try:
+        user = User(
+            user_id=int(user_id),
+            telegram_id=int(telegram_id),
+            username=username,
+            name=name,
+            user_language=user_language,
+            target_language=target_language,
+        )
+
+        exercise: Optional[
+            Exercise
+        ] = await exercise_service.get_or_create_new_exercise(
+            user, language_level, exercise_type.value
+        )
+
+        logger.debug(f'Exercise: {exercise}')
+
+        if not exercise:
+            raise NotFoundError(
+                'No suitable exercise found for the provided criteria'
+            )
+
+        return ExerciseSchema.model_validate(exercise.model_dump())
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f'Invalid parameter value: {str(e)}',
+        ) from e
 
 
 @router.post(
     '/validate',
     response_model=ValidationResultSchema,
     response_model_exclude_none=True,
+    summary="Validate a user's exercise attempt",
+    description=(
+        "Validates the user's answer to an exercise and returns feedback"
+    ),
 )
 async def validate_exercise_attempt(
-    user: UserSchema,
-    exercise_id_query: Annotated[int, Query(description='Exercise ID')],
-    answer_query: Annotated[
-        FillInTheBlankAnswerSchema, Query(description='Answer')
-    ],
     exercise_service: Annotated[
         ExerciseService, Depends(get_exercise_service)
     ],
+    exercise_id: Annotated[int, Body(description='Exercise ID')],
+    answer: Annotated[
+        FillInTheBlankAnswerSchema, Body(description="User's answer")
+    ],
+    user_id: Annotated[str, Body()],
+    telegram_id: Annotated[str, Body()],
+    user_language: Annotated[str, Body()],
+    target_language: Annotated[str, Body()],
+    username: Annotated[Optional[str], Body()] = None,
+    name: Annotated[Optional[str], Body()] = None,
 ) -> ValidationResultSchema:
-    exercise_id = exercise_id_query
-    answer = answer_query
-    exercise: Exercise | None = await exercise_service.get_exercise_by_id(
-        exercise_id
-    )
-    if not exercise:
-        raise NotFoundError('Exercise not found')
+    """
+    Validate a user's answer to an exercise and provide feedback.
 
-    exercise_attempt: ExerciseAttempt = (
-        await exercise_service.validate_exercise_attempt(
-            User(**user.model_dump()),
-            exercise,
-            FillInTheBlankAnswer(**answer.model_dump()),
+    Returns a 404 error if the exercise is not found.
+    """
+    try:
+        user = User(
+            user_id=int(user_id),
+            telegram_id=int(telegram_id),
+            username=username,
+            name=name,
+            user_language=user_language,
+            target_language=target_language,
         )
-    )
-    return ValidationResultSchema(
-        is_correct=exercise_attempt.is_correct,
-        feedback=exercise_attempt.feedback,
-    )
+
+        exercise: Optional[
+            Exercise
+        ] = await exercise_service.get_exercise_by_id(exercise_id)
+        if not exercise:
+            raise NotFoundError(f'Exercise with ID {exercise_id} not found')
+
+        exercise_attempt: ExerciseAttempt = (
+            await exercise_service.validate_exercise_attempt(
+                user,
+                exercise,
+                FillInTheBlankAnswer(**answer.model_dump()),
+            )
+        )
+        return ValidationResultSchema(
+            is_correct=exercise_attempt.is_correct,
+            feedback=exercise_attempt.feedback,
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f'Invalid parameter value: {str(e)}',
+        ) from e

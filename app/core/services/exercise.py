@@ -25,7 +25,7 @@ class ExerciseService:
         self.cached_answer_repository = cached_answer_repository
         self.llm_service = llm_service
 
-    async def get_new_exercise(
+    async def get_or_create_new_exercise(
         self, user: User, language_level: str, exercise_type: str
     ) -> Optional[Exercise]:
         exercise = await self.exercise_repository.get_new_exercise(
@@ -51,6 +51,8 @@ class ExerciseService:
     async def validate_exercise_attempt(
         self, user: User, exercise: Exercise, answer: Answer
     ) -> ExerciseAttempt:
+        if exercise.exercise_id is None:
+            raise ValueError('Exercise ID must not be None')
         cached_answer = (
             await self.cached_answer_repository.get_by_exercise_and_answer(
                 exercise.exercise_id, answer
@@ -58,7 +60,7 @@ class ExerciseService:
         )
         if cached_answer:
             exercise_attempt = ExerciseAttempt(
-                attempt_id=0,
+                attempt_id=None,
                 user_id=user.user_id,
                 exercise_id=exercise.exercise_id,
                 answer=answer,
@@ -71,7 +73,7 @@ class ExerciseService:
                 user, exercise, answer
             )
             cached_answer = CachedAnswer(
-                answer_id=0,
+                answer_id=None,
                 exercise_id=exercise.exercise_id,
                 answer=answer,
                 is_correct=is_correct,
@@ -87,7 +89,7 @@ class ExerciseService:
                 cached_answer
             )
             exercise_attempt = ExerciseAttempt(
-                attempt_id=0,
+                attempt_id=None,
                 user_id=user.user_id,
                 exercise_id=exercise.exercise_id,
                 answer=answer,

@@ -28,6 +28,15 @@ class ExerciseService:
     async def get_or_create_new_exercise(
         self, user: User, language_level: str, exercise_type: str
     ) -> Optional[Exercise]:
+        # TODO: Добавить обработку исключений:
+        #  What happens if the LLM service raises an exception?
+        #   (можно запускать get_exercise_for_repetition, как вариант)
+        #  What happens if a repository method raises an exception?
+
+        # TODO: Добавить проверку количества доступных пользователю заданий,
+        #  если их меньше N (константа в конфиге),
+        #  то генерировать новые заранее
+
         exercise = await self.exercise_repository.get_new_exercise(
             user, language_level, exercise_type
         )

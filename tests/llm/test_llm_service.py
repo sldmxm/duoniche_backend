@@ -18,7 +18,7 @@ def user():
         username='testuser',
         name='Test User',
         user_language='russian',
-        target_language='english',
+        target_language='bulgarian',
     )
 
 
@@ -27,7 +27,7 @@ async def test_generate_fill_in_the_blank_exercise(user):
 
     try:
         exercise: Exercise = await llm_service.generate_exercise(
-            user, 'advanced', ExerciseType.FILL_IN_THE_BLANK.value
+            user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
         )
     except ValueError:
         return
@@ -71,12 +71,12 @@ async def test_validate_attempt_incorrect(user):
         topic='general',
         exercise_text='Fill in the blank',
         data=FillInTheBlankExerciseData(
-            text_with_blanks='The cat ___ on the mat.',
-            words=['sat', 'run', 'jumped'],
+            text_with_blanks='Аз обичам да ___ в парка.',
+            words=['ходя', 'ходяа', 'гледам'],
         ),
     )
 
-    answer = FillInTheBlankAnswer(words=['run'])
+    answer = FillInTheBlankAnswer(words=['гледам'])
     is_correct, feedback = await llm_service.validate_attempt(
         user, exercise, answer
     )

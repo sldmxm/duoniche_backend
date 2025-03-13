@@ -1,117 +1,120 @@
-from unittest.mock import ANY, AsyncMock
+from datetime import datetime
+from unittest.mock import AsyncMock
 
+import pytest
 import pytest_asyncio
 
 from app.core.entities.cached_answer import CachedAnswer
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
-from app.core.enums import ExerciseType, LanguageLevel
-from app.core.interfaces.llm_provider import LLMProvider
-from app.core.repositories.cached_answer import CachedAnswerRepository
-from app.core.repositories.exercise import ExerciseRepository
-from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
-from app.core.repositories.user import UserRepository
-from app.core.value_objects.answer import SentenceConstructionAnswer
+from app.core.value_objects.answer import (
+    FillInTheBlankAnswer,
+    SentenceConstructionAnswer,
+)
 from app.core.value_objects.exercise import (
-    MultipleChoiceExerciseData,
+    FillInTheBlankExerciseData,
     SentenceConstructionExerciseData,
 )
 
 
 @pytest_asyncio.fixture
-def mock_llm_service():
-    return AsyncMock(spec=LLMProvider)
+def mock_user_repository() -> AsyncMock:
+    return AsyncMock()
 
 
 @pytest_asyncio.fixture
-def user():
-    return User(user_id=1, telegram_id=12345, username='testuser')
+def mock_exercise_repository() -> AsyncMock:
+    return AsyncMock()
 
 
 @pytest_asyncio.fixture
-def sentence_construction_answer():
-    return SentenceConstructionAnswer(sentences=['This is a test sentence.'])
+def mock_exercise_attempt_repository() -> AsyncMock:
+    return AsyncMock()
 
 
 @pytest_asyncio.fixture
-def sentence_construction_exercise():
+def mock_cached_answer_repository() -> AsyncMock:
+    return AsyncMock()
+
+
+@pytest_asyncio.fixture
+def mock_llm_service() -> AsyncMock:
+    return AsyncMock()
+
+
+@pytest.fixture
+def user() -> User:
+    return User(
+        user_id=1, telegram_id=123, username='testuser', name='Test User'
+    )
+
+
+@pytest.fixture
+def fill_in_the_blank_exercise() -> Exercise:
     return Exercise(
         exercise_id=1,
-        exercise_type=ExerciseType.SENTENCE_CONSTRUCTION.value,
-        language_level=LanguageLevel.BEGINNER.value,
+        exercise_type='fill_in_the_blank',
+        language_level='beginner',
         topic='general',
-        exercise_text='Make a sentence',
-        data=SentenceConstructionExerciseData(
-            words=[
-                'this',
-                'is',
-                'a',
-                'test',
-            ]
+        exercise_text='Fill in the blanks.',
+        data=FillInTheBlankExerciseData(
+            text_with_blanks='The ___ sat on the ___.', words=['cat', 'mat']
         ),
     )
 
 
-@pytest_asyncio.fixture
-def multiple_choice_exercise():
-    return Exercise(
-        exercise_id=2,
-        exercise_type=ExerciseType.MULTIPLE_CHOICE.value,
-        language_level=LanguageLevel.BEGINNER.value,
-        topic='grammar',
-        exercise_text='Choose the correct answer',
-        data=MultipleChoiceExerciseData(
-            options=['option1', 'option2', 'option3']
-        ),
-    )
+@pytest.fixture
+def fill_in_the_blank_answer() -> FillInTheBlankAnswer:
+    return FillInTheBlankAnswer(words=['cat', 'mat'])
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 def exercise_attempt(
-    user, sentence_construction_exercise, sentence_construction_answer
-):
+    user: User, fill_in_the_blank_exercise: Exercise
+) -> ExerciseAttempt:
     return ExerciseAttempt(
         attempt_id=1,
         user_id=user.user_id,
-        exercise_id=sentence_construction_exercise.exercise_id,
-        answer=sentence_construction_answer,
+        exercise_id=fill_in_the_blank_exercise.exercise_id,
+        answer=FillInTheBlankAnswer(words=['cat', 'mat']),
         is_correct=True,
+        feedback='Correct!',
         cached_answer_id=1,
-        feedback='',
     )
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 def cached_answer(
-    sentence_construction_exercise, sentence_construction_answer
-):
+    fill_in_the_blank_exercise: Exercise,
+    fill_in_the_blank_answer: FillInTheBlankAnswer,
+) -> CachedAnswer:
     return CachedAnswer(
         answer_id=1,
-        exercise_id=sentence_construction_exercise.exercise_id,
-        answer=sentence_construction_answer,
+        exercise_id=fill_in_the_blank_exercise.exercise_id,
+        answer=fill_in_the_blank_answer,
         is_correct=True,
-        feedback='',
-        created_by='LLM',
-        created_at=ANY,
+        feedback='Correct!',
+        created_by='LLM:user:1',
+        created_at=datetime(2023, 1, 1),
     )
 
 
-@pytest_asyncio.fixture
-def mock_user_repository():
-    return AsyncMock(spec=UserRepository)
+@pytest.fixture
+def sentence_construction_answer() -> SentenceConstructionAnswer:
+    return SentenceConstructionAnswer(words=['I', 'am', 'happy'])
 
 
-@pytest_asyncio.fixture
-def mock_exercise_repository():
-    return AsyncMock(spec=ExerciseRepository)
-
-
-@pytest_asyncio.fixture
-def mock_exercise_attempt_repository():
-    return AsyncMock(spec=ExerciseAttemptRepository)
-
-
-@pytest_asyncio.fixture
-def mock_cached_answer_repository():
-    return AsyncMock(spec=CachedAnswerRepository)
+@pytest.fixture
+def sentence_construction_exercise() -> Exercise:
+    return Exercise(
+        exercise_id=3,
+        exercise_type='sentence_construction',
+        language_level='beginner',
+        topic='grammar',
+        exercise_text='Construct a sentence.',
+        data=SentenceConstructionExerciseData(
+            words=['I', 'am', 'happy'],
+            correct_sentence='I am happy.',
+        ),
+    )

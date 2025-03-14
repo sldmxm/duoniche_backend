@@ -11,7 +11,7 @@ from app.core.value_objects.answer import Answer, FillInTheBlankAnswer
 
 class ExerciseData(ABC, BaseModel):
     @abstractmethod
-    def get_full_exercise_text(self, answer: Answer) -> str:
+    def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
 
     @abstractmethod
@@ -22,7 +22,7 @@ class ExerciseData(ABC, BaseModel):
 class SentenceConstructionExerciseData(ExerciseData):
     words: List[str] = Field(description='List of words')
 
-    def get_full_exercise_text(self, answer: Answer) -> str:
+    def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
 
     def to_dict(self) -> Dict[str, Any]:
@@ -35,7 +35,7 @@ class SentenceConstructionExerciseData(ExerciseData):
 class MultipleChoiceExerciseData(ExerciseData):
     options: List[str] = Field(description='List of options')
 
-    def get_full_exercise_text(self, answer: Answer) -> str:
+    def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
 
     def to_dict(self) -> Dict[str, Any]:
@@ -49,7 +49,7 @@ class FillInTheBlankExerciseData(ExerciseData):
     text_with_blanks: str = Field(description='Text with blanks')
     words: List[str] = Field(description='List of words')
 
-    def get_full_exercise_text(self, answer: Answer) -> str:
+    def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         if not isinstance(answer, FillInTheBlankAnswer):
             raise ValueError('Answer must be FillInTheBlankAnswer')
 
@@ -80,7 +80,7 @@ class FillInTheBlankExerciseData(ExerciseData):
 class TranslationExerciseData(ExerciseData):
     translations: List[str] = Field(description='List of translations')
 
-    def get_full_exercise_text(self, answer: Answer) -> str:
+    def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
 
     def to_dict(self) -> Dict[str, Any]:

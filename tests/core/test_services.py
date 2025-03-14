@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 import pytest
 import pytest_asyncio
 
-from app.core.entities.cached_answer import CachedAnswer
 from app.core.entities.exercise import Exercise
+from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
 from app.core.enums import ExerciseType
@@ -128,7 +128,7 @@ async def test_validate_exercise_attempt_correct_cached(
     fill_in_the_blank_exercise: Exercise,
     fill_in_the_blank_answer: FillInTheBlankAnswer,
 ):
-    cached_answer = CachedAnswer(
+    cached_answer = ExerciseAnswer(
         answer_id=1,
         exercise_id=fill_in_the_blank_exercise.exercise_id,
         answer=fill_in_the_blank_answer,
@@ -147,7 +147,7 @@ async def test_validate_exercise_attempt_correct_cached(
         answer=fill_in_the_blank_answer,
         is_correct=True,
         feedback='Correct!',
-        cached_answer_id=cached_answer.answer_id,
+        exercise_answer_id=cached_answer.answer_id,
     )
     mock_exercise_attempt_repository.save.return_value = new_exercise_attempt
 
@@ -170,8 +170,8 @@ async def test_validate_exercise_attempt_correct_cached(
     assert exercise_attempt.is_correct == new_exercise_attempt.is_correct
     assert exercise_attempt.feedback == new_exercise_attempt.feedback
     assert (
-        exercise_attempt.cached_answer_id
-        == new_exercise_attempt.cached_answer_id
+        exercise_attempt.exercise_answer_id
+        == new_exercise_attempt.exercise_answer_id
     )
 
 
@@ -184,7 +184,7 @@ async def test_validate_exercise_attempt_incorrect_cached(
     fill_in_the_blank_exercise: Exercise,
     fill_in_the_blank_answer: FillInTheBlankAnswer,
 ):
-    cached_answer = CachedAnswer(
+    cached_answer = ExerciseAnswer(
         answer_id=1,
         exercise_id=fill_in_the_blank_exercise.exercise_id,
         answer=fill_in_the_blank_answer,
@@ -203,7 +203,7 @@ async def test_validate_exercise_attempt_incorrect_cached(
         answer=fill_in_the_blank_answer,
         is_correct=False,
         feedback='Wrong!',
-        cached_answer_id=cached_answer.answer_id,
+        exercise_answer_id=cached_answer.answer_id,
     )
     mock_exercise_attempt_repository.save.return_value = new_exercise_attempt
 
@@ -226,8 +226,8 @@ async def test_validate_exercise_attempt_incorrect_cached(
     assert exercise_attempt.is_correct == new_exercise_attempt.is_correct
     assert exercise_attempt.feedback == new_exercise_attempt.feedback
     assert (
-        exercise_attempt.cached_answer_id
-        == new_exercise_attempt.cached_answer_id
+        exercise_attempt.exercise_answer_id
+        == new_exercise_attempt.exercise_answer_id
     )
 
 
@@ -245,7 +245,7 @@ async def test_validate_exercise_attempt_new_correct(
     mock_cached_answer_repository.get_by_exercise_and_answer.return_value = (
         None
     )
-    new_cached_answer = CachedAnswer(
+    new_cached_answer = ExerciseAnswer(
         answer_id=1,
         exercise_id=fill_in_the_blank_exercise.exercise_id,
         answer=fill_in_the_blank_answer,
@@ -262,7 +262,7 @@ async def test_validate_exercise_attempt_new_correct(
         answer=fill_in_the_blank_answer,
         is_correct=True,
         feedback='Correct!',
-        cached_answer_id=new_cached_answer.answer_id,
+        exercise_answer_id=new_cached_answer.answer_id,
     )
     mock_exercise_attempt_repository.save.return_value = new_exercise_attempt
 
@@ -295,8 +295,8 @@ async def test_validate_exercise_attempt_new_correct(
     assert exercise_attempt.is_correct == new_exercise_attempt.is_correct
     assert exercise_attempt.feedback == new_exercise_attempt.feedback
     assert (
-        exercise_attempt.cached_answer_id
-        == new_exercise_attempt.cached_answer_id
+        exercise_attempt.exercise_answer_id
+        == new_exercise_attempt.exercise_answer_id
     )
     assert exercise_attempt == new_exercise_attempt
 
@@ -315,7 +315,7 @@ async def test_validate_exercise_attempt_new_incorrect(
     mock_cached_answer_repository.get_by_exercise_and_answer.return_value = (
         None
     )
-    new_cached_answer = CachedAnswer(
+    new_cached_answer = ExerciseAnswer(
         answer_id=1,
         exercise_id=fill_in_the_blank_exercise.exercise_id,
         answer=fill_in_the_blank_answer,
@@ -332,7 +332,7 @@ async def test_validate_exercise_attempt_new_incorrect(
         answer=fill_in_the_blank_answer,
         is_correct=False,
         feedback='Wrong!',
-        cached_answer_id=new_cached_answer.answer_id,
+        exercise_answer_id=new_cached_answer.answer_id,
     )
     mock_exercise_attempt_repository.save.return_value = new_exercise_attempt
 
@@ -365,7 +365,7 @@ async def test_validate_exercise_attempt_new_incorrect(
     assert exercise_attempt.is_correct == new_exercise_attempt.is_correct
     assert exercise_attempt.feedback == new_exercise_attempt.feedback
     assert (
-        exercise_attempt.cached_answer_id
-        == new_exercise_attempt.cached_answer_id
+        exercise_attempt.exercise_answer_id
+        == new_exercise_attempt.exercise_answer_id
     )
     assert exercise_attempt == new_exercise_attempt

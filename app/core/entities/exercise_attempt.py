@@ -12,4 +12,4 @@ class ExerciseAttempt(BaseModel):
     answer: Answer = Field()
     is_correct: bool = Field()
     feedback: Optional[str] = Field()
-    cached_answer_id: Optional[int] = Field()
+    exercise_answer_id: Optional[int] = Field()

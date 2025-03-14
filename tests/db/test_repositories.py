@@ -4,13 +4,17 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.entities.cached_answer import CachedAnswer as CachedAnswerEntity
+from app.core.entities.exercise_answer import (
+    ExerciseAnswer as CachedAnswerEntity,
+)
 from app.core.entities.exercise_attempt import (
     ExerciseAttempt as ExerciseAttemptEntity,
 )
 from app.core.value_objects.answer import SentenceConstructionAnswer
 from app.db.models import Exercise
-from app.db.repositories.cached_answer import SQLAlchemyCachedAnswerRepository
+from app.db.repositories.exercise_answers import (
+    SQLAlchemyExerciseAnswerRepository,
+)
 from app.db.repositories.exercise_attempt import (
     SQLAlchemyExerciseAttemptRepository,
 )
@@ -45,7 +49,7 @@ async def test_cached_answer_repository(
     async_session: AsyncSession, exercise: Exercise
 ):
     async with async_session as session:
-        repo = SQLAlchemyCachedAnswerRepository(session)
+        repo = SQLAlchemyExerciseAnswerRepository(session)
         answer = SentenceConstructionAnswer(sentences=['Test sentence'])
 
         # Test save
@@ -91,7 +95,7 @@ async def test_exercise_attempt_repository(
                 answer=answer,
                 is_correct=True,
                 feedback='Good job!',
-                cached_answer_id=None,
+                exercise_answer_id=None,
             )
         )
         assert attempt.attempt_id is not None

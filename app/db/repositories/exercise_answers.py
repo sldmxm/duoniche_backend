@@ -3,47 +3,51 @@ from typing import List, Optional, override
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.entities.cached_answer import CachedAnswer as CachedAnswerEntity
+from app.core.entities.exercise_answer import (
+    ExerciseAnswer as ExerciseAnswerEntity,
+)
 from app.core.entities.exercise_attempt import ExerciseAttempt
-from app.core.repositories.cached_answer import CachedAnswerRepository
+from app.core.repositories.exercise_answer import ExerciseAnswerRepository
 from app.core.value_objects.answer import Answer
-from app.db.models import CachedAnswer as CachedAnswerModel
+from app.db.models import ExerciseAnswer as ExerciseAnswerModel
 from app.db.models import ExerciseAttempt as ExerciseAttemptModel
 
 
-class SQLAlchemyCachedAnswerRepository(CachedAnswerRepository):
+class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
 
     @override
-    async def get_by_id(self, answer_id: int) -> Optional[CachedAnswerEntity]:
-        result = await self.session.get(CachedAnswerModel, answer_id)
+    async def get_by_id(
+        self, answer_id: int
+    ) -> Optional[ExerciseAnswerEntity]:
+        result = await self.session.get(ExerciseAnswerModel, answer_id)
         if not result:
             return None
         return self._to_entity(result)
 
     async def get_by_exercise_id(
         self, exercise_id: int
-    ) -> List[CachedAnswerEntity]:
-        stmt = select(CachedAnswerModel).where(
-            CachedAnswerModel.exercise_id == exercise_id
+    ) -> List[ExerciseAnswerEntity]:
+        stmt = select(ExerciseAnswerModel).where(
+            ExerciseAnswerModel.exercise_id == exercise_id
         )
         result = await self.session.execute(stmt)
         answers = result.scalars().all()
         return [self._to_entity(answer) for answer in answers]
 
     async def save(
-        self, cached_answer: CachedAnswerEntity
-    ) -> CachedAnswerEntity:
-        db_answer = CachedAnswerModel(
-            answer_id=cached_answer.answer_id,
-            exercise_id=cached_answer.exercise_id,
-            answer=cached_answer.answer.to_dict(),
-            answer_text=cached_answer.answer.get_answer_text(),
-            is_correct=cached_answer.is_correct,
-            feedback=cached_answer.feedback,
-            created_at=cached_answer.created_at,
-            created_by=cached_answer.created_by,
+        self, exercise_answers: ExerciseAnswerEntity
+    ) -> ExerciseAnswerEntity:
+        db_answer = ExerciseAnswerModel(
+            answer_id=exercise_answers.answer_id,
+            exercise_id=exercise_answers.exercise_id,
+            answer=exercise_answers.answer.to_dict(),
+            answer_text=exercise_answers.answer.get_answer_text(),
+            is_correct=exercise_answers.is_correct,
+            feedback=exercise_answers.feedback,
+            created_at=exercise_answers.created_at,
+            created_by=exercise_answers.created_by,
         )
         self.session.add(db_answer)
         await self.session.commit()
@@ -54,7 +58,7 @@ class SQLAlchemyCachedAnswerRepository(CachedAnswerRepository):
         self, answer_id: int
     ) -> Optional[List[ExerciseAttempt]]:
         stmt = select(ExerciseAttemptModel).where(
-            ExerciseAttemptModel.cached_answer_id == answer_id
+            ExerciseAttemptModel.exercise_answers_id == answer_id
         )
         result = await self.session.execute(stmt)
         attempts = result.scalars().all()
@@ -62,10 +66,10 @@ class SQLAlchemyCachedAnswerRepository(CachedAnswerRepository):
 
     async def get_by_exercise_and_answer(
         self, exercise_id: int, answer: Answer
-    ) -> Optional[CachedAnswerEntity]:
-        stmt = select(CachedAnswerModel).where(
-            CachedAnswerModel.exercise_id == exercise_id,
-            CachedAnswerModel.answer_text == answer.get_answer_text(),
+    ) -> Optional[ExerciseAnswerEntity]:
+        stmt = select(ExerciseAnswerModel).where(
+            ExerciseAnswerModel.exercise_id == exercise_id,
+            ExerciseAnswerModel.answer_text == answer.get_answer_text(),
         )
         result = await self.session.execute(stmt)
         db_answer = result.scalar_one_or_none()
@@ -73,8 +77,10 @@ class SQLAlchemyCachedAnswerRepository(CachedAnswerRepository):
             return None
         return self._to_entity(db_answer)
 
-    def _to_entity(self, db_answer: CachedAnswerModel) -> CachedAnswerEntity:
-        return CachedAnswerEntity(
+    def _to_entity(
+        self, db_answer: ExerciseAnswerModel
+    ) -> ExerciseAnswerEntity:
+        return ExerciseAnswerEntity(
             answer_id=db_answer.answer_id,
             exercise_id=db_answer.exercise_id,
             answer=Answer.from_dict(db_answer.answer),
@@ -94,5 +100,5 @@ class SQLAlchemyCachedAnswerRepository(CachedAnswerRepository):
             answer=Answer.from_dict(db_attempt.answer),
             is_correct=db_attempt.is_correct,
             feedback=db_attempt.feedback,
-            cached_answer_id=db_attempt.cached_answer_id,
+            exercise_answer_id=db_attempt.exercise_answers_id,
         )

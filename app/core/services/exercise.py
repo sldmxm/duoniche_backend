@@ -1,13 +1,13 @@
 from datetime import datetime
 from typing import Optional
 
-from app.core.entities.cached_answer import CachedAnswer
 from app.core.entities.exercise import Exercise
+from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
 from app.core.interfaces.llm_provider import LLMProvider
-from app.core.repositories.cached_answer import CachedAnswerRepository
 from app.core.repositories.exercise import ExerciseRepository
+from app.core.repositories.exercise_answer import ExerciseAnswerRepository
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
 from app.core.value_objects.answer import Answer
 
@@ -17,12 +17,12 @@ class ExerciseService:
         self,
         exercise_repository: ExerciseRepository,
         exercise_attempt_repository: ExerciseAttemptRepository,
-        cached_answer_repository: CachedAnswerRepository,
+        exercise_answers_repository: ExerciseAnswerRepository,
         llm_service: LLMProvider,
     ):
         self.exercise_repository = exercise_repository
         self.exercise_attempt_repository = exercise_attempt_repository
-        self.cached_answer_repository = cached_answer_repository
+        self.exercise_answer_repository = exercise_answers_repository
         self.llm_service = llm_service
 
     async def get_or_create_new_exercise(
@@ -62,26 +62,26 @@ class ExerciseService:
     ) -> ExerciseAttempt:
         if exercise.exercise_id is None:
             raise ValueError('Exercise ID must not be None')
-        cached_answer = (
-            await self.cached_answer_repository.get_by_exercise_and_answer(
+        exercise_answer = (
+            await self.exercise_answer_repository.get_by_exercise_and_answer(
                 exercise.exercise_id, answer
             )
         )
-        if cached_answer:
+        if exercise_answer:
             exercise_attempt = ExerciseAttempt(
                 attempt_id=None,
                 user_id=user.user_id,
                 exercise_id=exercise.exercise_id,
                 answer=answer,
-                is_correct=cached_answer.is_correct,
-                feedback=cached_answer.feedback,
-                cached_answer_id=cached_answer.answer_id,
+                is_correct=exercise_answer.is_correct,
+                feedback=exercise_answer.feedback,
+                exercise_answer_id=exercise_answer.answer_id,
             )
         else:
             is_correct, feedback = await self.llm_service.validate_attempt(
                 user, exercise, answer
             )
-            cached_answer = CachedAnswer(
+            exercise_answer = ExerciseAnswer(
                 answer_id=None,
                 exercise_id=exercise.exercise_id,
                 answer=answer,
@@ -94,8 +94,8 @@ class ExerciseService:
                 created_by=f'LLM:user:{user.user_id}',
             )
 
-            cached_answer = await self.cached_answer_repository.save(
-                cached_answer
+            exercise_answer = await self.exercise_answer_repository.save(
+                exercise_answer
             )
             exercise_attempt = ExerciseAttempt(
                 attempt_id=None,
@@ -104,16 +104,18 @@ class ExerciseService:
                 answer=answer,
                 is_correct=is_correct,
                 feedback=feedback,
-                cached_answer_id=cached_answer.answer_id,
+                exercise_answer_id=exercise_answer.answer_id,
             )
         exercise_attempt = await self.exercise_attempt_repository.save(
             exercise_attempt
         )
         return exercise_attempt
 
-    async def _check_cached_answer(
+    async def _check_exercise_answer(
         self, exercise_id: int, answer: Answer
-    ) -> CachedAnswer | None:
-        return await self.cached_answer_repository.get_by_exercise_and_answer(
-            exercise_id, answer
+    ) -> ExerciseAnswer | None:
+        return (
+            await self.exercise_answer_repository.get_by_exercise_and_answer(
+                exercise_id, answer
+            )
         )

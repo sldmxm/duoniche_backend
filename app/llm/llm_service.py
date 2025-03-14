@@ -228,7 +228,9 @@ class LLMService(LLMProvider):
             'task': exercise.exercise_text,
             'exercise': exercise.data.text_with_blanks,
             'options': exercise.data.words,
-            'user_answer': exercise.data.get_full_exercise_text(answer),
+            'user_answer': exercise.data.get_answered_by_user_exercise_text(
+                answer
+            ),
         }
 
         validation_result = await self._run_llm_chain(chain, request_data)

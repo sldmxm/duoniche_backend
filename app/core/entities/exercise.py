@@ -13,12 +13,14 @@ from app.core.value_objects.exercise import (
 class Exercise(BaseModel):
     exercise_id: Optional[int] = Field(description='Exercise ID')
     exercise_type: str = Field(description='Type of exercise')
-    # TODO: Добавить на всех слоях язык упражнения
     language_level: str = Field(description='Language level')
     topic: str = Field(description='Topic')
     # TODO: Заполнять тест задания в зависимости
     #  от типа задания и языка пользователя
     exercise_text: str = Field(description='Exercise text')
+    # TODO: Добавить на всех слоях язык упражнения,
+    #  в том числе, при выборке в БД
+    # TODO: Добавить на всех слоях created_at и created_by
     data: Union[
         SentenceConstructionExerciseData,
         MultipleChoiceExerciseData,

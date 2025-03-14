@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from app.core.value_objects.answer import Answer, FillInTheBlankAnswer
 
 
-class CachedAnswer(BaseModel):
+class ExerciseAnswer(BaseModel):
     answer_id: Optional[int] = Field()
     exercise_id: int = Field()
     answer: Answer = Field()

@@ -76,7 +76,7 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
             answer=exercise_attempt.answer.to_dict(),
             is_correct=exercise_attempt.is_correct,
             feedback=exercise_attempt.feedback,
-            cached_answer_id=exercise_attempt.cached_answer_id,
+            exercise_answers_id=exercise_attempt.exercise_answer_id,
         )
         self.session.add(db_attempt)
         await self.session.commit()
@@ -91,5 +91,5 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
             answer=Answer.from_dict(db_attempt.answer),
             is_correct=db_attempt.is_correct,
             feedback=db_attempt.feedback,
-            cached_answer_id=db_attempt.cached_answer_id,
+            exercise_answer_id=db_attempt.exercise_answers_id,
         )

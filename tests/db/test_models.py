@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.value_objects.answer import SentenceConstructionAnswer
-from app.db.models import CachedAnswer, Exercise, ExerciseAttempt
+from app.db.models import Exercise, ExerciseAnswer, ExerciseAttempt
 
 pytestmark = pytest.mark.asyncio
 
@@ -56,7 +56,7 @@ async def test_relationships(async_session: AsyncSession):
 
         # Create cached answer
         answer = SentenceConstructionAnswer(sentences=['Test sentence'])
-        cached_answer = CachedAnswer(
+        cached_answer = ExerciseAnswer(
             exercise_id=exercise.exercise_id,
             answer=answer.to_dict(),
             answer_text=answer.get_answer_text(),
@@ -87,14 +87,14 @@ async def test_relationships(async_session: AsyncSession):
             exercise.exercise_id,
             options=[
                 selectinload(Exercise.attempts),
-                selectinload(Exercise.cached_answers),
+                selectinload(Exercise.exercise_answers),
             ],
         )
         assert len(loaded_exercise.attempts) == 1
-        assert len(loaded_exercise.cached_answers) == 1
+        assert len(loaded_exercise.exercise_answers) == 1
         assert loaded_exercise.attempts[0].attempt_id == attempt.attempt_id
         assert (
-            loaded_exercise.cached_answers[0].answer_id
+            loaded_exercise.exercise_answers[0].answer_id
             == cached_answer.answer_id
         )
 
@@ -106,8 +106,8 @@ async def test_relationships(async_session: AsyncSession):
     # Verify cascade
     async with async_session as session:
         result = await session.execute(
-            select(CachedAnswer).where(
-                CachedAnswer.exercise_id == exercise.exercise_id
+            select(ExerciseAnswer).where(
+                ExerciseAnswer.exercise_id == exercise.exercise_id
             )
         )
         assert result.scalar_one_or_none() is None
@@ -137,7 +137,7 @@ async def test_cached_answer_created_at(async_session: AsyncSession):
 
         # Create cached answer
         answer = SentenceConstructionAnswer(sentences=['Test sentence'])
-        cached_answer = CachedAnswer(
+        cached_answer = ExerciseAnswer(
             exercise_id=exercise.exercise_id,
             answer=answer.to_dict(),
             answer_text=answer.get_answer_text(),

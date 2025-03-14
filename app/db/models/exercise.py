@@ -22,6 +22,8 @@ class Exercise(Base):
         back_populates='exercise',
         cascade='all, delete-orphan',
     )
-    cached_answers = relationship(
-        'CachedAnswer', back_populates='exercise', cascade='all, delete-orphan'
+    exercise_answers = relationship(
+        'ExerciseAnswer',
+        back_populates='exercise',
+        cascade='all, delete-orphan',
     )

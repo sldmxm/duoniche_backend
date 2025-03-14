@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 import pytest
 import pytest_asyncio
 
-from app.core.entities.cached_answer import CachedAnswer
 from app.core.entities.exercise import Exercise
+from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
 from app.core.value_objects.answer import (
@@ -80,7 +80,7 @@ def exercise_attempt(
         answer=FillInTheBlankAnswer(words=['cat', 'mat']),
         is_correct=True,
         feedback='Correct!',
-        cached_answer_id=1,
+        exercise_answer_id=1,
     )
 
 
@@ -88,8 +88,8 @@ def exercise_attempt(
 def cached_answer(
     fill_in_the_blank_exercise: Exercise,
     fill_in_the_blank_answer: FillInTheBlankAnswer,
-) -> CachedAnswer:
-    return CachedAnswer(
+) -> ExerciseAnswer:
+    return ExerciseAnswer(
         answer_id=1,
         exercise_id=fill_in_the_blank_exercise.exercise_id,
         answer=fill_in_the_blank_answer,

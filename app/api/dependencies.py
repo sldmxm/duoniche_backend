@@ -3,8 +3,10 @@ from typing import AsyncGenerator
 from app.core.repositories.user import UserRepository
 from app.core.services.exercise import ExerciseService
 from app.db.db import get_async_session
-from app.db.repositories.cached_answer import SQLAlchemyCachedAnswerRepository
 from app.db.repositories.exercise import SQLAlchemyExerciseRepository
+from app.db.repositories.exercise_answers import (
+    SQLAlchemyExerciseAnswerRepository,
+)
 from app.db.repositories.exercise_attempt import (
     SQLAlchemyExerciseAttemptRepository,
 )
@@ -19,7 +21,9 @@ async def get_exercise_service() -> AsyncGenerator[ExerciseService, None]:
             exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
                 session
             ),
-            cached_answer_repository=SQLAlchemyCachedAnswerRepository(session),
+            exercise_answers_repository=SQLAlchemyExerciseAnswerRepository(
+                session
+            ),
             llm_service=LLMService(),
         )
 

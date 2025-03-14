@@ -15,8 +15,8 @@ from sqlalchemy.orm import relationship
 from app.db.base import Base
 
 
-class CachedAnswer(Base):
-    __tablename__ = 'cached_answers'
+class ExerciseAnswer(Base):
+    __tablename__ = 'exercise_answers'
 
     answer_id = Column(
         Integer, primary_key=True, index=True, autoincrement=True
@@ -35,9 +35,9 @@ class CachedAnswer(Base):
     )
     created_by = Column(String)
 
-    exercise = relationship('Exercise', back_populates='cached_answers')
+    exercise = relationship('Exercise', back_populates='exercise_answers')
     attempts = relationship(
         'ExerciseAttempt',
-        back_populates='cached_answer',
+        back_populates='exercise_answers',
         cascade='all, delete-orphan',
     )

@@ -20,9 +20,11 @@ class ExerciseAttempt(Base):
     answer = Column(JSONB, nullable=False)
     is_correct = Column(Boolean, nullable=False)
     feedback = Column(String)
-    cached_answer_id = Column(
-        Integer, ForeignKey('cached_answers.answer_id', ondelete='SET NULL')
+    exercise_answers_id = Column(
+        Integer, ForeignKey('exercise_answers.answer_id', ondelete='SET NULL')
     )
 
     exercise = relationship('Exercise', back_populates='attempts')
-    cached_answer = relationship('CachedAnswer', back_populates='attempts')
+    exercise_answers = relationship(
+        'ExerciseAnswer', back_populates='attempts'
+    )

@@ -26,7 +26,7 @@ async def test_generate_fill_in_the_blank_exercise(user):
     llm_service = LLMService()
 
     try:
-        exercise: Exercise = await llm_service.generate_exercise(
+        exercise, answer = await llm_service.generate_exercise(
             user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
         )
     except ValueError:
@@ -35,6 +35,7 @@ async def test_generate_fill_in_the_blank_exercise(user):
     assert exercise.exercise_type == ExerciseType.FILL_IN_THE_BLANK.value
     assert exercise.data.text_with_blanks
     assert exercise.data.words
+    assert isinstance(answer, FillInTheBlankAnswer)
 
 
 async def test_validate_attempt_correct(user):

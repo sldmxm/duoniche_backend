@@ -57,10 +57,12 @@ async def test_get_or_create_new_exercise_from_llm(
     exercise_service: ExerciseService,
     user: User,
     fill_in_the_blank_exercise: Exercise,
+    fill_in_the_blank_answer: FillInTheBlankAnswer,
 ):
     mock_exercise_repository.get_new_exercise.return_value = None
     mock_llm_service.generate_exercise.return_value = (
-        fill_in_the_blank_exercise
+        fill_in_the_blank_exercise,
+        fill_in_the_blank_answer,
     )
     mock_exercise_repository.save.return_value = fill_in_the_blank_exercise
 

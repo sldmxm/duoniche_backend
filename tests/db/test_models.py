@@ -56,16 +56,16 @@ async def test_relationships(async_session: AsyncSession):
 
         # Create cached answer
         answer = SentenceConstructionAnswer(sentences=['Test sentence'])
-        cached_answer = ExerciseAnswer(
+        exercise_answer = ExerciseAnswer(
             exercise_id=exercise.exercise_id,
             answer=answer.to_dict(),
             answer_text=answer.get_answer_text(),
             is_correct=True,
             feedback='Good!',
         )
-        session.add(cached_answer)
+        session.add(exercise_answer)
         await session.commit()
-        await session.refresh(cached_answer)
+        await session.refresh(exercise_answer)
 
         # Create attempt
         attempt = ExerciseAttempt(
@@ -74,7 +74,7 @@ async def test_relationships(async_session: AsyncSession):
             answer=answer.to_dict(),
             is_correct=True,
             feedback='Good!',
-            cached_answer_id=cached_answer.answer_id,
+            exercise_answers_id=exercise_answer.answer_id,
         )
         session.add(attempt)
         await session.commit()
@@ -95,7 +95,7 @@ async def test_relationships(async_session: AsyncSession):
         assert loaded_exercise.attempts[0].attempt_id == attempt.attempt_id
         assert (
             loaded_exercise.exercise_answers[0].answer_id
-            == cached_answer.answer_id
+            == exercise_answer.answer_id
         )
 
     # Test cascade delete

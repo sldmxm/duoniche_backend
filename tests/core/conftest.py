@@ -9,6 +9,7 @@ from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
 from app.core.value_objects.answer import (
+    Answer,
     FillInTheBlankAnswer,
     SentenceConstructionAnswer,
 )
@@ -118,3 +119,8 @@ def sentence_construction_exercise() -> Exercise:
             correct_sentence='I am happy.',
         ),
     )
+
+
+@pytest.fixture
+def sentence_construction_exercise_answer() -> Answer:
+    return FillInTheBlankAnswer(words=['I', 'am', 'happy'])

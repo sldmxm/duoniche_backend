@@ -13,6 +13,7 @@ from app.core.value_objects.exercise import (
 class Exercise(BaseModel):
     exercise_id: Optional[int] = Field(description='Exercise ID')
     exercise_type: str = Field(description='Type of exercise')
+    # TODO: Вынести уровень в ENUM в формате A1-C2
     language_level: str = Field(description='Language level')
     topic: str = Field(description='Topic')
     # TODO: Заполнять тест задания в зависимости

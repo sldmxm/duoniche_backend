@@ -34,7 +34,8 @@ class FillInTheBlankExerciseDataParsed(BaseModel):
     )
     right_words: List[str] = Field(
         description=(
-            'A list of single correct word or words to right fill the blanks:'
+            'A list of single correct word or words to right fill the blanks. '
+            'The number of words must be equal to the number of the blanks.'
         )
     )
     wrong_words: List[str] = Field(
@@ -179,6 +180,8 @@ class LLMService(LLMProvider):
         parsed_data = await self._run_llm_chain(chain, request_data)
 
         # TODO: проверить, что в set(правильные+неправильные) > 3
+        # TODO: если правильных слов больше чем пропусков,
+        #  удалить лишние правильные слова
 
         return Exercise(
             exercise_id=None,

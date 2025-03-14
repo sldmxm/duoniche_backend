@@ -2,7 +2,6 @@ from abc import abstractmethod
 from typing import List, Optional
 
 from app.core.entities.exercise_answer import ExerciseAnswer
-from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.repositories.base import AsyncRepository
 from app.core.value_objects.answer import Answer
 
@@ -20,12 +19,6 @@ class ExerciseAnswerRepository(AsyncRepository[ExerciseAnswer]):
 
     @abstractmethod
     async def save(self, exercise_answers: ExerciseAnswer) -> ExerciseAnswer:
-        raise NotImplementedError
-
-    @abstractmethod
-    async def get_attempts(
-        self, answer_id: int
-    ) -> Optional[List[ExerciseAttempt]]:
         raise NotImplementedError
 
     @abstractmethod

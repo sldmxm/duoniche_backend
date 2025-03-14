@@ -54,16 +54,6 @@ class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
         await self.session.refresh(db_answer)
         return self._to_entity(db_answer)
 
-    async def get_attempts(
-        self, answer_id: int
-    ) -> Optional[List[ExerciseAttempt]]:
-        stmt = select(ExerciseAttemptModel).where(
-            ExerciseAttemptModel.exercise_answers_id == answer_id
-        )
-        result = await self.session.execute(stmt)
-        attempts = result.scalars().all()
-        return [self._attempt_to_entity(attempt) for attempt in attempts]
-
     async def get_by_exercise_and_answer(
         self, exercise_id: int, answer: Answer
     ) -> Optional[ExerciseAnswerEntity]:

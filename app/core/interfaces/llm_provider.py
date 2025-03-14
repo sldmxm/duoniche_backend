@@ -10,7 +10,7 @@ class LLMProvider(ABC):
     @abstractmethod
     async def generate_exercise(
         self, user: User, language_level: str, exercise_type: str
-    ) -> Exercise:
+    ) -> tuple[Exercise, Answer]:
         pass
 
     @abstractmethod

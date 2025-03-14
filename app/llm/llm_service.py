@@ -32,14 +32,19 @@ class FillInTheBlankExerciseDataParsed(BaseModel):
         description='Sentence with one or more blanks. '
         f'Use "{EXERCISE_FILL_IN_THE_BLANK_BLANKS}" for blanks.'
     )
-    options: List[str] = Field(
+    right_words: List[str] = Field(
         description=(
-            'A list of single UNIQUE words to fill the blanks including:\n'
-            '- the correct word(s)\n'
-            '- +2 incorrect words: one inappropriate in meaning '
-            'and another with a spelling error. \n'
-            'Check that there are no repetitions, each word occurs only once '
-            'and does not contain only letters '
+            'A list of single correct word or words to right fill the blanks:'
+        )
+    )
+    wrong_words: List[str] = Field(
+        description=(
+            'A list of 3 single UNIQUE words to wrong fill the blanks: '
+            'with inappropriate in meaning,  '
+            'grammatical, spelling, '
+            'syntactic, semantic or other errors. \n'
+            # 'Check that there are no repetitions, '
+            # 'and words contain only letters.'
         )
     )
 
@@ -80,7 +85,7 @@ class LLMService(LLMProvider):
         language_level: str,
         exercise_type: str,
         topic: str = 'general',
-    ) -> Exercise:
+    ) -> tuple[Exercise, Answer]:
         """Generate exercise for user based on exercise type."""
         exercise_generators = {
             ExerciseType.FILL_IN_THE_BLANK.value: (
@@ -143,7 +148,7 @@ class LLMService(LLMProvider):
 
     async def _generate_fill_in_the_blank_exercise(
         self, user: User, language_level: str, topic: str = 'general'
-    ) -> Exercise:
+    ) -> tuple[Exercise, Answer]:
         """Generate a fill-in-the-blank exercise."""
         parser = PydanticOutputParser(
             pydantic_object=FillInTheBlankExerciseDataParsed
@@ -173,6 +178,8 @@ class LLMService(LLMProvider):
 
         parsed_data = await self._run_llm_chain(chain, request_data)
 
+        # TODO: проверить, что в set(правильные+неправильные) > 3
+
         return Exercise(
             exercise_id=None,
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
@@ -181,9 +188,9 @@ class LLMService(LLMProvider):
             exercise_text=EXERCISE_FILL_IN_THE_BLANK_TASK,
             data=FillInTheBlankExerciseData(
                 text_with_blanks=parsed_data.text_with_blanks,
-                words=parsed_data.options,
+                words=parsed_data.right_words + parsed_data.wrong_words,
             ),
-        )
+        ), FillInTheBlankAnswer(words=parsed_data.right_words)
 
     async def validate_attempt(
         self, user: User, exercise: Exercise, answer: Answer

@@ -41,10 +41,22 @@ class ExerciseService:
             user, language_level, exercise_type
         )
         if not exercise:
-            exercise = await self.llm_service.generate_exercise(
+            exercise, answer = await self.llm_service.generate_exercise(
                 user, language_level, exercise_type
             )
             exercise = await self.exercise_repository.save(exercise)
+            if exercise.exercise_id:
+                right_answer = ExerciseAnswer(
+                    answer_id=None,
+                    exercise_id=exercise.exercise_id,
+                    answer=answer,
+                    is_correct=True,
+                    created_by='LLM',
+                    feedback='',
+                    created_at=datetime.now(),
+                )
+                await self.exercise_answer_repository.save(right_answer)
+
         return exercise
 
     async def get_exercise_for_repetition(
@@ -110,12 +122,3 @@ class ExerciseService:
             exercise_attempt
         )
         return exercise_attempt
-
-    async def _check_exercise_answer(
-        self, exercise_id: int, answer: Answer
-    ) -> ExerciseAnswer | None:
-        return (
-            await self.exercise_answer_repository.get_by_exercise_and_answer(
-                exercise_id, answer
-            )
-        )

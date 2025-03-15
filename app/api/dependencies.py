@@ -14,17 +14,24 @@ from app.db.repositories.user import SQLAlchemyUserRepository
 from app.llm.llm_service import LLMService
 
 
-async def get_exercise_service() -> AsyncGenerator[ExerciseService, None]:
+async def get_exercise_service(
+    exercise_repository=None,
+    exercise_attempt_repository=None,
+    exercise_answers_repository=None,
+    llm_service=None,
+) -> AsyncGenerator[ExerciseService, None]:
     async for session in get_async_session():
         yield ExerciseService(
-            exercise_repository=SQLAlchemyExerciseRepository(session),
-            exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
-                session
-            ),
-            exercise_answers_repository=SQLAlchemyExerciseAnswerRepository(
-                session
-            ),
-            llm_service=LLMService(),
+            exercise_repository=exercise_repository(session)
+            if exercise_repository
+            else SQLAlchemyExerciseRepository(session),
+            exercise_attempt_repository=exercise_attempt_repository(session)
+            if exercise_attempt_repository
+            else SQLAlchemyExerciseAttemptRepository(session),
+            exercise_answers_repository=exercise_answers_repository(session)
+            if exercise_answers_repository
+            else SQLAlchemyExerciseAnswerRepository(session),
+            llm_service=llm_service() if llm_service else LLMService(),
         )
 
 

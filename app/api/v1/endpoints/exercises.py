@@ -58,6 +58,7 @@ async def get_or_create_new_exercise(
     Returns a 404 error if no suitable exercise is found.
     """
     try:
+        # TODO: брать из БД данные юзера, принимать только id
         user = User(
             user_id=int(user_id),
             telegram_id=int(telegram_id),

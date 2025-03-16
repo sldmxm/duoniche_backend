@@ -104,21 +104,7 @@ async def mock_exercise_service(exercise, exercise_attempt):
         return_value=exercise_attempt
     )
 
-    async_gen_mock = AsyncMock()
-    async_gen_mock.__aiter__.return_value = [service]
+    async def mock_generator():
+        yield service
 
-    # Создаем промежуточный объект, который будет возвращать генератор
-    class MockGeneratorService:
-        def __getattr__(self, name):
-            # Перенаправляем все вызовы методов к сервису
-            if hasattr(service, name):
-                return getattr(service, name)
-            raise AttributeError(
-                f"'{self.__class__.__name__}' object has no attribute '{name}'"
-            )
-
-        async def __aiter__(self):
-            yield service
-
-    # Возвращаем фабрику, создающую MockGeneratorService
-    return lambda: MockGeneratorService()
+    return mock_generator

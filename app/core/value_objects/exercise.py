@@ -69,7 +69,15 @@ class FillInTheBlankExerciseData(ExerciseData):
 
         return result
 
+    # TODO: Найти все использования to_dict и model_dump, унифицировать
     def to_dict(self) -> Dict[str, Any]:
+        return {
+            'type': 'FillInTheBlankExerciseData',
+            'text_with_blanks': self.text_with_blanks,
+            'words': self.words,
+        }
+
+    def model_dump(self):
         return {
             'type': 'FillInTheBlankExerciseData',
             'text_with_blanks': self.text_with_blanks,

@@ -136,7 +136,6 @@ async def test_validate_exercise_bad_request_answer_type(
             **user_data,
         },
     )
-    print(f'{response.json()=}')
 
     assert response.status_code == 422
     assert response.json()['detail'][0]['msg'] == 'Field required'

@@ -14,7 +14,12 @@ class Settings(BaseSettings):  # type: ignore
         f'{postgres_user}:{postgres_password}'
         f'@{postgres_host}:{postgres_port}/{postgres_db}'
     )
-    test_database_url: str = ''
+    test_postgres_db: str = 'learnbg_test'
+    test_database_url: str = (
+        f'postgresql+asyncpg://'
+        f'{postgres_user}:{postgres_password}'
+        f'@{postgres_host}:{postgres_port}/{test_postgres_db}'
+    )
 
     openai_api_key: str = ''
     openai_model_name: str = ''

@@ -15,7 +15,7 @@ class ExerciseData(ABC, BaseModel):
         raise NotImplementedError
 
     @abstractmethod
-    def to_dict(self) -> Dict[str, Any]:
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
         raise NotImplementedError
 
 
@@ -25,7 +25,7 @@ class SentenceConstructionExerciseData(ExerciseData):
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
 
-    def to_dict(self) -> Dict[str, Any]:
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
         return {
             'type': 'SentenceConstructionExerciseData',
             'words': self.words,
@@ -38,7 +38,7 @@ class MultipleChoiceExerciseData(ExerciseData):
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
 
-    def to_dict(self) -> Dict[str, Any]:
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
         return {
             'type': 'MultipleChoiceExerciseData',
             'options': self.options,
@@ -69,15 +69,7 @@ class FillInTheBlankExerciseData(ExerciseData):
 
         return result
 
-    # TODO: Найти все использования to_dict и model_dump, унифицировать
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            'type': 'FillInTheBlankExerciseData',
-            'text_with_blanks': self.text_with_blanks,
-            'words': self.words,
-        }
-
-    def model_dump(self):
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
         return {
             'type': 'FillInTheBlankExerciseData',
             'text_with_blanks': self.text_with_blanks,
@@ -91,7 +83,7 @@ class TranslationExerciseData(ExerciseData):
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
 
-    def to_dict(self) -> Dict[str, Any]:
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
         return {
             'type': 'TranslationExerciseData',
             'translations': self.translations,

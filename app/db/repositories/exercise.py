@@ -36,7 +36,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             language_level=exercise.language_level,
             topic=exercise.topic,
             exercise_text=exercise.exercise_text,
-            data=exercise.data.to_dict(),
+            data=exercise.data.model_dump(),
         )
         self.session.add(db_exercise)
         await self.session.commit()

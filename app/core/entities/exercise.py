@@ -36,7 +36,7 @@ class Exercise(BaseModel):
             'language_level': self.language_level,
             'topic': self.topic,
             'exercise_text': self.exercise_text,
-            'data': self.data.to_dict(),
+            'data': self.data.model_dump(),
         }
 
     @classmethod

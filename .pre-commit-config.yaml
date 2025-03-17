@@ -32,3 +32,11 @@ repos:
         language: system
         pass_filenames: false
         entry: uv export --output-file requirements.txt --no-dev --no-hashes
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Run pytest
+        entry: pytest
+        language: system
+        pass_filenames: false

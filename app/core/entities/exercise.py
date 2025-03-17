@@ -40,7 +40,7 @@ class Exercise(BaseModel):
         }
 
     @classmethod
-    def get_data_from_dict(cls, data: Dict[str, Any]):
+    def get_data_model_validate(cls, data: Dict[str, Any]):
         exercise_types = {
             'SentenceConstructionExerciseData': (
                 SentenceConstructionExerciseData

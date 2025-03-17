@@ -16,7 +16,7 @@ from app.db.base import Base
 async def create_clean_test_db():
     """Create a clean test database."""
     sys_conn = await asyncpg.connect(
-        database='postgres',
+        database=settings.test_postgres_db,
         user=settings.postgres_user,
         password=settings.postgres_password,
         host=settings.postgres_host,

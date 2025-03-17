@@ -58,7 +58,7 @@ async def test_relationships(async_session: AsyncSession):
         answer = SentenceConstructionAnswer(sentences=['Test sentence'])
         exercise_answer = ExerciseAnswer(
             exercise_id=exercise.exercise_id,
-            answer=answer.to_dict(),
+            answer=answer.model_dump(),
             answer_text=answer.get_answer_text(),
             is_correct=True,
             feedback='Good!',
@@ -71,7 +71,7 @@ async def test_relationships(async_session: AsyncSession):
         attempt = ExerciseAttempt(
             user_id=1,
             exercise_id=exercise.exercise_id,
-            answer=answer.to_dict(),
+            answer=answer.model_dump(),
             is_correct=True,
             feedback='Good!',
             exercise_answers_id=exercise_answer.answer_id,
@@ -139,7 +139,7 @@ async def test_cached_answer_created_at(async_session: AsyncSession):
         answer = SentenceConstructionAnswer(sentences=['Test sentence'])
         cached_answer = ExerciseAnswer(
             exercise_id=exercise.exercise_id,
-            answer=answer.to_dict(),
+            answer=answer.model_dump(),
             answer_text=answer.get_answer_text(),
             is_correct=True,
             feedback='Good!',

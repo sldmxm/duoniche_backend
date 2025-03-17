@@ -94,5 +94,5 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             language_level=db_exercise.language_level,
             topic=db_exercise.topic,
             exercise_text=db_exercise.exercise_text,
-            data=Exercise.get_data_from_dict(db_exercise.data),
+            data=Exercise.get_data_model_validate(db_exercise.data),
         )

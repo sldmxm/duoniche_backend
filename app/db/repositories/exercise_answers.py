@@ -8,7 +8,7 @@ from app.core.entities.exercise_answer import (
 )
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.repositories.exercise_answer import ExerciseAnswerRepository
-from app.core.value_objects.answer import Answer
+from app.core.value_objects.answer import Answer, create_answer_model_validate
 from app.db.models import ExerciseAnswer as ExerciseAnswerModel
 from app.db.models import ExerciseAttempt as ExerciseAttemptModel
 
@@ -53,7 +53,7 @@ class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
         db_answer = ExerciseAnswerModel(
             answer_id=exercise_answers.answer_id,
             exercise_id=exercise_answers.exercise_id,
-            answer=exercise_answers.answer.to_dict(),
+            answer=exercise_answers.answer.model_dump(),
             answer_text=exercise_answers.answer.get_answer_text(),
             is_correct=exercise_answers.is_correct,
             feedback=exercise_answers.feedback,
@@ -84,7 +84,7 @@ class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
         return ExerciseAnswerEntity(
             answer_id=db_answer.answer_id,
             exercise_id=db_answer.exercise_id,
-            answer=Answer.from_dict(db_answer.answer),
+            answer=create_answer_model_validate(db_answer.answer),
             is_correct=db_answer.is_correct,
             feedback=db_answer.feedback,
             created_at=db_answer.created_at,
@@ -98,7 +98,7 @@ class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
             attempt_id=db_attempt.attempt_id,
             user_id=db_attempt.user_id,
             exercise_id=db_attempt.exercise_id,
-            answer=Answer.from_dict(db_attempt.answer),
+            answer=create_answer_model_validate(db_attempt.answer),
             is_correct=db_attempt.is_correct,
             feedback=db_attempt.feedback,
             exercise_answer_id=db_attempt.exercise_answers_id,

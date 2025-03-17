@@ -312,7 +312,7 @@ async def add_db_correct_exercise_answer(
     )
     db_answer = ExerciseAnswerModel(
         exercise_id=exercise_answer.exercise_id,
-        answer=exercise_answer.answer.to_dict(),
+        answer=exercise_answer.answer.model_dump(),
         answer_text=exercise_answer.answer.get_answer_text(),
         is_correct=exercise_answer.is_correct,
         feedback=exercise_answer.feedback,
@@ -346,7 +346,7 @@ async def add_db_incorrect_exercise_answer(
     )
     db_answer = ExerciseAnswerModel(
         exercise_id=exercise_answer.exercise_id,
-        answer=exercise_answer.answer.to_dict(),
+        answer=exercise_answer.answer.model_dump(),
         answer_text=exercise_answer.answer.get_answer_text(),
         is_correct=exercise_answer.is_correct,
         feedback=exercise_answer.feedback,

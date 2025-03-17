@@ -1,86 +1,44 @@
-import json
-from abc import abstractmethod
-from typing import Any, Dict, List, Set, Type
+from typing import Any, Dict, List, Optional, Set, Type
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Answer(BaseModel):
-    @abstractmethod
+    model_config = ConfigDict(
+        populate_by_name=True,
+    )
+
+    @property
+    def type(self) -> str:
+        return self.__class__.__name__
+
+    def model_dump(self, **kwargs):
+        data = super().model_dump(**kwargs)
+        data['type'] = self.type
+        return data
+
     def get_answer_text(self) -> str:
         """
         Returns a string representation of the answer.
         """
         raise NotImplementedError
 
-    @abstractmethod
-    def to_dict(self) -> Dict[str, Any]:
-        raise NotImplementedError
-
-    @staticmethod
-    def from_dict(data: Dict[str, Any]) -> 'Answer':
-        """
-        Constructs an Answer object from a dictionary.
-        """
-        answer_type = data.get('type')
-        if not isinstance(answer_type, str):
-            raise ValueError('Missing or invalid "type" key in Answer data')
-
-        answer_types: Dict[str, Type[Answer]] = {
-            'SentenceConstructionAnswer': SentenceConstructionAnswer,
-            'MultipleChoiceAnswer': MultipleChoiceAnswer,
-            'FillInTheBlankAnswer': FillInTheBlankAnswer,
-            'TranslationAnswer': TranslationAnswer,
-        }
-
-        answer_class = answer_types.get(answer_type)
-        if answer_class is None:
-            raise ValueError(f'Unknown Answer type: {answer_type}')
-
-        return answer_class.from_dict(data)
-
     def __str__(self) -> str:
-        return json.dumps(self.to_dict())
+        return self.model_dump_json()
 
 
 class SentenceConstructionAnswer(Answer):
-    sentences: List[str]
+    sentences: List[str] = Field(description='Constructed sentences')
 
     def get_answer_text(self) -> str:
-        return ';'.join(self.sentences)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            'type': 'SentenceConstructionAnswer',
-            'sentences': self.sentences,
-        }
-
-    @staticmethod
-    def from_dict(data: Dict[str, Any]) -> 'SentenceConstructionAnswer':
-        sentences = data.get('sentences')
-        if not isinstance(sentences, list):
-            raise ValueError('"sentences" must be a list')
-        return SentenceConstructionAnswer(sentences=sentences)
+        return '; '.join(self.sentences)
 
 
 class MultipleChoiceAnswer(Answer):
-    option_index: Set[int]
+    option_index: Set[int] = Field(description='Selected choice')
 
     def get_answer_text(self) -> str:
         return ';'.join(sorted(list(map(str, self.option_index))))
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            'type': 'MultipleChoiceAnswer',
-            'option_index': list(self.option_index),
-        }
-
-    @staticmethod
-    def from_dict(data: Dict[str, Any]) -> 'MultipleChoiceAnswer':
-        option_index = data.get('option_index')
-        if not isinstance(option_index, list):
-            raise ValueError('"option_index" must be a list')
-        return MultipleChoiceAnswer(option_index=set(option_index))
 
 
 class FillInTheBlankAnswer(Answer):
@@ -89,29 +47,28 @@ class FillInTheBlankAnswer(Answer):
     def get_answer_text(self) -> str:
         return ';'.join(self.words)
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {'type': 'FillInTheBlankAnswer', 'words': self.words}
-
-    @staticmethod
-    def from_dict(data: Dict[str, Any]) -> 'FillInTheBlankAnswer':
-        words = data.get('words')
-        if not isinstance(words, list):
-            raise ValueError('"words" must be a list')
-        return FillInTheBlankAnswer(words=words)
-
 
 class TranslationAnswer(Answer):
-    translations: List[str]
+    translation: str = Field(description='Translated text')
 
     def get_answer_text(self) -> str:
-        return ';'.join(self.translations)
+        return self.translation
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {'type': 'TranslationAnswer', 'translations': self.translations}
 
-    @staticmethod
-    def from_dict(data: Dict[str, Any]) -> 'TranslationAnswer':
-        translations = data.get('translations')
-        if not isinstance(translations, list):
-            raise ValueError('"translations" must be a list')
-        return TranslationAnswer(translations=translations)
+def create_answer_model_validate(data: Dict[str, Any]) -> Answer:
+    answer_type = data.get('type')
+    if not isinstance(answer_type, str):
+        raise ValueError('Missing or invalid "type" key in Answer data')
+
+    answer_types: Dict[str, Type[Answer]] = {
+        'SentenceConstructionAnswer': SentenceConstructionAnswer,
+        'MultipleChoiceAnswer': MultipleChoiceAnswer,
+        'FillInTheBlankAnswer': FillInTheBlankAnswer,
+        'TranslationAnswer': TranslationAnswer,
+    }
+
+    answer_class: Optional[Type[Answer]] = answer_types.get(answer_type)
+    if answer_class is None:
+        raise ValueError(f'Unknown Answer type: {answer_type}')
+
+    return answer_class.model_validate(data)

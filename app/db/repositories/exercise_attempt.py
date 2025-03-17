@@ -7,7 +7,7 @@ from app.core.entities.exercise_attempt import (
     ExerciseAttempt as ExerciseAttemptEntity,
 )
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
-from app.core.value_objects.answer import Answer
+from app.core.value_objects.answer import create_answer_model_validate
 from app.db.models import ExerciseAttempt
 
 
@@ -73,7 +73,7 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
             attempt_id=exercise_attempt.attempt_id,
             user_id=exercise_attempt.user_id,
             exercise_id=exercise_attempt.exercise_id,
-            answer=exercise_attempt.answer.to_dict(),
+            answer=exercise_attempt.answer.model_dump(),
             is_correct=exercise_attempt.is_correct,
             feedback=exercise_attempt.feedback,
             exercise_answers_id=exercise_attempt.exercise_answer_id,
@@ -88,7 +88,7 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
             attempt_id=db_attempt.attempt_id,
             user_id=db_attempt.user_id,
             exercise_id=db_attempt.exercise_id,
-            answer=Answer.from_dict(db_attempt.answer),
+            answer=create_answer_model_validate(db_attempt.answer),
             is_correct=db_attempt.is_correct,
             feedback=db_attempt.feedback,
             exercise_answer_id=db_attempt.exercise_answers_id,

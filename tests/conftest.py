@@ -2,6 +2,7 @@ import os
 import sys
 from datetime import datetime
 from typing import Any, AsyncGenerator, List
+from unittest.mock import create_autospec
 
 import pytest
 import pytest_asyncio
@@ -9,9 +10,9 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
+    async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import sessionmaker
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -19,13 +20,15 @@ sys.path.insert(
 
 from app.api.dependencies import get_exercise_service
 from app.config import settings
+from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
+from app.core.entities.user import User
 from app.core.enums import ExerciseType
 from app.core.services.exercise import ExerciseService
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.db.base import Base
-from app.db.models.exercise import Exercise
+from app.db.models.exercise import Exercise as ExerciseModel
 from app.db.models.exercise_answer import ExerciseAnswer as ExerciseAnswerModel
 from app.db.repositories.exercise import SQLAlchemyExerciseRepository
 from app.db.repositories.exercise_answers import (
@@ -72,21 +75,15 @@ async def async_engine():
 @pytest_asyncio.fixture(scope='function')
 async def async_session(async_engine: AsyncEngine) -> AsyncSession:
     """Create a SQLAlchemy async session for each test function."""
-    # Create tables
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-
-    # Create session factory
-    async_session_factory = sessionmaker(
+    async_session_factory = async_sessionmaker(
         async_engine,
-        class_=AsyncSession,
         expire_on_commit=False,
         autocommit=False,
         autoflush=False,
     )
-
-    # Create session
     async with async_session_factory() as session:
         try:
             yield session
@@ -169,7 +166,7 @@ async def sample_exercise(db_session: AsyncSession):
         text_with_blanks='This is a test ____ for learning.',
         words=['exercise'],
     )
-    exercise = Exercise(
+    exercise = ExerciseModel(
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
         exercise_language='en',
         language_level='A1',
@@ -216,9 +213,9 @@ def request_data_incorrect_answer_for_sample_exercise(
 @pytest_asyncio.fixture
 async def fill_sample_exercises(
     db_session: AsyncSession,
-) -> AsyncGenerator[list[Exercise], Any]:
+) -> AsyncGenerator[list[ExerciseModel], Any]:
     exercises = [
-        Exercise(
+        ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
             exercise_language='en',
             language_level='A1',
@@ -229,7 +226,7 @@ async def fill_sample_exercises(
                 words=['went'],
             ).model_dump(),
         ),
-        Exercise(
+        ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
             exercise_language='en',
             language_level='A2',
@@ -240,7 +237,7 @@ async def fill_sample_exercises(
                 words=['studying'],
             ).model_dump(),
         ),
-        Exercise(
+        ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
             exercise_language='en',
             language_level='B1',
@@ -251,7 +248,7 @@ async def fill_sample_exercises(
                 words=['had'],
             ).model_dump(),
         ),
-        Exercise(
+        ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
             exercise_language='en',
             language_level='B2',
@@ -262,7 +259,7 @@ async def fill_sample_exercises(
                 words=['was addressed'],
             ).model_dump(),
         ),
-        Exercise(
+        ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
             exercise_language='en',
             language_level='C1',
@@ -283,7 +280,7 @@ async def fill_sample_exercises(
 
 
 @pytest.fixture
-def get_exercises_by_level(fill_sample_exercises: List[Exercise]) -> dict:
+def get_exercises_by_level(fill_sample_exercises: List[ExerciseModel]) -> dict:
     """
     Returns a dictionary with exercises grouped by language level.
     """
@@ -362,3 +359,61 @@ async def add_db_incorrect_exercise_answer(
     db_session.add(db_answer)
     await db_session.flush()
     yield db_answer
+
+
+@pytest.fixture
+def user():
+    return User(
+        user_id=1,
+        telegram_id=1,
+        username='testuser',
+        name='Test User',
+        user_language='en',
+        target_language='en',
+    )
+
+
+@pytest.fixture
+def fill_in_the_blank_exercise():
+    exercise_data = FillInTheBlankExerciseData(
+        text_with_blanks='This is a test ____ for learning.',
+        words=['exercise'],
+    )
+    return Exercise(
+        exercise_id=1,
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        exercise_language='en',
+        language_level='B1',
+        topic='general',
+        exercise_text='Fill in the blank in the sentence.',
+        data=exercise_data,
+    )
+
+
+@pytest_asyncio.fixture
+async def mock_exercise_repository():
+    """Mock ExerciseRepository for testing."""
+    return create_autospec(SQLAlchemyExerciseRepository, instance=True)
+
+
+@pytest_asyncio.fixture
+async def mock_exercise_attempt_repository():
+    """Mock ExerciseAttemptRepository for testing."""
+    return create_autospec(SQLAlchemyExerciseAttemptRepository, instance=True)
+
+
+@pytest_asyncio.fixture
+async def mock_cached_answer_repository():
+    """Mock ExerciseAnswerRepository for testing."""
+    return create_autospec(SQLAlchemyExerciseAnswerRepository, instance=True)
+
+
+@pytest_asyncio.fixture
+async def mock_llm_service():
+    """Mock LLMService for testing."""
+    return create_autospec(LLMService, instance=True)
+
+
+@pytest.fixture
+def fill_in_the_blank_answer():
+    return FillInTheBlankAnswer(words=['exercise'])

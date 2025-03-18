@@ -1,22 +1,31 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Type
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.consts import EXERCISE_FILL_IN_THE_BLANK_BLANKS
 from app.core.value_objects.answer import Answer, FillInTheBlankAnswer
 
 
 class ExerciseData(ABC, BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+    )
+
+    @property
+    def type(self) -> str:
+        return self.__class__.__name__
+
     @abstractmethod
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
 
-    @abstractmethod
     def model_dump(self, **kwargs) -> Dict[str, Any]:
-        raise NotImplementedError
+        data = super().model_dump(**kwargs)
+        data['type'] = self.type
+        return data
 
 
 class SentenceConstructionExerciseData(ExerciseData):
@@ -25,24 +34,12 @@ class SentenceConstructionExerciseData(ExerciseData):
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
 
-    def model_dump(self, **kwargs) -> Dict[str, Any]:
-        return {
-            'type': 'SentenceConstructionExerciseData',
-            'words': self.words,
-        }
-
 
 class MultipleChoiceExerciseData(ExerciseData):
     options: List[str] = Field(description='List of options')
 
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
-
-    def model_dump(self, **kwargs) -> Dict[str, Any]:
-        return {
-            'type': 'MultipleChoiceExerciseData',
-            'options': self.options,
-        }
 
 
 class FillInTheBlankExerciseData(ExerciseData):
@@ -69,13 +66,6 @@ class FillInTheBlankExerciseData(ExerciseData):
 
         return result
 
-    def model_dump(self, **kwargs) -> Dict[str, Any]:
-        return {
-            'type': 'FillInTheBlankExerciseData',
-            'text_with_blanks': self.text_with_blanks,
-            'words': self.words,
-        }
-
 
 class TranslationExerciseData(ExerciseData):
     translations: List[str] = Field(description='List of translations')
@@ -83,8 +73,23 @@ class TranslationExerciseData(ExerciseData):
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
 
-    def model_dump(self, **kwargs) -> Dict[str, Any]:
-        return {
-            'type': 'TranslationExerciseData',
-            'translations': self.translations,
-        }
+
+def create_exercise_data_model_validate(data: Dict[str, Any]) -> ExerciseData:
+    exercise_data_type = data.get('type')
+    if not isinstance(exercise_data_type, str):
+        raise ValueError('Missing or invalid "type" key in ExerciseData data')
+
+    exercise_data_types: Dict[str, Type[ExerciseData]] = {
+        'SentenceConstructionExerciseData': SentenceConstructionExerciseData,
+        'MultipleChoiceExerciseData': MultipleChoiceExerciseData,
+        'FillInTheBlankExerciseData': FillInTheBlankExerciseData,
+        'TranslationExerciseData': TranslationExerciseData,
+    }
+
+    exercise_data_class: Optional[Type[ExerciseData]] = (
+        exercise_data_types.get(exercise_data_type)
+    )
+    if exercise_data_class is None:
+        raise ValueError(f'Unknown ExerciseData type: {exercise_data_type}')
+
+    return exercise_data_class.model_validate(data)

@@ -7,6 +7,7 @@ from app.core.value_objects.exercise import (
     MultipleChoiceExerciseData,
     SentenceConstructionExerciseData,
     TranslationExerciseData,
+    create_exercise_data_model_validate,
 )
 
 
@@ -41,18 +42,7 @@ class Exercise(BaseModel):
 
     @classmethod
     def get_data_model_validate(cls, data: Dict[str, Any]):
-        exercise_types = {
-            'SentenceConstructionExerciseData': (
-                SentenceConstructionExerciseData
-            ),
-            'MultipleChoiceExerciseData': MultipleChoiceExerciseData,
-            'FillInTheBlankExerciseData': FillInTheBlankExerciseData,
-            'TranslationExerciseData': TranslationExerciseData,
-        }
-        exercise_type = exercise_types.get(data['type'])
-        if not exercise_type:
-            raise ValueError(f"Unknown exercise type: {data['type']}")
-        return exercise_type(**data)
+        return create_exercise_data_model_validate(data)
 
     def __str__(self):
         return (

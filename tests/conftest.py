@@ -160,6 +160,11 @@ def user_data():
     }
 
 
+@pytest.fixture
+def user(user_data):
+    return User(**user_data)
+
+
 @pytest_asyncio.fixture
 async def sample_exercise(db_session: AsyncSession):
     exercise_data = FillInTheBlankExerciseData(
@@ -359,18 +364,6 @@ async def add_db_incorrect_exercise_answer(
     db_session.add(db_answer)
     await db_session.flush()
     yield db_answer
-
-
-@pytest.fixture
-def user():
-    return User(
-        user_id=1,
-        telegram_id=1,
-        username='testuser',
-        name='Test User',
-        user_language='en',
-        target_language='en',
-    )
 
 
 @pytest.fixture

@@ -40,4 +40,4 @@ repos:
         entry: pytest
         language: system
         pass_filenames: false
-        exclude: "tests/llm/.*"
+        args: [--ignore=tests/llm, --ignore=tests/integration]

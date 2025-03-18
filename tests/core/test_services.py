@@ -136,7 +136,7 @@ async def test_validate_exercise_attempt_correct_cached(
         answer=fill_in_the_blank_answer,
         is_correct=True,
         feedback='Correct!',
-        created_by='LLM:user:1',
+        created_by=f'LLM:user:{user.user_id}',
         created_at=datetime(2023, 1, 1),
     )
     mock_cached_answer_repository.get_by_exercise_and_answer.return_value = (
@@ -192,7 +192,7 @@ async def test_validate_exercise_attempt_incorrect_cached(
         answer=fill_in_the_blank_answer,
         is_correct=False,
         feedback='Wrong!',
-        created_by='LLM:user:1',
+        created_by=f'LLM:user:{user.user_id}',
         created_at=datetime(2023, 1, 1),
     )
     mock_cached_answer_repository.get_by_exercise_and_answer.return_value = (
@@ -253,7 +253,7 @@ async def test_validate_exercise_attempt_new_correct(
         answer=fill_in_the_blank_answer,
         is_correct=True,
         feedback='Correct!',
-        created_by='LLM:user:1',
+        created_by=f'LLM:user:{user.user_id}',
         created_at=datetime.now(),
     )
     mock_cached_answer_repository.save.return_value = new_cached_answer
@@ -286,7 +286,7 @@ async def test_validate_exercise_attempt_new_correct(
     assert saved_call_args.answer == fill_in_the_blank_answer
     assert saved_call_args.is_correct
     assert saved_call_args.feedback == 'Correct!'
-    assert saved_call_args.created_by == 'LLM:user:1'
+    assert saved_call_args.created_by == f'LLM:user:{user.user_id}'
 
     mock_exercise_attempt_repository.save.assert_awaited_once_with(
         new_exercise_attempt
@@ -323,7 +323,7 @@ async def test_validate_exercise_attempt_new_incorrect(
         answer=fill_in_the_blank_answer,
         is_correct=False,
         feedback='Wrong!',
-        created_by='LLM:user:1',
+        created_by=f'LLM:user:{user.user_id}',
         created_at=datetime.now(),
     )
     mock_cached_answer_repository.save.return_value = new_cached_answer
@@ -356,7 +356,7 @@ async def test_validate_exercise_attempt_new_incorrect(
     assert saved_call_args.answer == fill_in_the_blank_answer
     assert saved_call_args.is_correct is False
     assert saved_call_args.feedback == 'Wrong!'
-    assert saved_call_args.created_by == 'LLM:user:1'
+    assert saved_call_args.created_by == f'LLM:user:{user.user_id}'
 
     mock_exercise_attempt_repository.save.assert_awaited_once_with(
         new_exercise_attempt

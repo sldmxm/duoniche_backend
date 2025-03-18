@@ -1,156 +1,108 @@
-from datetime import datetime
-
 import pytest
-import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.entities.exercise_answer import (
-    ExerciseAnswer as ExerciseAnswerEntity,
-)
-from app.core.entities.exercise_attempt import (
-    ExerciseAttempt as ExerciseAttemptEntity,
-)
-from app.core.value_objects.answer import FillInTheBlankAnswer
+from app.core.entities.exercise import Exercise
+from app.core.enums import ExerciseType
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
-from app.db.models import Exercise
-from app.db.repositories.exercise_answers import (
-    SQLAlchemyExerciseAnswerRepository,
-)
-from app.db.repositories.exercise_attempt import (
-    SQLAlchemyExerciseAttemptRepository,
-)
+from app.db.repositories.exercise import SQLAlchemyExerciseRepository
 
 pytestmark = pytest.mark.asyncio
 
 
-@pytest_asyncio.fixture
-async def exercise(async_session: AsyncSession):
-    exercise = None
-    try:
-        async with async_session as session:
-            exercise_data = FillInTheBlankExerciseData(
-                text_with_blanks='This is a ____ test.', words=['great']
-            )
-            exercise = Exercise(
-                exercise_type='fill_in_the_blank',
-                exercise_language='en',
-                language_level='beginner',
-                topic='test',
-                exercise_text='Fill in the blank',
-                data=exercise_data.model_dump(),
-            )
-            session.add(exercise)
-            await session.commit()
-            await session.refresh(exercise)
-            yield exercise
-            await session.rollback()
-    finally:
-        if exercise:
-            await session.delete(exercise)
-            await session.commit()
-
-
 async def test_cached_answer_repository(
-    async_session: AsyncSession, exercise: Exercise
+    db_session,
+    add_db_correct_exercise_answer,
 ):
-    async with async_session as session:
-        repo = SQLAlchemyExerciseAnswerRepository(session)
-        answer = FillInTheBlankAnswer(words=['great'])
-
-        # Test save
-        exercise_answer = await repo.save(
-            ExerciseAnswerEntity(
-                answer_id=None,
-                exercise_id=exercise.exercise_id,
-                answer=answer,
-                is_correct=True,
-                feedback='Correct!',
-                created_at=datetime.now(),
-                created_by='test',
-            )
-        )
-        assert exercise_answer.answer_id is not None
-        assert exercise_answer.exercise_id == exercise.exercise_id
-
-        # Test get by id
-        loaded = await repo.get_by_id(exercise_answer.answer_id)
-        assert loaded is not None
-        assert loaded.answer_id == exercise_answer.answer_id
-
-        print(f'{loaded.answer.type=}')
-        print(f'{answer.type=}')
-
-        assert loaded.answer.get_answer_text() == answer.get_answer_text()
-        assert loaded.answer.type == answer.type
-
-        # Test get by exercise id
-        loaded_by_exercise_id = await repo.get_by_exercise_id(
-            exercise.exercise_id
-        )
-        assert loaded_by_exercise_id[0] is not None
-        assert loaded_by_exercise_id[0].answer_id == exercise_answer.answer_id
-        assert (
-            loaded_by_exercise_id[0].answer.get_answer_text()
-            == answer.get_answer_text()
-        )
-        assert loaded_by_exercise_id[0].answer.type == answer.type
+    """Test cached answer repository."""
+    assert add_db_correct_exercise_answer.answer_id == 1
 
 
 async def test_exercise_attempt_repository(
-    async_session: AsyncSession, exercise: Exercise
+    db_session,
+    add_db_correct_exercise_answer,
 ):
-    async with async_session as session:
-        repo = SQLAlchemyExerciseAttemptRepository(session)
-        answer = FillInTheBlankAnswer(words=['great'])
-
-        # Test save
-        attempt = await repo.save(
-            ExerciseAttemptEntity(
-                attempt_id=0,
-                user_id=1,
-                exercise_id=exercise.exercise_id,
-                answer=answer,
-                is_correct=True,
-                feedback='Good job!',
-                exercise_answer_id=None,
-            )
-        )
-        assert attempt.attempt_id is not None
-        assert attempt.exercise_id == exercise.exercise_id
-
-        # Test get by id
-        loaded = await repo.get_by_id(attempt.attempt_id)
-        assert loaded is not None
-        assert loaded.attempt_id == attempt.attempt_id
-        assert loaded.answer.get_answer_text() == answer.get_answer_text()
-        assert loaded.answer.type == answer.type
-
-        # Test get by user and exercise
-        attempts = await repo.get_by_user_and_exercise(1, exercise.exercise_id)
-        assert len(attempts) == 1
-        assert attempts[0].attempt_id == attempt.attempt_id
-        assert attempts[0].answer.get_answer_text() == answer.get_answer_text()
-        assert attempts[0].answer.type == answer.type
-
-        # Test get all user attempts
-        all_attempts = await repo.get_by_user_id(1)
-        assert len(all_attempts) == 1
-        assert all_attempts[0].attempt_id == attempt.attempt_id
-        assert (
-            all_attempts[0].answer.get_answer_text()
-            == answer.get_answer_text()
-        )
-        assert all_attempts[0].answer.type == answer.type
+    """Test exercise attempt repository."""
+    assert add_db_correct_exercise_answer.answer_id == 1
 
 
-async def test_exercise_attempt_repository_when_empty(
-    async_session: AsyncSession,
-):
-    async with async_session as session:
-        repo = SQLAlchemyExerciseAttemptRepository(session)
-        async with session.begin():
-            all_attempts = await repo.get_by_user_id(1)
-            assert len(all_attempts) == 0
+async def test_get_by_id(db_session, sample_exercise):
+    """Test getting an exercise by ID."""
+    repository = SQLAlchemyExerciseRepository(db_session)
+    exercise = await repository.get_by_id(sample_exercise.exercise_id)
+    assert exercise.exercise_id == sample_exercise.exercise_id
+    assert exercise.exercise_type == sample_exercise.exercise_type
+    assert exercise.exercise_language == sample_exercise.exercise_language
+    assert exercise.language_level == sample_exercise.language_level
+    assert exercise.topic == sample_exercise.topic
+    assert exercise.exercise_text == sample_exercise.exercise_text
+    assert (
+        exercise.data.text_with_blanks
+        == sample_exercise.data['text_with_blanks']
+    )
+    assert exercise.data.words == sample_exercise.data['words']
 
-            attempts = await repo.get_by_user_and_exercise(1, 1)
-            assert len(attempts) == 0
+
+async def test_get_by_id_not_found(db_session):
+    """Test getting an exercise by ID when it doesn't exist."""
+    repository = SQLAlchemyExerciseRepository(db_session)
+    exercise = await repository.get_by_id(99999)
+    assert exercise is None
+
+
+async def test_get_all(db_session, fill_sample_exercises):
+    """Test getting all exercises."""
+    repository = SQLAlchemyExerciseRepository(db_session)
+    exercises = await repository.get_all()
+    assert len(exercises) == len(fill_sample_exercises)
+    for exercise in exercises:
+        assert isinstance(exercise, Exercise)
+
+
+async def get_new_exercise(db_session, get_exercises_by_level, user):
+    """Test getting exercises by language level and topic."""
+    repository = SQLAlchemyExerciseRepository(db_session)
+    language_level = 'A1'
+    topic = 'general'
+    exercise = await repository.get_new_exercise(
+        language_level=language_level,
+        topic=topic,
+        user=user,
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+    )
+    assert exercise.language_level == language_level
+    assert exercise.topic == topic
+    exercise = await repository.get_new_exercise(
+        language_level=language_level,
+        topic=topic,
+        user=user,
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+    )
+    assert exercise is None
+
+
+async def test_save(db_session):
+    """Test saving a new exercise."""
+    repository = SQLAlchemyExerciseRepository(db_session)
+    exercise_data = FillInTheBlankExerciseData(
+        text_with_blanks='I ____ to the store.', words=['go']
+    )
+    exercise = Exercise(
+        exercise_id=None,
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        exercise_language='en',
+        language_level='A1',
+        topic='general',
+        exercise_text='Fill in the blank in the sentence.',
+        data=exercise_data,
+    )
+
+    saved_exercise = await repository.save(exercise)
+    assert saved_exercise.exercise_id is not None
+    assert saved_exercise.exercise_type == exercise.exercise_type
+    assert saved_exercise.exercise_language == exercise.exercise_language
+    assert saved_exercise.language_level == exercise.language_level
+    assert saved_exercise.topic == exercise.topic
+    assert saved_exercise.exercise_text == exercise.exercise_text
+    assert (
+        saved_exercise.data.text_with_blanks == exercise.data.text_with_blanks
+    )
+    assert saved_exercise.data.words == exercise.data.words

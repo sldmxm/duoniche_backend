@@ -1,6 +1,9 @@
+import asyncio
+
 import pytest
 
 from app.core.enums import ExerciseType
+from tests.conftest import TestSQLAlchemyExerciseAttemptRepository
 
 pytestmark = pytest.mark.asyncio(scope='function')
 
@@ -160,3 +163,94 @@ async def test_multiple_requests_same_user(
     assert response.status_code == 200
     new_exercise_data = response.json()
     assert new_exercise_data['exercise_id'] != exercise_id
+
+
+@pytest.mark.asyncio
+async def test_concurrent_requests(
+    client,
+    user_data,
+    sample_exercise_request_data,
+    request_data_correct_answer_for_sample_exercise,
+    add_db_correct_exercise_answer,
+    async_engine,
+    async_session,
+):
+    """Test concurrent requests from multiple users."""
+    num_users = 5
+    exercise_responses = []
+
+    async def user_task(user_id):
+        user_specific_data = {
+            'user_id': user_id,
+            'telegram_id': user_id,
+            'username': f'user_{user_id}',
+            'name': f'User {user_id}',
+            'user_language': 'en',
+            'target_language': 'en',
+        }
+
+        try:
+            response = await client.post(
+                '/api/v1/exercises/new',
+                json={
+                    **user_specific_data,
+                    'language_level': sample_exercise_request_data[
+                        'language_level'
+                    ],
+                    'exercise_type': sample_exercise_request_data[
+                        'exercise_type'
+                    ],
+                },
+            )
+
+            assert response.status_code == 200
+            exercise_data = response.json()
+            exercise_responses.append(exercise_data)
+
+            await asyncio.sleep(0.05)
+
+            validation_response = await client.post(
+                '/api/v1/exercises/validate',
+                json={
+                    **request_data_correct_answer_for_sample_exercise,
+                    'exercise_id': exercise_data['exercise_id'],
+                    **user_specific_data,
+                },
+            )
+
+            assert validation_response.status_code == 200
+            assert validation_response.json()['is_correct'] is True
+            assert validation_response.json()['feedback'] == ''
+
+            return exercise_data
+        except Exception as e:
+            print(f'Error in user_task for user {user_id}: {str(e)}')
+            raise
+
+    results = []
+    for i in range(num_users):
+        user_id = f'{i}'
+        result = await user_task(user_id)
+        results.append(result)
+        await asyncio.sleep(0.1)
+
+    assert len(exercise_responses) == num_users
+
+    first_id = exercise_responses[0]['exercise_id']
+    first_data_text = exercise_responses[0]['data']['text_with_blanks']
+    for response in exercise_responses:
+        assert response['exercise_id'] == first_id
+        assert response['data']['text_with_blanks'] == first_data_text
+
+    exercise_attempt_repository = TestSQLAlchemyExerciseAttemptRepository(
+        async_session
+    )
+    exercise_attempts = await exercise_attempt_repository.get_by_exercise_id(
+        exercise_id=first_id
+    )
+
+    assert len(exercise_attempts) == num_users
+
+    user_ids_with_attempts = {attempt.user_id for attempt in exercise_attempts}
+    expected_user_ids = set(range(num_users))
+    assert user_ids_with_attempts == expected_user_ids

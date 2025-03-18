@@ -160,7 +160,7 @@ class LLMService(LLMProvider):
             'Generate the exercise - '
             'ONE sentence with one or more words missing.\n'
             'User language: {user_language}\n'
-            'Target language: {target_language}\n'
+            'Target language: {exercise_language}\n'
             'Language level: {language_level}\n'
             'Topic: {topic}\n'
             '{format_instructions}'
@@ -172,7 +172,7 @@ class LLMService(LLMProvider):
 
         request_data = {
             'user_language': user.user_language,
-            'target_language': user.target_language,
+            'exercise_language': user.target_language,
             'language_level': language_level,
             'topic': topic,
         }
@@ -186,6 +186,7 @@ class LLMService(LLMProvider):
         return Exercise(
             exercise_id=None,
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+            exercise_language=user.target_language,
             language_level=language_level,
             topic=topic,
             exercise_text=EXERCISE_FILL_IN_THE_BLANK_TASK,
@@ -217,7 +218,7 @@ class LLMService(LLMProvider):
             'You are a language learning assistant.\n'
             "You need to check the user's answer to the exercise.\n"
             'User language: {user_language}\n'
-            'Exercise language: {target_language}\n'
+            'Exercise language: {exercise_language}\n'
             'Exercise topic: {topic}\n'
             'Exercise task: {task}\n'
             'Options: {options}\n'
@@ -233,7 +234,7 @@ class LLMService(LLMProvider):
         # TODO: сделать универсальный промпт для любых типов упражнений
         request_data = {
             'user_language': user.user_language,
-            'target_language': user.target_language,
+            'exercise_language': user.target_language,
             'topic': exercise.topic,
             'task': exercise.exercise_text,
             'exercise': exercise.data.text_with_blanks,

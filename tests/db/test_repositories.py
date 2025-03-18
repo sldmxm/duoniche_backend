@@ -33,6 +33,7 @@ async def exercise(async_session: AsyncSession):
             )
             exercise = Exercise(
                 exercise_type='fill_in_the_blank',
+                exercise_language='en',
                 language_level='beginner',
                 topic='test',
                 exercise_text='Fill in the blank',

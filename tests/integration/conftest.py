@@ -159,7 +159,7 @@ def user_data():
         'username': 'testuser',
         'name': 'Test User',
         'user_language': 'en',
-        'target_language': 'fr',
+        'target_language': 'en',
     }
 
 
@@ -171,6 +171,7 @@ async def sample_exercise(db_session: AsyncSession):
     )
     exercise = Exercise(
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        exercise_language='en',
         language_level='A1',
         topic='general',
         exercise_text='Fill in the blank in the sentence.',
@@ -219,6 +220,7 @@ async def fill_sample_exercises(
     exercises = [
         Exercise(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+            exercise_language='en',
             language_level='A1',
             topic='general',
             exercise_text='Fill in the blank in the sentence.',
@@ -229,6 +231,7 @@ async def fill_sample_exercises(
         ),
         Exercise(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+            exercise_language='en',
             language_level='A2',
             topic='general',
             exercise_text='Fill in the blank in the sentence.',
@@ -239,6 +242,7 @@ async def fill_sample_exercises(
         ),
         Exercise(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+            exercise_language='en',
             language_level='B1',
             topic='general',
             exercise_text='Fill in the blank in the sentence.',
@@ -249,6 +253,7 @@ async def fill_sample_exercises(
         ),
         Exercise(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+            exercise_language='en',
             language_level='B2',
             topic='general',
             exercise_text='Fill in the blank in the sentence.',
@@ -259,6 +264,7 @@ async def fill_sample_exercises(
         ),
         Exercise(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+            exercise_language='en',
             language_level='C1',
             topic='general',
             exercise_text='Fill in the blank in the sentence.',

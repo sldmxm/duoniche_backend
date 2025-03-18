@@ -14,6 +14,7 @@ async def test_exercise_model(async_session: AsyncSession):
         # Create
         exercise = Exercise(
             exercise_type='sentence_construction',
+            exercise_language='en',
             language_level='beginner',
             topic='test',
             exercise_text='test',
@@ -43,6 +44,7 @@ async def test_relationships(async_session: AsyncSession):
         # Create exercise
         exercise = Exercise(
             exercise_type='sentence_construction',
+            exercise_language='en',
             language_level='beginner',
             topic='test',
             exercise_text='test',
@@ -126,6 +128,7 @@ async def test_cached_answer_created_at(async_session: AsyncSession):
         # Create exercise
         exercise = Exercise(
             exercise_type='sentence_construction',
+            exercise_language='en',
             language_level='beginner',
             topic='test',
             exercise_text='test',

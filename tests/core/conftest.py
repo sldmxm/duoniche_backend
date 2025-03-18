@@ -56,6 +56,7 @@ def fill_in_the_blank_exercise() -> Exercise:
     return Exercise(
         exercise_id=1,
         exercise_type='fill_in_the_blank',
+        exercise_language='en',
         language_level='beginner',
         topic='general',
         exercise_text='Fill in the blanks.',
@@ -111,6 +112,7 @@ def sentence_construction_exercise() -> Exercise:
     return Exercise(
         exercise_id=3,
         exercise_type='sentence_construction',
+        exercise_language='en',
         language_level='beginner',
         topic='grammar',
         exercise_text='Construct a sentence.',

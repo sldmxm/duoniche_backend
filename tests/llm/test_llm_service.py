@@ -44,6 +44,7 @@ async def test_validate_attempt_correct(user):
     exercise = Exercise(
         exercise_id=1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        exercise_language='en',
         language_level='beginner',
         topic='general',
         exercise_text='Fill in the blank',
@@ -68,6 +69,7 @@ async def test_validate_attempt_incorrect(user):
     exercise = Exercise(
         exercise_id=1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        exercise_language='en',
         language_level='beginner',
         topic='general',
         exercise_text='Fill in the blank',

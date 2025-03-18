@@ -19,6 +19,7 @@ def test_exercise_creation():
     exercise = Exercise(
         exercise_id=1,
         exercise_type='sentence_construction',
+        exercise_language='en',
         language_level='beginner',
         topic='general',
         exercise_text='Make a test sentence.',

@@ -155,6 +155,8 @@ async def test_multiple_requests_same_user(
     response = await client.post(
         '/api/v1/exercises/new', json=new_exercise_request
     )
+    print(response.json())
+
     assert response.status_code == 200
     new_exercise_data = response.json()
     assert new_exercise_data['exercise_id'] != exercise_id

@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, create_autospec
 
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
 from app.core.entities.exercise import Exercise
@@ -13,12 +12,6 @@ from app.core.services.exercise import ExerciseService
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.main import app
-
-
-@pytest.fixture
-def client():
-    """Test client fixture."""
-    return TestClient(app)
 
 
 @pytest_asyncio.fixture
@@ -38,6 +31,7 @@ def exercise():
     return Exercise(
         exercise_id=1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        exercise_language='en',
         language_level='B1',
         topic='general',
         exercise_text='Заполни пробелы в предложении',
@@ -73,8 +67,8 @@ def user_data():
         'telegram_id': '67890',
         'username': 'testuser',
         'name': 'Test User',
-        'user_language': 'en',
-        'target_language': 'fr',
+        'user_language': 'ru',
+        'target_language': 'en',
     }
 
 

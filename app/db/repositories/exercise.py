@@ -29,21 +29,6 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         return [self._to_entity(exercise) for exercise in exercises]
 
     @override
-    async def save(self, exercise: Exercise) -> Exercise:
-        db_exercise = ExerciseModel(
-            exercise_id=exercise.exercise_id,
-            exercise_type=exercise.exercise_type,
-            language_level=exercise.language_level,
-            topic=exercise.topic,
-            exercise_text=exercise.exercise_text,
-            data=exercise.data.model_dump(),
-        )
-        self.session.add(db_exercise)
-        await self.session.commit()
-        await self.session.refresh(db_exercise)
-        return self._to_entity(db_exercise)
-
-    @override
     async def get_new_exercise(
         self,
         user: User,
@@ -62,6 +47,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
                 and_(
                     ExerciseModel.language_level == language_level,
                     ExerciseModel.exercise_type == exercise_type,
+                    ExerciseModel.exercise_language == user.target_language,
                     ExerciseModel.exercise_id.notin_(
                         answered_exercise_ids_subquery
                     ),
@@ -87,10 +73,27 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         # TODO: add logic
         return None
 
+    @override
+    async def save(self, exercise: Exercise) -> Exercise:
+        db_exercise = ExerciseModel(
+            exercise_id=exercise.exercise_id,
+            exercise_type=exercise.exercise_type,
+            exercise_language=exercise.exercise_language,
+            language_level=exercise.language_level,
+            topic=exercise.topic,
+            exercise_text=exercise.exercise_text,
+            data=exercise.data.model_dump(),
+        )
+        self.session.add(db_exercise)
+        await self.session.commit()
+        await self.session.refresh(db_exercise)
+        return self._to_entity(db_exercise)
+
     def _to_entity(self, db_exercise: ExerciseModel) -> Exercise:
         return Exercise(
             exercise_id=db_exercise.exercise_id,
             exercise_type=db_exercise.exercise_type,
+            exercise_language=db_exercise.exercise_language,
             language_level=db_exercise.language_level,
             topic=db_exercise.topic,
             exercise_text=db_exercise.exercise_text,

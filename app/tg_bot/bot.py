@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+import httpx
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -15,10 +16,10 @@ from aiohttp import web
 from dotenv import load_dotenv
 from redis import asyncio as aioredis
 
+from app.api.schemas.user import UserCreate
 from app.config import settings
 from app.logging_config import configure_logging
-
-# from app.tg_bot.utils import UserMiddleware
+from app.tg_bot.utils import UserMiddleware
 
 load_dotenv()
 DEBUG = settings.debug.lower() == 'true'
@@ -30,6 +31,7 @@ WEBHOOK_PATH = settings.webhook_path
 WEBAPP_HOST = settings.webapp_host
 WEBAPP_PORT = settings.webapp_port
 REDIS_URL = settings.redis_url
+API_URL = settings.api_url
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -83,11 +85,28 @@ async def start_pooling_bot(dp: Dispatcher, bot: Bot):
 router = Router()
 
 
+async def register_user(message: Message):
+    async with httpx.AsyncClient() as client:
+        user_data = UserCreate(
+            telegram_id=message.from_user.id,
+            username=message.from_user.username,
+            name=message.from_user.full_name,
+            user_language=message.from_user.language_code,
+            target_language=message.from_user.language_code,
+        )
+        response = await client.put(
+            f'{API_URL}/api/v1/users/', json=user_data.model_dump()
+        )
+        response.raise_for_status()
+        return response.json()
+
+
 @router.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
     """
     This handler receives messages with `/start` command
     """
+    await register_user(message)
     await message.answer(f'Hello, {message.from_user.full_name}!')
 
 
@@ -130,6 +149,7 @@ def main():
 
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
+    dp.message.middleware(UserMiddleware())
 
     dp.include_routers(
         router,

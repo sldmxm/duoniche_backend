@@ -8,4 +8,8 @@ api_router.include_router(
     prefix='/exercises',
     tags=['exercises'],
 )
-api_router.include_router(users.router, prefix='/api/v1/users', tags=['users'])
+api_router.include_router(
+    users.router,
+    prefix='/users',
+    tags=['users'],
+)

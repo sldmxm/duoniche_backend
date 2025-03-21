@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from app.core.entities.user import User
 from app.core.repositories.user import UserRepository
@@ -13,17 +14,19 @@ class UserService:
     async def get_user_by_id(self, user_id: int) -> User | None:
         return await self.user_repository.get_by_id(user_id)
 
-    async def get_user_by_telegram_id(self, telegram_id: int) -> User | None:
+    async def get_user_by_telegram_id(
+        self, telegram_id: int
+    ) -> Optional[User]:
         return await self.user_repository.get_by_telegram_id(telegram_id)
 
     async def get_or_create_user(self, user: User) -> User:
-        exist_user = await self.user_repository.get_by_telegram_id(
+        existing_user = await self.user_repository.get_by_telegram_id(
             user.telegram_id
         )
-        if exist_user:
+        if existing_user:
             logger.debug('User already exists')
-            return exist_user
+            return existing_user
         logger.debug('User does not exist.')
         new_user = await self.user_repository.save(user)
         logger.debug(f'Created new user {new_user}')
-        return user
+        return new_user

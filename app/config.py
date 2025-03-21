@@ -37,6 +37,8 @@ class Settings(BaseSettings):  # type: ignore
 
     redis_url: str = 'redis://localhost:6379'
 
+    api_url: str = 'http://localhost:8000'
+
     model_config = SettingsConfigDict(
         env_file='.env',
         env_file_encoding='utf-8',

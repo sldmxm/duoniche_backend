@@ -15,13 +15,14 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.services.exercise import ExerciseService
+from app.core.services.user import UserService
 from app.db.repositories.user import SQLAlchemyUserRepository
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 )
 
-from app.api.dependencies import get_exercise_service
+from app.api.dependencies import get_exercise_service, get_user_service
 from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
@@ -32,6 +33,7 @@ from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.db.base import Base
 from app.db.models.exercise import Exercise as ExerciseModel
 from app.db.models.exercise_answer import ExerciseAnswer as ExerciseAnswerModel
+from app.db.models.user import User as UserModel
 from app.db.repositories.exercise import SQLAlchemyExerciseRepository
 from app.db.repositories.exercise_answers import (
     SQLAlchemyExerciseAnswerRepository,
@@ -80,7 +82,9 @@ async def async_engine():
 
 
 @pytest_asyncio.fixture(scope='function')
-async def async_session(async_engine: AsyncEngine) -> AsyncSession:
+async def async_session(
+    async_engine: AsyncEngine,
+) -> AsyncGenerator[AsyncSession, Any]:
     """Create a SQLAlchemy async session for each test function."""
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -100,7 +104,9 @@ async def async_session(async_engine: AsyncEngine) -> AsyncSession:
 
 
 @pytest_asyncio.fixture(scope='function')
-async def db_session(async_session: AsyncSession) -> AsyncSession:
+async def db_session(
+    async_session: AsyncSession,
+) -> AsyncGenerator[AsyncSession, Any]:
     """DB session with nested transaction."""
     transaction = await async_session.begin_nested()
     try:
@@ -136,15 +142,30 @@ async def exercise_service(db_session: AsyncSession, llm_service):
 
 
 @pytest_asyncio.fixture(scope='function')
-async def client(exercise_service) -> AsyncGenerator[AsyncClient, Any]:
+async def user_service(db_session: AsyncSession):
+    """Create ExerciseService with test repositories"""
+    service = UserService(
+        user_repository=TestSQLAlchemyUserRepository(db_session)
+    )
+    yield service
+
+
+@pytest_asyncio.fixture(scope='function')
+async def client(
+    exercise_service, user_service
+) -> AsyncGenerator[AsyncClient, Any]:
     """Create test client with overridden dependencies"""
 
     def override_get_exercise_service():
         return exercise_service
 
+    def override_get_user_service():
+        return user_service
+
     app.dependency_overrides[get_exercise_service] = (
         override_get_exercise_service
     )
+    app.dependency_overrides[get_user_service] = override_get_user_service
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url='http://test'
@@ -170,6 +191,17 @@ def user_data():
 @pytest.fixture
 def user(user_data):
     return User(**user_data)
+
+
+@pytest_asyncio.fixture
+async def add_db_user(
+    db_session: AsyncSession,
+    user,
+):
+    db_user = UserModel(**user.model_dump())
+    db_session.add(db_user)
+    await db_session.flush()
+    yield db_user
 
 
 @pytest_asyncio.fixture

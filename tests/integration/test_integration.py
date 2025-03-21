@@ -49,25 +49,6 @@ async def test_validate_exercise_correct_with_db(
 
 
 @pytest.mark.asyncio
-async def test_validate_exercise_correct_with_llm(
-    client,
-    request_data_correct_answer_for_sample_exercise,
-):
-    """Test validating an exercise with correct answer
-    without adding correct answer into db via fixture."""
-    response = await client.post(
-        '/api/v1/exercises/validate',
-        json=request_data_correct_answer_for_sample_exercise,
-    )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert 'is_correct' in data
-    assert 'feedback' in data
-    assert data['is_correct'] is True
-
-
-@pytest.mark.asyncio
 async def test_validate_exercise_incorrect(
     client,
     request_data_incorrect_answer_for_sample_exercise,

@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Optional
 
@@ -10,6 +11,8 @@ from app.core.repositories.exercise import ExerciseRepository
 from app.core.repositories.exercise_answer import ExerciseAnswerRepository
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
 from app.core.value_objects.answer import Answer
+
+logger = logging.getLogger(__name__)
 
 
 class ExerciseService:
@@ -90,8 +93,17 @@ class ExerciseService:
                 exercise_answer_id=exercise_answer.answer_id,
             )
         else:
+            repo = self.exercise_answer_repository
+            correct_answers = [
+                exercise_answer.answer
+                for exercise_answer in (
+                    await repo.get_correct_answers_by_exercise_id(
+                        exercise_id=exercise.exercise_id
+                    )
+                )
+            ]
             is_correct, feedback = await self.llm_service.validate_attempt(
-                user, exercise, answer
+                user, exercise, answer, correct_answers
             )
             exercise_answer = ExerciseAnswer(
                 answer_id=None,

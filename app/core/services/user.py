@@ -1,5 +1,9 @@
+import logging
+
 from app.core.entities.user import User
 from app.core.repositories.user import UserRepository
+
+logger = logging.getLogger(__name__)
 
 
 class UserService:
@@ -12,5 +16,14 @@ class UserService:
     async def get_user_by_telegram_id(self, telegram_id: int) -> User | None:
         return await self.user_repository.get_by_telegram_id(telegram_id)
 
-    async def save_user(self, user: User) -> User:
-        return await self.user_repository.save(user)
+    async def get_or_create_user(self, user: User) -> User:
+        exist_user = await self.user_repository.get_by_telegram_id(
+            user.telegram_id
+        )
+        if exist_user:
+            logger.debug('User already exists')
+            return exist_user
+        logger.debug('User does not exist.')
+        new_user = await self.user_repository.save(user)
+        logger.debug(f'Created new user {new_user}')
+        return user

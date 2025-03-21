@@ -55,8 +55,9 @@ async def test_validate_attempt_correct(user):
     )
 
     answer = FillInTheBlankAnswer(words=['sat'])
+    correct_answers = [FillInTheBlankAnswer(words=['sat'])]
     is_correct, feedback = await llm_service.validate_attempt(
-        user, exercise, answer
+        user, exercise, answer, correct_answers
     )
 
     assert is_correct is True
@@ -80,8 +81,9 @@ async def test_validate_attempt_incorrect(user):
     )
 
     answer = FillInTheBlankAnswer(words=['гледам'])
+    correct_answers = [FillInTheBlankAnswer(words=['ходя'])]
     is_correct, feedback = await llm_service.validate_attempt(
-        user, exercise, answer
+        user, exercise, answer, correct_answers
     )
 
     assert is_correct is False

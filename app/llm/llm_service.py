@@ -44,8 +44,6 @@ class FillInTheBlankExerciseDataParsed(BaseModel):
             'with inappropriate in meaning,  '
             'grammatical, spelling, '
             'syntactic, semantic or other errors. \n'
-            # 'Check that there are no repetitions, '
-            # 'and words contain only letters.'
         )
     )
 
@@ -55,7 +53,8 @@ class AttemptValidationResponse(BaseModel):
     feedback: str = Field(
         description="Feedback for the user in USER'S language. "
         'If answer is correct, empty string. '
-        'Else clearly explain grammatical, spelling, '
+        'Else answer the question "What\'s wrong with this user answer?" '
+        '- clearly explain grammatical, spelling, '
         'syntactic, semantic or other errors. '
         'Don\'t write "Wrong answer", "Try again" '
         'or other phrases that provide '
@@ -197,7 +196,11 @@ class LLMService(LLMProvider):
         ), FillInTheBlankAnswer(words=parsed_data.right_words)
 
     async def validate_attempt(
-        self, user: User, exercise: Exercise, answer: Answer
+        self,
+        user: User,
+        exercise: Exercise,
+        answer: Answer,
+        right_answers: List[Answer],
     ) -> Tuple[bool, str]:
         """Validate user's answer to the exercise."""
         if not isinstance(answer, FillInTheBlankAnswer):
@@ -223,6 +226,7 @@ class LLMService(LLMProvider):
             'Exercise task: {task}\n'
             'Options: {options}\n'
             'Exercise: {exercise}\n'
+            'Correct answers: {correct_answers}\n'
             'User answer: {user_answer}\n'
             'You have to give feedback in {user_language}.\n'
             '{format_instructions}'
@@ -232,6 +236,10 @@ class LLMService(LLMProvider):
             prompt_template, parser, is_chat_prompt=False
         )
         # TODO: сделать универсальный промпт для любых типов упражнений
+        correct_answered = [
+            exercise.data.get_answered_by_user_exercise_text(answer)
+            for answer in right_answers
+        ]
         request_data = {
             'user_language': user.user_language,
             'exercise_language': user.target_language,
@@ -242,6 +250,7 @@ class LLMService(LLMProvider):
             'user_answer': exercise.data.get_answered_by_user_exercise_text(
                 answer
             ),
+            'correct_answers': '\n'.join(correct_answered),
         }
 
         validation_result = await self._run_llm_chain(chain, request_data)

@@ -14,6 +14,9 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from app.core.services.exercise import ExerciseService
+from app.db.repositories.user import SQLAlchemyUserRepository
+
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 )
@@ -24,7 +27,6 @@ from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.user import User
 from app.core.enums import ExerciseType
-from app.core.services.exercise import ExerciseService
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.db.base import Base
@@ -56,6 +58,11 @@ class TestSQLAlchemyExerciseAnswerRepository(
 class TestSQLAlchemyExerciseAttemptRepository(
     SQLAlchemyExerciseAttemptRepository
 ):
+    def __init__(self, session: AsyncSession):
+        super().__init__(session)
+
+
+class TestSQLAlchemyUserRepository(SQLAlchemyUserRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(session)
 
@@ -396,7 +403,7 @@ async def mock_exercise_attempt_repository():
 
 
 @pytest_asyncio.fixture
-async def mock_cached_answer_repository():
+async def mock_exercise_answer_repository():
     """Mock ExerciseAnswerRepository for testing."""
     return create_autospec(SQLAlchemyExerciseAnswerRepository, instance=True)
 

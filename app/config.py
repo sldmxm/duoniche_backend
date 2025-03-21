@@ -1,5 +1,3 @@
-import logging
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,17 +25,22 @@ class Settings(BaseSettings):  # type: ignore
     openai_max_retries: int = 6
     openai_request_timeout: int = 10
 
-    log_level: str = 'DEBUG'
+    debug: str = 'False'
+
+    telegram_token: str = ''
+    use_webhook: str = ''
+    webhook_secret: str = ''
+    base_webhook_url: str = ''
+    webhook_path: str = ''
+    webapp_host: str = 'localhost'
+    webapp_port: int = 8080
+
+    redis_url: str = 'redis://localhost:6379'
 
     model_config = SettingsConfigDict(
         env_file='.env',
         env_file_encoding='utf-8',
     )
-
-    @property
-    def parsed_log_level(self) -> int:
-        """Parse string log level to int."""
-        return int(logging.getLevelName(self.log_level))
 
 
 settings = Settings()

@@ -18,7 +18,7 @@ class ExerciseAnswerRepository(AsyncRepository[ExerciseAnswer]):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_right_answers_by_exercise_id(
+    async def get_correct_answers_by_exercise_id(
         self, exercise_id: int
     ) -> List[ExerciseAnswer]:
         raise NotImplementedError

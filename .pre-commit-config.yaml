@@ -24,6 +24,7 @@ repos:
         additional_dependencies:
           - pydantic
           - pydantic[mypy]
+          - redis[mypy]
 
   - repo: local
     hooks:

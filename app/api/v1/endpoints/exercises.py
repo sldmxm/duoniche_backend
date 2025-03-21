@@ -12,15 +12,15 @@ from fastapi.routing import APIRoute
 
 from app.api.dependencies import get_exercise_service
 from app.api.errors import NotFoundError
+from app.api.schemas.answer import FillInTheBlankAnswerSchema
+from app.api.schemas.exercise import ExerciseSchema
+from app.api.schemas.validation_result import ValidationResultSchema
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
 from app.core.enums import ExerciseType
 from app.core.services.exercise import ExerciseService
 from app.core.value_objects.answer import FillInTheBlankAnswer
-from app.schemas.answer import FillInTheBlankAnswerSchema
-from app.schemas.exercise import ExerciseSchema
-from app.schemas.validation_result import ValidationResultSchema
 
 logger = logging.getLogger(__name__)
 router = APIRouter(route_class=APIRoute)

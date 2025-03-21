@@ -55,6 +55,7 @@ pygments==2.19.1
 python-dotenv==1.0.1
 python-multipart==0.0.20
 pyyaml==6.0.2
+redis==5.2.1
 regex==2024.11.6
 requests==2.32.3
 requests-toolbelt==1.0.0

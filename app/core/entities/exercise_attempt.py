@@ -8,7 +8,7 @@ from app.core.value_objects.answer import Answer
 class ExerciseAttempt(BaseModel):
     attempt_id: Optional[int] = Field()
     exercise_id: int = Field()
-    user_id: int = Field()
+    user_id: Optional[int] = Field()
     answer: Answer = Field()
     is_correct: bool = Field()
     feedback: Optional[str] = Field()

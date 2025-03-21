@@ -36,7 +36,7 @@ class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
         answers = result.scalars().all()
         return [self._to_entity(answer) for answer in answers]
 
-    async def get_right_answers_by_exercise_id(
+    async def get_correct_answers_by_exercise_id(
         self, exercise_id: int
     ) -> List[ExerciseAnswerEntity]:
         stmt = select(ExerciseAnswerModel).where(

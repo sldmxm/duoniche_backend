@@ -2,7 +2,7 @@ from typing import Union
 
 from pydantic import BaseModel, Field
 
-from app.schemas.exercise_data import (
+from app.api.schemas.exercise_data import (
     FillInTheBlankExerciseDataSchema,
     MultipleChoiceExerciseDataSchema,
     SentenceConstructionExerciseDataSchema,

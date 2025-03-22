@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 class User(BaseModel):
     user_id: Optional[int] = None
-    telegram_id: int
+    telegram_id: str
     username: Optional[str] = None
     name: Optional[str] = None
     language_level: str = 'beginner'

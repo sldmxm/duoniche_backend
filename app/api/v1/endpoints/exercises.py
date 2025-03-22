@@ -62,7 +62,7 @@ async def get_or_create_new_exercise(
         #   сейчас криво - создается пользователь с target_language
         user = User(
             user_id=int(user_id),
-            telegram_id=int(telegram_id),
+            telegram_id=telegram_id,
             username=username,
             name=name,
             user_language=user_language,
@@ -123,7 +123,7 @@ async def validate_exercise_attempt(
     try:
         user = User(
             user_id=int(user_id),
-            telegram_id=int(telegram_id),
+            telegram_id=telegram_id,
             username=username,
             name=name,
             user_language=user_language,

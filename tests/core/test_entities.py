@@ -8,9 +8,9 @@ from app.core.value_objects.exercise import (
 
 
 def test_user_creation():
-    user = User(user_id=1, telegram_id=123, username='testuser')
+    user = User(user_id=1, telegram_id='123', username='testuser')
     assert user.user_id == 1
-    assert user.telegram_id == 123
+    assert user.telegram_id == '123'
     assert user.username == 'testuser'
     assert user.language_level == 'beginner'
 

@@ -35,7 +35,7 @@ async def get_or_create_user(
     status_code=status.HTTP_200_OK,
 )
 async def get_user_by_telegram_id(
-    telegram_id: int,
+    telegram_id: str,
     user_service: Annotated[UserService, Depends(get_user_service)],
 ) -> User:
     """

@@ -11,7 +11,7 @@ class UserRepository(AsyncRepository[User]):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_by_telegram_id(self, telegram_id: int) -> Optional[User]:
+    async def get_by_telegram_id(self, telegram_id: str) -> Optional[User]:
         raise NotImplementedError
 
     @abstractmethod

@@ -7,7 +7,7 @@ class User(Base):
     __tablename__ = 'users'
 
     user_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    telegram_id = Column(Integer, unique=True, index=True)
+    telegram_id = Column(String, unique=True, index=True)
     username = Column(String, nullable=True)
     name = Column(String, nullable=True)
     user_language = Column(String, nullable=True)

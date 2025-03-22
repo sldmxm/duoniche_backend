@@ -12,7 +12,7 @@ async def test_get_or_create_user_new_user(
 ):
     """Test creating a new user."""
     user_data = {
-        'telegram_id': 98765,
+        'telegram_id': '98765',
         'username': 'newuser',
         'name': 'New User',
         'user_language': 'en',

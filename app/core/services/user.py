@@ -15,7 +15,7 @@ class UserService:
         return await self.user_repository.get_by_id(user_id)
 
     async def get_user_by_telegram_id(
-        self, telegram_id: int
+        self, telegram_id: str
     ) -> Optional[User]:
         return await self.user_repository.get_by_telegram_id(telegram_id)
 

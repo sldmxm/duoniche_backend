@@ -23,7 +23,7 @@ class SQLAlchemyUserRepository(UserRepository):
         return User.model_validate(db_user.__dict__)
 
     @override
-    async def get_by_telegram_id(self, telegram_id: int) -> Optional[User]:
+    async def get_by_telegram_id(self, telegram_id: str) -> Optional[User]:
         stmt = select(UserModel).where(UserModel.telegram_id == telegram_id)
         result = await self.session.execute(stmt)
         db_user = result.scalar_one_or_none()

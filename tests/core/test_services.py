@@ -46,7 +46,10 @@ async def test_get_or_create_new_exercise_from_repo(
 
     assert exercise == fill_in_the_blank_exercise
     mock_exercise_repository.get_new_exercise.assert_awaited_once_with(
-        user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
+        user=user,
+        language_level='beginner',
+        topic='general',
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
     )
     mock_exercise_repository.save.assert_not_awaited()
 
@@ -72,10 +75,16 @@ async def test_get_or_create_new_exercise_from_llm(
 
     assert exercise == fill_in_the_blank_exercise
     mock_exercise_repository.get_new_exercise.assert_awaited_once_with(
-        user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
+        user=user,
+        language_level='beginner',
+        topic='general',
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
     )
     mock_llm_service.generate_exercise.assert_awaited_once_with(
-        user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
+        user=user,
+        language_level='beginner',
+        topic='general',
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
     )
     mock_exercise_repository.save.assert_awaited_once_with(
         fill_in_the_blank_exercise

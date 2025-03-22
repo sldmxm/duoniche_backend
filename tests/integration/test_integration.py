@@ -3,6 +3,7 @@ import asyncio
 import pytest
 
 from app.core.enums import ExerciseType
+from app.db.models.user import User as UserModel
 from tests.conftest import TestSQLAlchemyExerciseAttemptRepository
 
 pytestmark = pytest.mark.asyncio(scope='function')
@@ -10,7 +11,10 @@ pytestmark = pytest.mark.asyncio(scope='function')
 
 @pytest.mark.asyncio
 async def test_get_new_exercise(
-    client, sample_exercise, sample_exercise_request_data
+    client,
+    sample_exercise,
+    sample_exercise_request_data,
+    add_db_user,
 ):
     """Test getting a new exercise from the API."""
     response = await client.post(
@@ -33,6 +37,7 @@ async def test_validate_exercise_correct_with_db(
     client,
     request_data_correct_answer_for_sample_exercise,
     add_db_correct_exercise_answer,
+    add_db_user,
 ):
     """Test validating an exercise with correct answer
     with adding correct answer into db via fixture."""
@@ -54,6 +59,7 @@ async def test_validate_exercise_incorrect(
     request_data_incorrect_answer_for_sample_exercise,
     sample_exercise,
     add_db_incorrect_exercise_answer,
+    add_db_user,
 ):
     """Test validating an exercise with incorrect answer."""
     response = await client.post(
@@ -93,6 +99,7 @@ async def test_multiple_requests_same_user(
     add_db_incorrect_exercise_answer,
     request_data_correct_answer_for_sample_exercise,
     request_data_incorrect_answer_for_sample_exercise,
+    add_db_user,
 ):
     """
     Test simulating a real user making a series of requests:
@@ -160,21 +167,25 @@ async def test_concurrent_requests(
     num_users = 5
     exercise_responses = []
 
-    async def user_task(user_id):
+    async def user_task(telegram_id):
         user_specific_data = {
-            'user_id': user_id,
-            'telegram_id': user_id,
-            'username': f'user_{user_id}',
-            'name': f'User {user_id}',
+            'telegram_id': telegram_id,
+            'username': f'user_{telegram_id}',
+            'name': f'User {telegram_id}',
             'user_language': 'en',
             'target_language': 'en',
         }
+        db_user = UserModel(**user_specific_data)
+        async_session.add(db_user)
+        await async_session.commit()
+        await async_session.refresh(db_user)
+        await asyncio.sleep(0.1)
 
         try:
             response = await client.post(
                 '/api/v1/exercises/new',
                 json={
-                    **user_specific_data,
+                    'user_id': db_user.user_id,
                     'language_level': sample_exercise_request_data[
                         'language_level'
                     ],
@@ -195,7 +206,7 @@ async def test_concurrent_requests(
                 json={
                     **request_data_correct_answer_for_sample_exercise,
                     'exercise_id': exercise_data['exercise_id'],
-                    **user_specific_data,
+                    'user_id': db_user.user_id,
                 },
             )
 
@@ -205,13 +216,13 @@ async def test_concurrent_requests(
 
             return exercise_data
         except Exception as e:
-            print(f'Error in user_task for user {user_id}: {str(e)}')
+            print(f'Error in user_task for user {telegram_id}: {str(e)}')
             raise
 
     results = []
     for i in range(num_users):
-        user_id = f'{i}'
-        result = await user_task(user_id)
+        telegram_id = f'{i}'
+        result = await user_task(telegram_id)
         results.append(result)
         await asyncio.sleep(0.1)
 
@@ -233,5 +244,5 @@ async def test_concurrent_requests(
     assert len(exercise_attempts) == num_users
 
     user_ids_with_attempts = {attempt.user_id for attempt in exercise_attempts}
-    expected_user_ids = set(range(num_users))
+    expected_user_ids = set(range(1, num_users + 1))
     assert user_ids_with_attempts == expected_user_ids

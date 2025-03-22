@@ -43,3 +43,4 @@ asyncio_mode = 'auto'
 markers = [
     'asyncio: mark test as using asyncio',
 ]
+asyncio_default_fixture_loop_scope = 'function'

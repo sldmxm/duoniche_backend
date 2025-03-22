@@ -25,6 +25,7 @@ class ExerciseRepository(AsyncRepository[Exercise]):
         user: User,
         language_level: str,
         exercise_type: str,
+        topic: str,
     ) -> Optional[Exercise]:
         raise NotImplementedError
 

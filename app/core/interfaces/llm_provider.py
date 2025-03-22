@@ -9,7 +9,11 @@ from app.core.value_objects.answer import Answer
 class LLMProvider(ABC):
     @abstractmethod
     async def generate_exercise(
-        self, user: User, language_level: str, exercise_type: str
+        self,
+        user: User,
+        language_level: str,
+        exercise_type: str,
+        topic: str,
     ) -> tuple[Exercise, Answer]:
         pass
 

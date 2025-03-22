@@ -226,7 +226,7 @@ async def sample_exercise(db_session: AsyncSession):
 @pytest.fixture
 def sample_exercise_request_data(user_data, sample_exercise):
     return {
-        **user_data,
+        'user_id': user_data['user_id'],
         'language_level': sample_exercise.language_level,
         'exercise_type': sample_exercise.exercise_type,
     }
@@ -237,7 +237,7 @@ def request_data_correct_answer_for_sample_exercise(
     user_data, sample_exercise
 ):
     return {
-        **user_data,
+        'user_id': user_data['user_id'],
         'exercise_id': sample_exercise.exercise_id,
         'answer': {'words': ['exercise']},
     }

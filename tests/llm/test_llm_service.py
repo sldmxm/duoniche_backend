@@ -14,7 +14,7 @@ pytestmark = pytest.mark.asyncio
 def user():
     return User(
         user_id=1,
-        telegram_id=123,
+        telegram_id='123',
         username='testuser',
         name='Test User',
         user_language='russian',

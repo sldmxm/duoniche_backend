@@ -99,7 +99,9 @@ class LLMService(LLMProvider):
                 f"Exercise type '{exercise_type}' is not implemented"
             )
 
-        return await generator(user, language_level, topic)
+        return await generator(
+            user=user, language_level=language_level, topic=topic
+        )
 
     async def _create_llm_chain(
         self,
@@ -147,7 +149,10 @@ class LLMService(LLMProvider):
             raise RuntimeError(f'LLM service error: {e}') from e
 
     async def _generate_fill_in_the_blank_exercise(
-        self, user: User, language_level: str, topic: str = 'general'
+        self,
+        user: User,
+        language_level: str,
+        topic: str,
     ) -> tuple[Exercise, Answer]:
         """Generate a fill-in-the-blank exercise."""
         parser = PydanticOutputParser(

@@ -8,6 +8,7 @@ async def test_get_new_exercise_success(
     client,
     sample_exercise_request_data,
     sample_exercise,
+    add_db_user,
 ):
     """Test successful retrieval of a new exercise."""
 
@@ -23,6 +24,7 @@ async def test_get_new_exercise_success(
 async def test_get_new_exercise_bad_request(
     client,
     user_data,
+    add_db_user,
 ):
     """Test validation with invalid parameters."""
     response = await client.post('/api/v1/exercises/new', json={**user_data})
@@ -55,6 +57,7 @@ async def test_validate_exercise_success(
     client,
     request_data_correct_answer_for_sample_exercise,
     add_db_correct_exercise_answer,
+    add_db_user,
 ):
     """Test successful validation of an exercise attempt."""
     response = await client.post(
@@ -73,6 +76,7 @@ async def test_validate_exercise_success(
 async def test_validate_exercise_bad_request(
     client,
     user_data,
+    add_db_user,
 ):
     """Test validation with invalid parameters."""
     response = await client.post(
@@ -104,6 +108,7 @@ async def test_validate_exercise_bad_request_answer_type(
     client,
     user_data,
     sample_exercise_request_data,
+    add_db_user,
 ):
     """Test validation with invalid parameters."""
 

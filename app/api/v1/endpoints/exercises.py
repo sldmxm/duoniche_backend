@@ -10,16 +10,16 @@ from fastapi import (
 )
 from fastapi.routing import APIRoute
 
-from app.api.dependencies import get_exercise_service
+from app.api.dependencies import get_exercise_service, get_user_service
 from app.api.errors import NotFoundError
 from app.api.schemas.answer import FillInTheBlankAnswerSchema
 from app.api.schemas.exercise import ExerciseSchema
 from app.api.schemas.validation_result import ValidationResultSchema
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
-from app.core.entities.user import User
 from app.core.enums import ExerciseType
 from app.core.services.exercise import ExerciseService
+from app.core.services.user import UserService
 from app.core.value_objects.answer import FillInTheBlankAnswer
 
 logger = logging.getLogger(__name__)
@@ -40,16 +40,12 @@ async def get_or_create_new_exercise(
     exercise_service: Annotated[
         ExerciseService, Depends(get_exercise_service)
     ],
+    user_service: Annotated[UserService, Depends(get_user_service)],
     language_level: Annotated[str, Body(description='Language level')],
     exercise_type: Annotated[
         ExerciseType, Body(description='Type of exercise')
     ],
-    user_id: Annotated[str, Body()],
-    telegram_id: Annotated[str, Body()],
-    user_language: Annotated[str, Body()],
-    target_language: Annotated[str, Body()],
-    username: Annotated[Optional[str], Body()] = '',
-    name: Annotated[Optional[str], Body()] = '',
+    user_id: Annotated[int, Body(description='User ID')],
 ) -> ExerciseSchema:
     """
     Get or create a new exercise for the user based on their
@@ -58,16 +54,11 @@ async def get_or_create_new_exercise(
     Returns a 404 error if no suitable exercise is found.
     """
     try:
-        # TODO: брать из БД данные юзера, принимать только id,
-        #   сейчас криво - создается пользователь с target_language
-        user = User(
-            user_id=int(user_id),
-            telegram_id=telegram_id,
-            username=username,
-            name=name,
-            user_language=user_language,
-            target_language=target_language,
-        )
+        user = await user_service.get_user_by_id(user_id)
+        if not user:
+            raise NotFoundError(
+                'User with provided ID not found in the database'
+            )
 
         exercise: Optional[
             Exercise
@@ -104,16 +95,12 @@ async def validate_exercise_attempt(
     exercise_service: Annotated[
         ExerciseService, Depends(get_exercise_service)
     ],
+    user_service: Annotated[UserService, Depends(get_user_service)],
     exercise_id: Annotated[int, Body(description='Exercise ID')],
     answer: Annotated[
         FillInTheBlankAnswerSchema, Body(description="User's answer")
     ],
-    user_id: Annotated[str, Body()],
-    telegram_id: Annotated[str, Body()],
-    user_language: Annotated[str, Body()],
-    target_language: Annotated[str, Body()],
-    username: Annotated[Optional[str], Body()] = None,
-    name: Annotated[Optional[str], Body()] = None,
+    user_id: Annotated[int, Body(description='User ID')],
 ) -> ValidationResultSchema:
     """
     Validate a user's answer to an exercise and provide feedback.
@@ -121,14 +108,11 @@ async def validate_exercise_attempt(
     Returns a 404 error if the exercise is not found.
     """
     try:
-        user = User(
-            user_id=int(user_id),
-            telegram_id=telegram_id,
-            username=username,
-            name=name,
-            user_language=user_language,
-            target_language=target_language,
-        )
+        user = await user_service.get_user_by_id(user_id)
+        if not user:
+            raise NotFoundError(
+                'User with provided ID not found in the database'
+            )
 
         exercise: Optional[
             Exercise

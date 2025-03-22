@@ -34,6 +34,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         user: User,
         language_level: str,
         exercise_type: str,
+        topic: str,
     ) -> Optional[Exercise]:
         answered_exercise_ids_subquery = (
             select(ExerciseAttemptModel.exercise_id)
@@ -48,6 +49,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
                     ExerciseModel.language_level == language_level,
                     ExerciseModel.exercise_type == exercise_type,
                     ExerciseModel.exercise_language == user.target_language,
+                    ExerciseModel.topic == topic,
                     ExerciseModel.exercise_id.notin_(
                         answered_exercise_ids_subquery
                     ),

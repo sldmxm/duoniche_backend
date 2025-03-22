@@ -29,7 +29,11 @@ class ExerciseService:
         self.llm_service = llm_service
 
     async def get_or_create_new_exercise(
-        self, user: User, language_level: str, exercise_type: str
+        self,
+        user: User,
+        language_level: str,
+        exercise_type: str,
+        topic: str = 'general',
     ) -> Optional[Exercise]:
         # TODO: Добавить обработку исключений:
         #  What happens if the LLM service raises an exception?
@@ -41,11 +45,14 @@ class ExerciseService:
         #  то генерировать новые заранее
 
         exercise = await self.exercise_repository.get_new_exercise(
-            user, language_level, exercise_type
+            user,
+            language_level,
+            exercise_type,
+            topic,
         )
         if not exercise:
             exercise, answer = await self.llm_service.generate_exercise(
-                user, language_level, exercise_type
+                user, language_level, exercise_type, topic
             )
             exercise = await self.exercise_repository.save(exercise)
             if exercise.exercise_id:

@@ -30,20 +30,22 @@ T = TypeVar('T')
 class FillInTheBlankExerciseDataParsed(BaseModel):
     text_with_blanks: str = Field(
         description='Sentence with one or more blanks. '
-        f'Use "{EXERCISE_FILL_IN_THE_BLANK_BLANKS}" for blanks.'
+        f'Use "{EXERCISE_FILL_IN_THE_BLANK_BLANKS}" for blanks.\n'
+        "Don't write the words in brackets."
     )
     right_words: List[str] = Field(
         description=(
-            'A list of single correct word or words to right fill the blanks. '
+            'A list of *single* word or words to correct fill the blanks. '
             'The number of words must be equal to the number of the blanks.'
         )
     )
     wrong_words: List[str] = Field(
         description=(
-            'A list of 3 single UNIQUE words to wrong fill the blanks: '
-            'with inappropriate in meaning,  '
-            'grammatical, spelling, '
-            'syntactic, semantic or other errors. \n'
+            'A list of 3 single UNIQUE words '
+            'to incorrect fill the blanks with: '
+            'obviously inappropriate in meaning '
+            'OR grammatical\n OR spelling\n'
+            'OR syntactic\n OR semantic OR typo errors.'
         )
     )
 
@@ -74,9 +76,9 @@ class LLMService(LLMProvider):
         self.model = ChatOpenAI(
             api_key=openai_api_key,
             model=model_name,
-            temperature=settings.openai_temperature,
-            max_retries=settings.openai_max_retries,
-            timeout=settings.openai_request_timeout,
+            # temperature=settings.openai_temperature,
+            # max_retries=settings.openai_max_retries,
+            # timeout=settings.openai_request_timeout,
         )
 
     async def generate_exercise(

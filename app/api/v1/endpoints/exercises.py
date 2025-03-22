@@ -46,6 +46,7 @@ async def get_or_create_new_exercise(
         ExerciseType, Body(description='Type of exercise')
     ],
     user_id: Annotated[int, Body(description='User ID')],
+    topic: Annotated[str, Body(description='Exercise topic')] = 'general',
 ) -> ExerciseSchema:
     """
     Get or create a new exercise for the user based on their
@@ -63,7 +64,10 @@ async def get_or_create_new_exercise(
         exercise: Optional[
             Exercise
         ] = await exercise_service.get_or_create_new_exercise(
-            user, language_level, exercise_type.value
+            user=user,
+            language_level=language_level,
+            exercise_type=exercise_type.value,
+            topic=topic,
         )
 
         logger.debug(f'Exercise: {exercise}')

@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Any, Dict, List, Tuple, TypeVar, Union
 
 from langchain_core.output_parsers import (
@@ -43,9 +44,8 @@ class FillInTheBlankExerciseDataParsed(BaseModel):
         description=(
             'A list of 3 single UNIQUE words '
             'to incorrect fill the blanks with: '
-            'obviously inappropriate in meaning '
-            'OR grammatical\n OR spelling\n'
-            'OR syntactic\n OR semantic OR typo errors.'
+            'grammatical OR typo errors '
+            'OR obviously inappropriate in meaning.'
         )
     )
 
@@ -53,14 +53,14 @@ class FillInTheBlankExerciseDataParsed(BaseModel):
 class AttemptValidationResponse(BaseModel):
     is_correct: bool = Field(description='Whether the answer is correct')
     feedback: str = Field(
-        description="Feedback for the user in USER'S language. "
-        'If answer is correct, empty string. '
+        description='If answer is correct, empty string. '
         'Else answer the question "What\'s wrong with this user answer?" '
-        '- clearly explain grammatical, spelling, '
-        'syntactic, semantic or other errors. '
-        'Don\'t write "Wrong answer", "Try again" '
+        '- clearly shortly explain grammatical, spelling, '
+        'syntactic, semantic or other errors.\n '
+        'Warning! Don\'t write "Wrong answer", "Try again" '
         'or other phrases that provide '
         'no practical benefit to the user.'
+        "Warning! Feedback for the user in USER'S language."
     )
 
 
@@ -189,6 +189,12 @@ class LLMService(LLMProvider):
         # TODO: если правильных слов больше чем пропусков,
         #  удалить лишние правильные слова
 
+        text_with_blanks = re.sub(
+            r'_{2,}',
+            EXERCISE_FILL_IN_THE_BLANK_BLANKS,
+            parsed_data.text_with_blanks,
+        )
+
         return Exercise(
             exercise_id=None,
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
@@ -197,7 +203,7 @@ class LLMService(LLMProvider):
             topic=topic,
             exercise_text=EXERCISE_FILL_IN_THE_BLANK_TASK,
             data=FillInTheBlankExerciseData(
-                text_with_blanks=parsed_data.text_with_blanks,
+                text_with_blanks=text_with_blanks,
                 words=parsed_data.right_words + parsed_data.wrong_words,
             ),
         ), FillInTheBlankAnswer(words=parsed_data.right_words)

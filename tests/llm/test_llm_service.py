@@ -1,5 +1,6 @@
 import pytest
 
+from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
 from app.core.enums import ExerciseType
@@ -8,6 +9,11 @@ from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.llm_service import LLMService
 
 pytestmark = pytest.mark.asyncio
+
+llm_service = LLMService(
+    openai_api_key=settings.openai_api_key,
+    model_name='gpt-4o-mini-2024-07-18',
+)
 
 
 @pytest.fixture()
@@ -23,8 +29,6 @@ def user():
 
 
 async def test_generate_fill_in_the_blank_exercise(user):
-    llm_service = LLMService()
-
     try:
         exercise, answer = await llm_service.generate_exercise(
             user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
@@ -39,8 +43,6 @@ async def test_generate_fill_in_the_blank_exercise(user):
 
 
 async def test_validate_attempt_correct(user):
-    llm_service = LLMService()
-
     exercise = Exercise(
         exercise_id=1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
@@ -65,8 +67,6 @@ async def test_validate_attempt_correct(user):
 
 
 async def test_validate_attempt_incorrect(user):
-    llm_service = LLMService()
-
     exercise = Exercise(
         exercise_id=1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,

@@ -76,7 +76,7 @@ async def test_validate_exercise_incorrect(
 
 @pytest.mark.asyncio
 async def test_exercise_not_found(
-    client, request_data_correct_answer_for_sample_exercise
+    client, request_data_correct_answer_for_sample_exercise, add_db_user
 ):
     """Test validation with non-existent exercise ID."""
     request_data_correct_answer_for_sample_exercise['exercise_id'] = 99999

@@ -1,9 +1,10 @@
 from datetime import datetime
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
 
+from app.core.consts import MIN_EXERCISE_COUNT_TO_GENERATE_NEW
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
@@ -39,6 +40,9 @@ async def test_get_or_create_new_exercise_from_repo(
     mock_exercise_repository.get_new_exercise.return_value = (
         fill_in_the_blank_exercise
     )
+    mock_exercise_repository.count_new_exercises.return_value = (
+        MIN_EXERCISE_COUNT_TO_GENERATE_NEW + 1
+    )
 
     exercise = await exercise_service.get_or_create_new_exercise(
         user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
@@ -62,7 +66,12 @@ async def test_get_or_create_new_exercise_from_llm(
     fill_in_the_blank_exercise: Exercise,
     fill_in_the_blank_answer: FillInTheBlankAnswer,
 ):
+    """Abstract situation - we have exercises in DB, but can't get it,
+    so we generate new"""
     mock_exercise_repository.get_new_exercise.return_value = None
+    mock_exercise_repository.count_new_exercises.return_value = (
+        MIN_EXERCISE_COUNT_TO_GENERATE_NEW + 1
+    )
     mock_llm_service.generate_exercise.return_value = (
         fill_in_the_blank_exercise,
         fill_in_the_blank_answer,
@@ -89,6 +98,52 @@ async def test_get_or_create_new_exercise_from_llm(
     mock_exercise_repository.save.assert_awaited_once_with(
         fill_in_the_blank_exercise
     )
+
+
+async def test_get_or_create_new_exercise_generate_in_background(
+    mock_exercise_repository: AsyncMock,
+    mock_llm_service: AsyncMock,
+    exercise_service: ExerciseService,
+    user: User,
+    fill_in_the_blank_exercise: Exercise,
+    fill_in_the_blank_answer: FillInTheBlankAnswer,
+):
+    """Test that a new exercise is generated in the background
+    when the count is below the threshold."""
+    mock_exercise_repository.get_new_exercise.return_value = (
+        fill_in_the_blank_exercise
+    )
+    mock_exercise_repository.count_new_exercises.return_value = (
+        MIN_EXERCISE_COUNT_TO_GENERATE_NEW - 1
+    )
+    mock_llm_service.generate_exercise.return_value = (
+        fill_in_the_blank_exercise,
+        fill_in_the_blank_answer,
+    )
+    mock_exercise_repository.save.return_value = fill_in_the_blank_exercise
+
+    with patch('asyncio.create_task') as mock_create_task:
+        exercise = await exercise_service.get_or_create_new_exercise(
+            user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
+        )
+        assert exercise == fill_in_the_blank_exercise
+
+        mock_create_task.assert_called_once()
+        args, _ = mock_create_task.call_args
+        assert args[0].__name__ == '_generate_and_save_new_exercise'
+
+        mock_exercise_repository.get_new_exercise.assert_awaited_once_with(
+            user=user,
+            language_level='beginner',
+            topic='general',
+            exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        )
+        mock_exercise_repository.count_new_exercises.assert_awaited_once_with(
+            user=user,
+            language_level='beginner',
+            topic='general',
+            exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        )
 
 
 async def test_get_exercise_for_repetition(

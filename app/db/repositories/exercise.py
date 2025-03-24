@@ -76,6 +76,38 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         return None
 
     @override
+    async def count_new_exercises(
+        self,
+        user: User,
+        language_level: str,
+        exercise_type: str,
+        topic: str,
+    ) -> int:
+        answered_exercise_ids_subquery = (
+            select(ExerciseAttemptModel.exercise_id)
+            .where(ExerciseAttemptModel.user_id == user.user_id)
+            .scalar_subquery()
+        )
+
+        stmt = (
+            select(ExerciseModel).where(
+                and_(
+                    ExerciseModel.language_level == language_level,
+                    ExerciseModel.exercise_type == exercise_type,
+                    ExerciseModel.exercise_language == user.target_language,
+                    ExerciseModel.topic == topic,
+                    ExerciseModel.exercise_id.notin_(
+                        answered_exercise_ids_subquery
+                    ),
+                )
+            )
+        ).with_only_columns(func.count())
+
+        result = await self.session.execute(stmt)
+        count = result.scalar_one_or_none() or 0
+        return count
+
+    @override
     async def save(self, exercise: Exercise) -> Exercise:
         db_exercise = ExerciseModel(
             exercise_id=exercise.exercise_id,

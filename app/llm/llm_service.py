@@ -42,10 +42,13 @@ class FillInTheBlankExerciseDataParsed(BaseModel):
     )
     wrong_words: List[str] = Field(
         description=(
-            'A list of 3 single UNIQUE words '
-            'to incorrect fill the blanks with: '
-            'grammatical OR typo errors '
-            'OR obviously inappropriate in meaning.'
+            'A list of 3 single UNIQUE words to incorrectly fill the blanks '
+            'with form OR grammatical OR typo errors '
+            'OR obviously inappropriate in meaning.\n'
+            'Warning! Prioritize incorrect forms of the *CORRECT WORD*, '
+            'wrong grammatical cases, or unrelated nonsense words.\n'
+            'Warning! Make sure NONE of the words could '
+            'logically fit the sentence.'
         )
     )
 

@@ -30,6 +30,16 @@ class ExerciseRepository(AsyncRepository[Exercise]):
         raise NotImplementedError
 
     @abstractmethod
+    async def count_new_exercises(
+        self,
+        user: User,
+        language_level: str,
+        exercise_type: str,
+        topic: str,
+    ) -> int:
+        raise NotImplementedError
+
+    @abstractmethod
     async def get_exercise_for_repetition(
         self,
         user: User,

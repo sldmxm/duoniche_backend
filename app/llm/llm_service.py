@@ -48,7 +48,16 @@ class FillInTheBlankExerciseDataParsed(BaseModel):
             'Warning! Prioritize incorrect forms of the *CORRECT WORD*, '
             'wrong grammatical cases, or unrelated nonsense words.\n'
             'Warning! Make sure NONE of the words could '
-            'logically fit the sentence.'
+            'logically fit the sentence.\n'
+            'Example:\n'
+            'text_with_blanks: '
+            '"После университета он планирует ___ в другой стране."\n'
+            'wrong_words: '
+            '["работать", "путешествовать", "отдыхать", "жить"] '
+            '- плохой результат.\n'
+            'wrong_words: '
+            '["работать", "работает", "работают", "путешественник"] '
+            '- ожидаемый результат.\n'
         )
     )
 

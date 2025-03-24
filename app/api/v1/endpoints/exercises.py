@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Annotated, Optional
 
@@ -10,13 +11,13 @@ from fastapi import (
 )
 from fastapi.routing import APIRoute
 
+from app.api.cache import validation_cache
 from app.api.dependencies import get_exercise_service, get_user_service
 from app.api.errors import NotFoundError
 from app.api.schemas.answer import FillInTheBlankAnswerSchema
 from app.api.schemas.exercise import ExerciseSchema
 from app.api.schemas.validation_result import ValidationResultSchema
 from app.core.entities.exercise import Exercise
-from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.enums import ExerciseType
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
@@ -124,16 +125,22 @@ async def validate_exercise_attempt(
         if not exercise:
             raise NotFoundError(f'Exercise with ID {exercise_id} not found')
 
-        exercise_attempt: ExerciseAttempt = (
-            await exercise_service.validate_exercise_attempt(
+        cache_key = (
+            f'validation_{exercise_id}_{hash(json.dumps(answer.model_dump()))}'
+        )
+
+        validation_result = await validation_cache.get_or_create_validation(
+            key=cache_key,
+            validation_func=lambda: exercise_service.validate_exercise_attempt(
                 user,
                 exercise,
                 FillInTheBlankAnswer(**answer.model_dump()),
-            )
+            ),
         )
+
         return ValidationResultSchema(
-            is_correct=exercise_attempt.is_correct,
-            feedback=exercise_attempt.feedback,
+            is_correct=validation_result.is_correct,
+            feedback=validation_result.feedback,
         )
 
     except ValueError as e:

@@ -117,16 +117,7 @@ async def db_session(
 
 
 @pytest_asyncio.fixture(scope='function')
-async def llm_service():
-    """Fixture for LLMService with proper teardown."""
-    service = LLMService()
-    yield service
-    if hasattr(service, 'client') and hasattr(service.client, 'aclose'):
-        await service.client.aclose()
-
-
-@pytest_asyncio.fixture(scope='function')
-async def exercise_service(db_session: AsyncSession, llm_service):
+async def exercise_service(db_session: AsyncSession):
     """Create ExerciseService with test repositories"""
     service = ExerciseService(
         exercise_repository=TestSQLAlchemyExerciseRepository(db_session),
@@ -136,7 +127,10 @@ async def exercise_service(db_session: AsyncSession, llm_service):
         exercise_answers_repository=TestSQLAlchemyExerciseAnswerRepository(
             db_session
         ),
-        llm_service=llm_service,
+        llm_service=LLMService(
+            openai_api_key=settings.openai_api_key,
+            model_name=settings.openai_test_model_name,
+        ),
     )
     yield service
 

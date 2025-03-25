@@ -12,7 +12,7 @@ pytestmark = pytest.mark.asyncio
 
 llm_service = LLMService(
     openai_api_key=settings.openai_api_key,
-    model_name='gpt-4o-mini-2024-07-18',
+    model_name=settings.openai_test_model_name,
 )
 
 

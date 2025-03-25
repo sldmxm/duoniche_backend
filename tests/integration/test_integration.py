@@ -1,10 +1,14 @@
 import asyncio
 
 import pytest
+from sqlalchemy import text
 
+from app.api.cache import validation_cache
 from app.core.enums import ExerciseType
 from app.db.models.user import User as UserModel
-from tests.conftest import TestSQLAlchemyExerciseAttemptRepository
+from app.db.repositories.exercise_attempt import (
+    SQLAlchemyExerciseAttemptRepository,
+)
 
 pytestmark = pytest.mark.asyncio(scope='function')
 
@@ -51,6 +55,7 @@ async def test_validate_exercise_correct_with_db(
     assert 'is_correct' in data
     assert 'feedback' in data
     assert data['is_correct'] is True
+    validation_cache.clear_cache()
 
 
 @pytest.mark.asyncio
@@ -72,6 +77,7 @@ async def test_validate_exercise_incorrect(
     assert 'is_correct' in data
     assert 'feedback' in data
     assert data['is_correct'] is False
+    validation_cache.clear_cache()
 
 
 @pytest.mark.asyncio
@@ -100,6 +106,7 @@ async def test_multiple_requests_same_user(
     request_data_correct_answer_for_sample_exercise,
     request_data_incorrect_answer_for_sample_exercise,
     add_db_user,
+    async_session,
 ):
     """
     Test simulating a real user making a series of requests:
@@ -108,7 +115,7 @@ async def test_multiple_requests_same_user(
     3. Attempt to solve it correctly.
     4. Get a new exercise.
     """
-    # 1. Get a new exercise (B1 level)
+    # 1. Get a new exercise
     new_exercise_request = {
         **user_data,
         'language_level': sample_exercise.language_level,
@@ -142,15 +149,14 @@ async def test_multiple_requests_same_user(
     assert result['is_correct'] is True
     assert 'feedback' in result
 
-    # 4. Get a new exercise by LLM
     response = await client.post(
         '/api/v1/exercises/new', json=new_exercise_request
     )
-    print(response.json())
 
     assert response.status_code == 200
     new_exercise_data = response.json()
     assert new_exercise_data['exercise_id'] != exercise_id
+    validation_cache.clear_cache()
 
 
 @pytest.mark.asyncio
@@ -234,7 +240,7 @@ async def test_concurrent_requests(
         assert response['exercise_id'] == first_id
         assert response['data']['text_with_blanks'] == first_data_text
 
-    exercise_attempt_repository = TestSQLAlchemyExerciseAttemptRepository(
+    exercise_attempt_repository = SQLAlchemyExerciseAttemptRepository(
         async_session
     )
     exercise_attempts = await exercise_attempt_repository.get_by_exercise_id(
@@ -246,3 +252,103 @@ async def test_concurrent_requests(
     user_ids_with_attempts = {attempt.user_id for attempt in exercise_attempts}
     expected_user_ids = set(range(1, num_users + 1))
     assert user_ids_with_attempts == expected_user_ids
+
+
+@pytest.mark.asyncio
+async def test_validation_cache_multiple_requests(
+    client,
+    user_data,
+    sample_exercise,
+    add_db_correct_exercise_answer,
+    request_data_correct_answer_for_sample_exercise,
+    add_db_user,
+    async_session,
+):
+    """
+    Test that the validation cache works correctly by making multiple
+    requests with the same answer and ensuring that the LLM is only
+    called once.
+    """
+    # Get a new exercise
+    new_exercise_request = {
+        **user_data,
+        'language_level': sample_exercise.language_level,
+        'exercise_type': sample_exercise.exercise_type,
+    }
+
+    response = await client.post(
+        '/api/v1/exercises/new', json=new_exercise_request
+    )
+    assert response.status_code == 200
+    exercise_data = response.json()
+    exercise_id = exercise_data['exercise_id']
+
+    # First validation request
+    request_data_correct_answer_for_sample_exercise['exercise_id'] = (
+        exercise_id
+    )
+    response1 = await client.post(
+        '/api/v1/exercises/validate',
+        json=request_data_correct_answer_for_sample_exercise,
+    )
+    assert response1.status_code == 200
+    result1 = response1.json()
+    assert result1['is_correct'] is True
+    assert 'feedback' in result1
+
+    # Second validation request (same answer)
+    response2 = await client.post(
+        '/api/v1/exercises/validate',
+        json=request_data_correct_answer_for_sample_exercise,
+    )
+    assert response2.status_code == 200
+    result2 = response2.json()
+    assert result2['is_correct'] is True
+    assert 'feedback' in result2
+
+    # Check that the results are the same (cached)
+    assert result1 == result2
+    validation_cache.clear_cache()
+
+
+@pytest.mark.asyncio
+async def test_get_new_exercise_background_task(
+    client,
+    user_data,
+    sample_exercise,
+    add_db_correct_exercise_answer,
+    add_db_incorrect_exercise_answer,
+    request_data_correct_answer_for_sample_exercise,
+    request_data_incorrect_answer_for_sample_exercise,
+    add_db_user,
+    async_session,
+):
+    """
+    Test that a new exercise is generated in the background
+    when the count is below the threshold.
+    """
+    new_exercise_request = {
+        **user_data,
+        'language_level': sample_exercise.language_level,
+        'exercise_type': sample_exercise.exercise_type,
+    }
+    stmt = text('SELECT COUNT(*) FROM exercises')
+    result = await async_session.execute(stmt)
+    count = result.scalar_one()
+    assert count == 1
+    response = await client.post(
+        '/api/v1/exercises/new', json=new_exercise_request
+    )
+    assert response.status_code == 200
+
+    stmt = text('SELECT COUNT(*) FROM exercises')
+    result = await async_session.execute(stmt)
+    count = result.scalar_one()
+    assert count == 1
+
+    await asyncio.sleep(10)
+
+    stmt = text('SELECT COUNT(*) FROM exercises')
+    result = await async_session.execute(stmt)
+    count = result.scalar_one()
+    assert count > 1

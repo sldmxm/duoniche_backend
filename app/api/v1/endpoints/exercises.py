@@ -131,16 +131,24 @@ async def validate_exercise_attempt(
 
         validation_result = await validation_cache.get_or_create_validation(
             key=cache_key,
-            validation_func=lambda: exercise_service.validate_exercise_attempt(
+            validation_func=lambda: exercise_service.validate_exercise_answer(
                 user,
                 exercise,
                 FillInTheBlankAnswer(**answer.model_dump()),
             ),
         )
-
-        return ValidationResultSchema(
+        exercise_attempt = await exercise_service.record_exercise_attempt(
+            user=user,
+            exercise=exercise,
+            answer=FillInTheBlankAnswer(**answer.model_dump()),
             is_correct=validation_result.is_correct,
             feedback=validation_result.feedback,
+            exercise_answer_id=validation_result.answer_id,
+        )
+
+        return ValidationResultSchema(
+            is_correct=exercise_attempt.is_correct,
+            feedback=exercise_attempt.feedback,
         )
 
     except ValueError as e:

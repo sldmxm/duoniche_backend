@@ -12,6 +12,7 @@ from app.core.entities.user import User
 from app.core.enums import ExerciseType
 from app.core.services.exercise import ExerciseService
 from app.core.value_objects.answer import FillInTheBlankAnswer
+from app.core.value_objects.exercise import FillInTheBlankExerciseData
 
 pytestmark = pytest.mark.asyncio
 
@@ -187,7 +188,6 @@ async def test_get_exercise_by_id(
 
 async def test_validate_exercise_attempt_correct_exercise(
     mock_llm_service: AsyncMock,
-    mock_exercise_attempt_repository: AsyncMock,
     mock_exercise_answer_repository: AsyncMock,
     exercise_service: ExerciseService,
     user: User,
@@ -206,19 +206,12 @@ async def test_validate_exercise_attempt_correct_exercise(
     mock_exercise_answer_repository.get_by_exercise_and_answer.return_value = (
         exercise_answer
     )
-    new_exercise_attempt = ExerciseAttempt(
-        attempt_id=None,
-        user_id=user.user_id,
-        exercise_id=fill_in_the_blank_exercise.exercise_id,
-        answer=fill_in_the_blank_answer,
-        is_correct=True,
-        feedback='Correct!',
-        exercise_answer_id=exercise_answer.answer_id,
-    )
-    mock_exercise_attempt_repository.save.return_value = new_exercise_attempt
+    mock_exercise_answer_repository.save.return_value = exercise_answer
 
-    exercise_attempt = await exercise_service.validate_exercise_attempt(
-        user, fill_in_the_blank_exercise, fill_in_the_blank_answer
+    validated_exercise_answer = (
+        await exercise_service.validate_exercise_answer(
+            user, fill_in_the_blank_exercise, fill_in_the_blank_answer
+        )
     )
 
     mock_exercise_answer_repository.get_by_exercise_and_answer.assert_awaited_once_with(
@@ -226,24 +219,15 @@ async def test_validate_exercise_attempt_correct_exercise(
     )
     mock_llm_service.validate_attempt.assert_not_awaited()
     mock_exercise_answer_repository.save.assert_not_awaited()
-    mock_exercise_attempt_repository.save.assert_awaited_once_with(
-        new_exercise_attempt
-    )
-    assert exercise_attempt.attempt_id is None
-    assert exercise_attempt.user_id == new_exercise_attempt.user_id
-    assert exercise_attempt.exercise_id == new_exercise_attempt.exercise_id
-    assert exercise_attempt.answer == new_exercise_attempt.answer
-    assert exercise_attempt.is_correct == new_exercise_attempt.is_correct
-    assert exercise_attempt.feedback == new_exercise_attempt.feedback
-    assert (
-        exercise_attempt.exercise_answer_id
-        == new_exercise_attempt.exercise_answer_id
-    )
+    assert validated_exercise_answer.answer_id is exercise_answer.answer_id
+    assert validated_exercise_answer.exercise_id == exercise_answer.exercise_id
+    assert validated_exercise_answer.answer == exercise_answer.answer
+    assert validated_exercise_answer.is_correct == exercise_answer.is_correct
+    assert validated_exercise_answer.feedback == exercise_answer.feedback
 
 
 async def test_validate_exercise_attempt_incorrect_exercise(
     mock_llm_service: AsyncMock,
-    mock_exercise_attempt_repository: AsyncMock,
     mock_exercise_answer_repository: AsyncMock,
     exercise_service: ExerciseService,
     user: User,
@@ -262,18 +246,9 @@ async def test_validate_exercise_attempt_incorrect_exercise(
     mock_exercise_answer_repository.get_by_exercise_and_answer.return_value = (
         exercise_answer
     )
-    new_exercise_attempt = ExerciseAttempt(
-        attempt_id=None,
-        user_id=user.user_id,
-        exercise_id=fill_in_the_blank_exercise.exercise_id,
-        answer=fill_in_the_blank_answer,
-        is_correct=False,
-        feedback='Wrong!',
-        exercise_answer_id=exercise_answer.answer_id,
-    )
-    mock_exercise_attempt_repository.save.return_value = new_exercise_attempt
+    mock_exercise_answer_repository.save.return_value = exercise_answer
 
-    exercise_attempt = await exercise_service.validate_exercise_attempt(
+    exercise_answer = await exercise_service.validate_exercise_answer(
         user, fill_in_the_blank_exercise, fill_in_the_blank_answer
     )
 
@@ -282,25 +257,16 @@ async def test_validate_exercise_attempt_incorrect_exercise(
     )
     mock_llm_service.validate_attempt.assert_not_awaited()
     mock_exercise_answer_repository.save.assert_not_awaited()
-    mock_exercise_attempt_repository.save.assert_awaited_once_with(
-        new_exercise_attempt
-    )
-    assert exercise_attempt.attempt_id is None
-    assert exercise_attempt.user_id == new_exercise_attempt.user_id
-    assert exercise_attempt.exercise_id == new_exercise_attempt.exercise_id
-    assert exercise_attempt.answer == new_exercise_attempt.answer
-    assert exercise_attempt.is_correct == new_exercise_attempt.is_correct
-    assert exercise_attempt.feedback == new_exercise_attempt.feedback
-    assert (
-        exercise_attempt.exercise_answer_id
-        == new_exercise_attempt.exercise_answer_id
-    )
+    assert exercise_answer.answer_id is exercise_answer.answer_id
+    assert exercise_answer.exercise_id == exercise_answer.exercise_id
+    assert exercise_answer.answer == exercise_answer.answer
+    assert exercise_answer.is_correct == exercise_answer.is_correct
+    assert exercise_answer.feedback == exercise_answer.feedback
 
 
 @pytest.mark.asyncio
 async def test_validate_exercise_attempt_new_correct(
     mock_llm_service: AsyncMock,
-    mock_exercise_attempt_repository: AsyncMock,
     mock_exercise_answer_repository: AsyncMock,
     exercise_service: ExerciseService,
     user: User,
@@ -326,18 +292,7 @@ async def test_validate_exercise_attempt_new_correct(
         new_exercise_answer
     ]
 
-    new_exercise_attempt = ExerciseAttempt(
-        attempt_id=None,
-        user_id=user.user_id,
-        exercise_id=fill_in_the_blank_exercise.exercise_id,
-        answer=fill_in_the_blank_answer,
-        is_correct=True,
-        feedback='Correct!',
-        exercise_answer_id=new_exercise_answer.answer_id,
-    )
-    mock_exercise_attempt_repository.save.return_value = new_exercise_attempt
-
-    exercise_attempt = await exercise_service.validate_exercise_attempt(
+    exercise_answer = await exercise_service.validate_exercise_answer(
         user, fill_in_the_blank_exercise, fill_in_the_blank_answer
     )
 
@@ -362,26 +317,12 @@ async def test_validate_exercise_attempt_new_correct(
     assert saved_call_args.is_correct
     assert saved_call_args.feedback == 'Correct!'
     assert saved_call_args.created_by == f'LLM:user:{user.user_id}'
-
-    mock_exercise_attempt_repository.save.assert_awaited_once_with(
-        new_exercise_attempt
-    )
-    assert exercise_attempt.user_id == new_exercise_attempt.user_id
-    assert exercise_attempt.exercise_id == new_exercise_attempt.exercise_id
-    assert exercise_attempt.answer == new_exercise_attempt.answer
-    assert exercise_attempt.is_correct == new_exercise_attempt.is_correct
-    assert exercise_attempt.feedback == new_exercise_attempt.feedback
-    assert (
-        exercise_attempt.exercise_answer_id
-        == new_exercise_attempt.exercise_answer_id
-    )
-    assert exercise_attempt == new_exercise_attempt
+    assert exercise_answer == new_exercise_answer
 
 
 @pytest.mark.asyncio
 async def test_validate_exercise_attempt_new_incorrect(
     mock_llm_service: AsyncMock,
-    mock_exercise_attempt_repository: AsyncMock,
     mock_exercise_answer_repository: AsyncMock,
     exercise_service: ExerciseService,
     user: User,
@@ -393,7 +334,7 @@ async def test_validate_exercise_attempt_new_incorrect(
         None
     )
     new_exercise_answer = ExerciseAnswer(
-        answer_id=1,
+        answer_id=None,
         exercise_id=fill_in_the_blank_exercise.exercise_id,
         answer=fill_in_the_blank_answer,
         is_correct=False,
@@ -402,30 +343,31 @@ async def test_validate_exercise_attempt_new_incorrect(
         created_at=datetime.now(),
     )
     mock_exercise_answer_repository.save.return_value = new_exercise_answer
-    new_exercise_attempt = ExerciseAttempt(
-        attempt_id=None,
-        user_id=user.user_id,
-        exercise_id=fill_in_the_blank_exercise.exercise_id,
-        answer=fill_in_the_blank_answer,
-        is_correct=False,
-        feedback='Wrong!',
-        exercise_answer_id=new_exercise_answer.answer_id,
-    )
-    mock_exercise_attempt_repository.save.return_value = new_exercise_attempt
+    mock_ex_ans_repo = mock_exercise_answer_repository
+    mock_ex_ans_repo.get_correct_answers_by_exercise_id.return_value = [
+        ExerciseAnswer(
+            answer_id=1,
+            exercise_id=fill_in_the_blank_exercise.exercise_id,
+            answer=fill_in_the_blank_answer,
+            is_correct=True,
+            feedback='Correct!',
+            created_by='LLM',
+            created_at=datetime.now(),
+        )
+    ]
 
-    exercise_attempt = await exercise_service.validate_exercise_attempt(
+    exercise_answer = await exercise_service.validate_exercise_answer(
         user, fill_in_the_blank_exercise, fill_in_the_blank_answer
     )
 
     mock_exercise_answer_repository.get_by_exercise_and_answer.assert_awaited_once_with(
         fill_in_the_blank_exercise.exercise_id, fill_in_the_blank_answer
     )
-    right_answers = []
     mock_llm_service.validate_attempt.assert_awaited_once_with(
         user,
         fill_in_the_blank_exercise,
         fill_in_the_blank_answer,
-        right_answers,
+        [fill_in_the_blank_answer],
     )
     saved_call_args = mock_exercise_answer_repository.save.await_args[0][0]
     assert saved_call_args.answer_id is None
@@ -433,20 +375,71 @@ async def test_validate_exercise_attempt_new_incorrect(
         saved_call_args.exercise_id == fill_in_the_blank_exercise.exercise_id
     )
     assert saved_call_args.answer == fill_in_the_blank_answer
-    assert saved_call_args.is_correct is False
+    assert not saved_call_args.is_correct
     assert saved_call_args.feedback == 'Wrong!'
     assert saved_call_args.created_by == f'LLM:user:{user.user_id}'
+    assert exercise_answer == new_exercise_answer
+
+
+@pytest.mark.asyncio
+async def test_record_exercise_attempt(
+    mock_exercise_attempt_repository: AsyncMock,
+    exercise_service: ExerciseService,
+    user: User,
+    fill_in_the_blank_exercise: Exercise,
+    fill_in_the_blank_answer: FillInTheBlankAnswer,
+):
+    new_exercise_attempt = ExerciseAttempt(
+        attempt_id=None,
+        user_id=user.user_id,
+        exercise_id=fill_in_the_blank_exercise.exercise_id,
+        answer=fill_in_the_blank_answer,
+        is_correct=True,
+        feedback='Correct!',
+        exercise_answer_id=1,
+    )
+    mock_exercise_attempt_repository.save.return_value = new_exercise_attempt
+
+    exercise_attempt = await exercise_service.record_exercise_attempt(
+        user,
+        fill_in_the_blank_exercise,
+        fill_in_the_blank_answer,
+        True,
+        'Correct!',
+        1,
+    )
 
     mock_exercise_attempt_repository.save.assert_awaited_once_with(
         new_exercise_attempt
     )
-    assert exercise_attempt.user_id == new_exercise_attempt.user_id
-    assert exercise_attempt.exercise_id == new_exercise_attempt.exercise_id
-    assert exercise_attempt.answer == new_exercise_attempt.answer
-    assert exercise_attempt.is_correct == new_exercise_attempt.is_correct
-    assert exercise_attempt.feedback == new_exercise_attempt.feedback
-    assert (
-        exercise_attempt.exercise_answer_id
-        == new_exercise_attempt.exercise_answer_id
-    )
     assert exercise_attempt == new_exercise_attempt
+
+
+@pytest.mark.asyncio
+async def test_record_exercise_attempt_exercise_id_none(
+    exercise_service: ExerciseService,
+    user: User,
+    fill_in_the_blank_answer,
+):
+    fill_in_the_blank_data = FillInTheBlankExerciseData(
+        text_with_blanks='This is a test ____ for learning.',
+        words=['exercise'],
+    )
+    with pytest.raises(ValueError) as exc_info:
+        await exercise_service.record_exercise_attempt(
+            user,
+            Exercise(
+                exercise_id=None,
+                exercise_type='fill_in_the_blank',
+                exercise_language='en',
+                language_level='B1',
+                topic='general',
+                exercise_text='Fill in the blank in the sentence.',
+                data=fill_in_the_blank_data,
+            ),
+            fill_in_the_blank_answer,
+            True,
+            'Correct!',
+            exercise_answer_id=1,
+        )
+    assert 'Exercise ID must not be None' in str(exc_info.value)

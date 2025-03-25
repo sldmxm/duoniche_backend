@@ -44,29 +44,28 @@ from app.db.repositories.exercise_attempt import (
 from app.llm.llm_service import LLMService
 from app.main import app
 
-
-class TestSQLAlchemyExerciseRepository(SQLAlchemyExerciseRepository):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session)
-
-
-class TestSQLAlchemyExerciseAnswerRepository(
-    SQLAlchemyExerciseAnswerRepository
-):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session)
-
-
-class TestSQLAlchemyExerciseAttemptRepository(
-    SQLAlchemyExerciseAttemptRepository
-):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session)
-
-
-class TestSQLAlchemyUserRepository(SQLAlchemyUserRepository):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session)
+# class TestSQLAlchemyExerciseRepository(SQLAlchemyExerciseRepository):
+#     def __init__(self, session: AsyncSession):
+#         super().__init__(session)
+#
+#
+# class TestSQLAlchemyExerciseAnswerRepository(
+#     SQLAlchemyExerciseAnswerRepository
+# ):
+#     def __init__(self, session: AsyncSession):
+#         super().__init__(session)
+#
+#
+# class TestSQLAlchemyExerciseAttemptRepository(
+#     SQLAlchemyExerciseAttemptRepository
+# ):
+#     def __init__(self, session: AsyncSession):
+#         super().__init__(session)
+#
+#
+# class TestSQLAlchemyUserRepository(SQLAlchemyUserRepository):
+#     def __init__(self, session: AsyncSession):
+#         super().__init__(session)
 
 
 @pytest_asyncio.fixture(scope='session')
@@ -120,11 +119,11 @@ async def db_session(
 async def exercise_service(db_session: AsyncSession):
     """Create ExerciseService with test repositories"""
     service = ExerciseService(
-        exercise_repository=TestSQLAlchemyExerciseRepository(db_session),
-        exercise_attempt_repository=TestSQLAlchemyExerciseAttemptRepository(
+        exercise_repository=SQLAlchemyExerciseRepository(db_session),
+        exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
             db_session
         ),
-        exercise_answers_repository=TestSQLAlchemyExerciseAnswerRepository(
+        exercise_answers_repository=SQLAlchemyExerciseAnswerRepository(
             db_session
         ),
         llm_service=LLMService(
@@ -138,9 +137,7 @@ async def exercise_service(db_session: AsyncSession):
 @pytest_asyncio.fixture(scope='function')
 async def user_service(db_session: AsyncSession):
     """Create ExerciseService with test repositories"""
-    service = UserService(
-        user_repository=TestSQLAlchemyUserRepository(db_session)
-    )
+    service = UserService(user_repository=SQLAlchemyUserRepository(db_session))
     yield service
 
 
@@ -371,7 +368,7 @@ async def add_db_incorrect_exercise_answer(
     sample_exercise,
     request_data_incorrect_answer_for_sample_exercise,
 ):
-    """Create a incorrect ExerciseAnswerModel in the database."""
+    """Create an incorrect ExerciseAnswerModel in the database."""
     exercise_answer = ExerciseAnswer(
         exercise_id=sample_exercise.exercise_id,
         answer=FillInTheBlankAnswer(

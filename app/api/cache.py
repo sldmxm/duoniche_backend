@@ -41,5 +41,9 @@ class ValidationCache:
 
             return result
 
+    def clear_cache(self):
+        self._cache.clear()
+        self._locks.clear()
+
 
 validation_cache = ValidationCache()

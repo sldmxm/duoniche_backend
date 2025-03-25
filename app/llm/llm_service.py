@@ -158,6 +158,9 @@ class LLMService(LLMProvider):
         except ValidationError as e:
             logger.error(f'Validation error in LLM response: {e}')
             raise ValueError(f'Invalid response format from LLM: {e}') from e
+        except GeneratorExit:
+            logger.warning('LLM request was interrupted')
+            raise
         except Exception as e:
             logger.error(f'Error during LLM request: {e}')
             raise RuntimeError(f'LLM service error: {e}') from e

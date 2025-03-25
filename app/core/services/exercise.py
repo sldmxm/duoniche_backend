@@ -76,22 +76,26 @@ class ExerciseService:
         exercise_type: str,
         topic: str = 'general',
     ) -> Exercise:
-        exercise, answer = await self.llm_service.generate_exercise(
-            user, language_level, exercise_type, topic
-        )
-        exercise = await self.exercise_repository.save(exercise)
-        if exercise.exercise_id:
-            right_answer = ExerciseAnswer(
-                answer_id=None,
-                exercise_id=exercise.exercise_id,
-                answer=answer,
-                is_correct=True,
-                created_by='LLM',
-                feedback='',
-                created_at=datetime.now(),
+        try:
+            exercise, answer = await self.llm_service.generate_exercise(
+                user, language_level, exercise_type, topic
             )
-            await self.exercise_answer_repository.save(right_answer)
-        return exercise
+            exercise = await self.exercise_repository.save(exercise)
+            if exercise.exercise_id:
+                right_answer = ExerciseAnswer(
+                    answer_id=None,
+                    exercise_id=exercise.exercise_id,
+                    answer=answer,
+                    is_correct=True,
+                    created_by='LLM',
+                    feedback='',
+                    created_at=datetime.now(),
+                )
+                await self.exercise_answer_repository.save(right_answer)
+            return exercise
+        except GeneratorExit:
+            logger.warning('LLM request was interrupted')
+            raise
 
     async def get_exercise_for_repetition(
         self, user: User, language_level: str, exercise_type: str
@@ -103,9 +107,9 @@ class ExerciseService:
     async def get_exercise_by_id(self, exercise_id: int) -> Optional[Exercise]:
         return await self.exercise_repository.get_by_id(exercise_id)
 
-    async def validate_exercise_attempt(
+    async def validate_exercise_answer(
         self, user: User, exercise: Exercise, answer: Answer
-    ) -> ExerciseAttempt:
+    ) -> ExerciseAnswer:
         if exercise.exercise_id is None:
             raise ValueError('Exercise ID must not be None')
         exercise_answer = (
@@ -113,17 +117,7 @@ class ExerciseService:
                 exercise.exercise_id, answer
             )
         )
-        if exercise_answer:
-            exercise_attempt = ExerciseAttempt(
-                attempt_id=None,
-                user_id=user.user_id,
-                exercise_id=exercise.exercise_id,
-                answer=answer,
-                is_correct=exercise_answer.is_correct,
-                feedback=exercise_answer.feedback,
-                exercise_answer_id=exercise_answer.answer_id,
-            )
-        else:
+        if not exercise_answer:
             repo = self.exercise_answer_repository
             correct_answers = [
                 exercise_answer.answer
@@ -152,15 +146,28 @@ class ExerciseService:
             exercise_answer = await self.exercise_answer_repository.save(
                 exercise_answer
             )
-            exercise_attempt = ExerciseAttempt(
-                attempt_id=None,
-                user_id=user.user_id,
-                exercise_id=exercise.exercise_id,
-                answer=answer,
-                is_correct=is_correct,
-                feedback=feedback,
-                exercise_answer_id=exercise_answer.answer_id,
-            )
+        return exercise_answer
+
+    async def record_exercise_attempt(
+        self,
+        user: User,
+        exercise: Exercise,
+        answer: Answer,
+        is_correct: bool,
+        feedback: str,
+        exercise_answer_id: Optional[int] = None,
+    ) -> ExerciseAttempt:
+        if exercise.exercise_id is None:
+            raise ValueError('Exercise ID must not be None')
+        exercise_attempt = ExerciseAttempt(
+            attempt_id=None,
+            user_id=user.user_id,
+            exercise_id=exercise.exercise_id,
+            answer=answer,
+            is_correct=is_correct,
+            feedback=feedback,
+            exercise_answer_id=exercise_answer_id,
+        )
         exercise_attempt = await self.exercise_attempt_repository.save(
             exercise_attempt
         )

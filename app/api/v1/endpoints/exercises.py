@@ -56,7 +56,7 @@ async def get_or_create_new_exercise(
     Returns a 404 error if no suitable exercise is found.
     """
     try:
-        user = await user_service.get_user_by_id(user_id)
+        user = await user_service.get_by_id(user_id)
         if not user:
             raise NotFoundError(
                 'User with provided ID not found in the database'
@@ -113,7 +113,7 @@ async def validate_exercise_attempt(
     Returns a 404 error if the exercise is not found.
     """
     try:
-        user = await user_service.get_user_by_id(user_id)
+        user = await user_service.get_by_id(user_id)
         if not user:
             raise NotFoundError(
                 'User with provided ID not found in the database'

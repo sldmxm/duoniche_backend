@@ -39,6 +39,18 @@ class SQLAlchemyUserRepository(UserRepository):
         return [User.model_validate(user.__dict__) for user in users]
 
     @override
+    async def update(self, user: User) -> User:
+        db_user = await self.session.get(UserModel, user.user_id)
+        if not db_user:
+            raise ValueError('User does not exist')
+
+        for field, value in user.model_dump().items():
+            setattr(db_user, field, value)
+
+        await self.session.commit()
+        return User.model_validate(db_user.__dict__)
+
+    @override
     async def save(self, user: User) -> User:
         db_user = UserModel(**user.model_dump())
         self.session.add(db_user)

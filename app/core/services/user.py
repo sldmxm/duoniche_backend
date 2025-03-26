@@ -11,15 +11,17 @@ class UserService:
     def __init__(self, user_repository: UserRepository):
         self.user_repository = user_repository
 
-    async def get_user_by_id(self, user_id: int) -> User | None:
+    async def get_by_id(self, user_id: int) -> User | None:
         return await self.user_repository.get_by_id(user_id)
 
-    async def get_user_by_telegram_id(
-        self, telegram_id: str
-    ) -> Optional[User]:
+    async def get_by_telegram_id(self, telegram_id: str) -> Optional[User]:
         return await self.user_repository.get_by_telegram_id(telegram_id)
 
-    async def get_or_create_user(self, user: User) -> User:
+    async def update(self, user: User) -> User:
+        updated_user = await self.user_repository.update(user)
+        return updated_user
+
+    async def get_or_create(self, user: User) -> User:
         existing_user = await self.user_repository.get_by_telegram_id(
             user.telegram_id
         )

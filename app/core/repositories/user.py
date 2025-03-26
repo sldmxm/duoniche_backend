@@ -15,6 +15,10 @@ class UserRepository(AsyncRepository[User]):
         raise NotImplementedError
 
     @abstractmethod
+    async def update(self, user: User) -> User:
+        raise NotImplementedError
+
+    @abstractmethod
     async def get_all(self) -> List[User]:
         raise NotImplementedError
 

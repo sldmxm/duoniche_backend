@@ -8,7 +8,7 @@ class User(BaseModel):
     telegram_id: str
     username: Optional[str] = None
     name: Optional[str] = None
-    language_level: str = 'beginner'
-    user_language: str = 'Russian'
-    target_language: str = 'Bulgarian'
+    language_level: Optional[str] = None
+    user_language: str = 'RU'
+    target_language: str = 'BG'
     is_active: bool = True

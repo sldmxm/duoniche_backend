@@ -20,3 +20,4 @@ class UserResponse(BaseModel):
     name: Optional[str] = Field(description='Name')
     user_language: str = Field(description='User language')
     target_language: str = Field(description='Target language')
+    language_level: Optional[str] = Field(description='User language level')

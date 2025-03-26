@@ -30,7 +30,8 @@ T = TypeVar('T')
 
 class FillInTheBlankExerciseDataParsed(BaseModel):
     text_with_blanks: str = Field(
-        description='Sentence with one or more blanks. '
+        description='Sentence with one or more blanks.\n'
+        'If sentence consists more than 6 words, make 2 blanks.\n'
         f'Use "{EXERCISE_FILL_IN_THE_BLANK_BLANKS}" for blanks.\n'
         "Don't write the words in brackets."
     )
@@ -63,7 +64,13 @@ class FillInTheBlankExerciseDataParsed(BaseModel):
 
 
 class AttemptValidationResponse(BaseModel):
-    is_correct: bool = Field(description='Whether the answer is correct')
+    is_correct: bool = Field(
+        description='Whether the answer is correct.\n'
+        'If the word order in a sentence is different '
+        'from the correct answer, but this version of '
+        'the sentence has the same meaning, answer that '
+        'the answer is correct.'
+    )
     feedback: str = Field(
         description='If answer is correct, empty string. '
         'Else answer the question "What\'s wrong with this user answer?" '

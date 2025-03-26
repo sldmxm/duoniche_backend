@@ -1,4 +1,13 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from datetime import datetime
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -27,4 +36,7 @@ class ExerciseAttempt(Base):
     exercise = relationship('Exercise', back_populates='attempts')
     exercise_answers = relationship(
         'ExerciseAnswer', back_populates='attempts'
+    )
+    created_at = Column(
+        DateTime(timezone=True), default=datetime.now(), nullable=False
     )

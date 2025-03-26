@@ -12,7 +12,7 @@ def test_user_creation():
     assert user.user_id == 1
     assert user.telegram_id == '123'
     assert user.username == 'testuser'
-    assert user.language_level == 'beginner'
+    assert user.language_level is None
 
 
 def test_exercise_creation():

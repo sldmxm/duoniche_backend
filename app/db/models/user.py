@@ -13,4 +13,4 @@ class User(Base):
     user_language = Column(String, nullable=True)
     target_language = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
-    language_level = Column(String, default='beginner')
+    language_level = Column(String, nullable=True)

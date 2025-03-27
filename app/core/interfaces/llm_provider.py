@@ -3,6 +3,7 @@ from typing import List, Tuple
 
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
+from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.value_objects.answer import Answer
 
 
@@ -11,9 +12,9 @@ class LLMProvider(ABC):
     async def generate_exercise(
         self,
         user: User,
-        language_level: str,
-        exercise_type: str,
-        topic: str,
+        language_level: LanguageLevel,
+        exercise_type: ExerciseType,
+        topic: ExerciseTopic,
     ) -> tuple[Exercise, Answer]:
         pass
 

@@ -18,7 +18,6 @@ from app.api.schemas.answer import FillInTheBlankAnswerSchema
 from app.api.schemas.exercise import ExerciseSchema
 from app.api.schemas.validation_result import ValidationResultSchema
 from app.core.entities.exercise import Exercise
-from app.core.enums import ExerciseType
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
 from app.core.value_objects.answer import FillInTheBlankAnswer
@@ -42,12 +41,7 @@ async def get_or_create_new_exercise(
         ExerciseService, Depends(get_exercise_service)
     ],
     user_service: Annotated[UserService, Depends(get_user_service)],
-    language_level: Annotated[str, Body(description='Language level')],
-    exercise_type: Annotated[
-        ExerciseType, Body(description='Type of exercise')
-    ],
     user_id: Annotated[int, Body(description='User ID')],
-    topic: Annotated[str, Body(description='Exercise topic')] = 'general',
 ) -> ExerciseSchema:
     """
     Get or create a new exercise for the user based on their
@@ -66,9 +60,6 @@ async def get_or_create_new_exercise(
             Exercise
         ] = await exercise_service.get_or_create_new_exercise(
             user=user,
-            language_level=language_level,
-            exercise_type=exercise_type.value,
-            topic=topic,
         )
 
         logger.debug(f'Exercise: {exercise}')

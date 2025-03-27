@@ -1,13 +1,19 @@
 import pytest
 
 from app.core.entities.exercise import Exercise
-from app.core.enums import ExerciseType
+from app.core.entities.exercise_attempt import ExerciseAttempt
+from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
+from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.db.repositories.exercise import SQLAlchemyExerciseRepository
+from app.db.repositories.exercise_attempt import (
+    SQLAlchemyExerciseAttemptRepository,
+)
 
 pytestmark = pytest.mark.asyncio
 
 
+@pytest.mark.asyncio
 async def test_cached_answer_repository(
     db_session,
     add_db_correct_exercise_answer,
@@ -16,6 +22,7 @@ async def test_cached_answer_repository(
     assert add_db_correct_exercise_answer.answer_id == 1
 
 
+@pytest.mark.asyncio
 async def test_exercise_attempt_repository(
     db_session,
     add_db_correct_exercise_answer,
@@ -24,23 +31,26 @@ async def test_exercise_attempt_repository(
     assert add_db_correct_exercise_answer.answer_id == 1
 
 
-async def test_get_by_id(db_session, sample_exercise):
+@pytest.mark.asyncio
+async def test_get_by_id(db_session, db_sample_exercise):
     """Test getting an exercise by ID."""
     repository = SQLAlchemyExerciseRepository(db_session)
-    exercise = await repository.get_by_id(sample_exercise.exercise_id)
-    assert exercise.exercise_id == sample_exercise.exercise_id
-    assert exercise.exercise_type == sample_exercise.exercise_type
-    assert exercise.exercise_language == sample_exercise.exercise_language
-    assert exercise.language_level == sample_exercise.language_level
-    assert exercise.topic == sample_exercise.topic
-    assert exercise.exercise_text == sample_exercise.exercise_text
+    exercise = await repository.get_by_id(db_sample_exercise.exercise_id)
+
+    assert exercise.exercise_id == db_sample_exercise.exercise_id
+    assert exercise.exercise_type.value == db_sample_exercise.exercise_type
+    assert exercise.exercise_language == db_sample_exercise.exercise_language
+    assert exercise.language_level.value == db_sample_exercise.language_level
+    assert exercise.topic.value == db_sample_exercise.topic
+    assert exercise.exercise_text == db_sample_exercise.exercise_text
     assert (
         exercise.data.text_with_blanks
-        == sample_exercise.data['text_with_blanks']
+        == db_sample_exercise.data['text_with_blanks']
     )
-    assert exercise.data.words == sample_exercise.data['words']
+    assert exercise.data.words == db_sample_exercise.data['words']
 
 
+@pytest.mark.asyncio
 async def test_get_by_id_not_found(db_session):
     """Test getting an exercise by ID when it doesn't exist."""
     repository = SQLAlchemyExerciseRepository(db_session)
@@ -48,6 +58,7 @@ async def test_get_by_id_not_found(db_session):
     assert exercise is None
 
 
+@pytest.mark.asyncio
 async def test_get_all(db_session, fill_sample_exercises):
     """Test getting all exercises."""
     repository = SQLAlchemyExerciseRepository(db_session)
@@ -57,28 +68,48 @@ async def test_get_all(db_session, fill_sample_exercises):
         assert isinstance(exercise, Exercise)
 
 
-async def get_new_exercise(db_session, get_exercises_by_level, user):
+@pytest.mark.asyncio
+async def test_get_new_exercise(db_session, get_exercises_by_level, user):
     """Test getting exercises by language level and topic."""
-    repository = SQLAlchemyExerciseRepository(db_session)
-    language_level = 'A1'
-    topic = 'general'
-    exercise = await repository.get_new_exercise(
+    exercise_repository = SQLAlchemyExerciseRepository(db_session)
+    language_level = LanguageLevel.B1
+    topic = ExerciseTopic.GENERAL
+    exercise = await exercise_repository.get_new_exercise(
         language_level=language_level,
         topic=topic,
         user=user,
-        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK,
     )
     assert exercise.language_level == language_level
     assert exercise.topic == topic
-    exercise = await repository.get_new_exercise(
+
+    attempt_repository = SQLAlchemyExerciseAttemptRepository(db_session)
+    await attempt_repository.save(
+        ExerciseAttempt(
+            user_id=user.user_id,
+            exercise_id=exercise.exercise_id,
+            answer=FillInTheBlankAnswer(
+                words=[
+                    'test',
+                ]
+            ),
+            is_correct=True,
+            feedback='Test feedback',
+            exercise_answer_id=None,
+            attempt_id=None,
+        )
+    )
+
+    exercise = await exercise_repository.get_new_exercise(
         language_level=language_level,
         topic=topic,
         user=user,
-        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK,
     )
     assert exercise is None
 
 
+@pytest.mark.asyncio
 async def test_save(db_session):
     """Test saving a new exercise."""
     repository = SQLAlchemyExerciseRepository(db_session)
@@ -87,10 +118,10 @@ async def test_save(db_session):
     )
     exercise = Exercise(
         exercise_id=None,
-        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK,
         exercise_language='en',
-        language_level='A1',
-        topic='general',
+        language_level=LanguageLevel.A1,
+        topic=ExerciseTopic.GENERAL,
         exercise_text='Fill in the blank in the sentence.',
         data=exercise_data,
     )

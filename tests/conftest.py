@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
 from app.db.repositories.user import SQLAlchemyUserRepository
@@ -27,7 +28,7 @@ from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.user import User
-from app.core.enums import ExerciseType
+from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.db.base import Base
@@ -43,29 +44,6 @@ from app.db.repositories.exercise_attempt import (
 )
 from app.llm.llm_service import LLMService
 from app.main import app
-
-# class TestSQLAlchemyExerciseRepository(SQLAlchemyExerciseRepository):
-#     def __init__(self, session: AsyncSession):
-#         super().__init__(session)
-#
-#
-# class TestSQLAlchemyExerciseAnswerRepository(
-#     SQLAlchemyExerciseAnswerRepository
-# ):
-#     def __init__(self, session: AsyncSession):
-#         super().__init__(session)
-#
-#
-# class TestSQLAlchemyExerciseAttemptRepository(
-#     SQLAlchemyExerciseAttemptRepository
-# ):
-#     def __init__(self, session: AsyncSession):
-#         super().__init__(session)
-#
-#
-# class TestSQLAlchemyUserRepository(SQLAlchemyUserRepository):
-#     def __init__(self, session: AsyncSession):
-#         super().__init__(session)
 
 
 @pytest_asyncio.fixture(scope='session')
@@ -170,7 +148,7 @@ async def client(
 @pytest.fixture
 def user_data():
     return {
-        'user_id': '12345',
+        'user_id': 12345,
         'telegram_id': '67890',
         'username': 'testuser',
         'name': 'Test User',
@@ -181,6 +159,8 @@ def user_data():
 
 @pytest.fixture
 def user(user_data):
+    user = User(**user_data)
+    user.language_level = DEFAULT_LANGUAGE_LEVEL
     return User(**user_data)
 
 
@@ -189,14 +169,17 @@ async def add_db_user(
     db_session: AsyncSession,
     user,
 ):
-    db_user = UserModel(**user.model_dump())
+    db_user_data = user.model_dump()
+    db_user_data['language_level'] = user.language_level.value
+    db_user = UserModel(**db_user_data)
+
     db_session.add(db_user)
     await db_session.flush()
     yield db_user
 
 
 @pytest_asyncio.fixture
-async def sample_exercise(db_session: AsyncSession):
+async def db_sample_exercise(db_session: AsyncSession, user):
     exercise_data = FillInTheBlankExerciseData(
         text_with_blanks='This is a test ____ for learning.',
         words=['exercise'],
@@ -204,8 +187,8 @@ async def sample_exercise(db_session: AsyncSession):
     exercise = ExerciseModel(
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
         exercise_language='en',
-        language_level='A1',
-        topic='general',
+        language_level=DEFAULT_LANGUAGE_LEVEL.value,
+        topic=ExerciseTopic.GENERAL.value,
         exercise_text='Fill in the blank in the sentence.',
         data=exercise_data.model_dump(),
     )
@@ -215,32 +198,28 @@ async def sample_exercise(db_session: AsyncSession):
 
 
 @pytest.fixture
-def sample_exercise_request_data(user_data, sample_exercise):
-    return {
-        'user_id': user_data['user_id'],
-        'language_level': sample_exercise.language_level,
-        'exercise_type': sample_exercise.exercise_type,
-    }
+def sample_exercise_request_data(user_data, db_sample_exercise):
+    return user_data['user_id']
 
 
 @pytest.fixture
 def request_data_correct_answer_for_sample_exercise(
-    user_data, sample_exercise
+    user_data, db_sample_exercise
 ):
     return {
         'user_id': user_data['user_id'],
-        'exercise_id': sample_exercise.exercise_id,
+        'exercise_id': db_sample_exercise.exercise_id,
         'answer': {'words': ['exercise']},
     }
 
 
 @pytest.fixture
 def request_data_incorrect_answer_for_sample_exercise(
-    user_data, sample_exercise
+    user_data, db_sample_exercise
 ):
     return {
-        **user_data,
-        'exercise_id': sample_exercise.exercise_id,
+        'user_id': user_data['user_id'],
+        'exercise_id': db_sample_exercise.exercise_id,
         'answer': {'words': ['wrong']},
     }
 
@@ -253,8 +232,8 @@ async def fill_sample_exercises(
         ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
             exercise_language='en',
-            language_level='A1',
-            topic='general',
+            language_level=LanguageLevel.A1.value,
+            topic=ExerciseTopic.GENERAL.value,
             exercise_text='Fill in the blank in the sentence.',
             data=FillInTheBlankExerciseData(
                 text_with_blanks='I ____ to the store yesterday.',
@@ -264,8 +243,8 @@ async def fill_sample_exercises(
         ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
             exercise_language='en',
-            language_level='A2',
-            topic='general',
+            language_level=LanguageLevel.A2.value,
+            topic=ExerciseTopic.GENERAL.value,
             exercise_text='Fill in the blank in the sentence.',
             data=FillInTheBlankExerciseData(
                 text_with_blanks='She has been ____ for three hours.',
@@ -275,8 +254,8 @@ async def fill_sample_exercises(
         ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
             exercise_language='en',
-            language_level='B1',
-            topic='general',
+            language_level=LanguageLevel.B1.value,
+            topic=ExerciseTopic.GENERAL.value,
             exercise_text='Fill in the blank in the sentence.',
             data=FillInTheBlankExerciseData(
                 text_with_blanks='If I ____ more time, I would help you.',
@@ -286,8 +265,8 @@ async def fill_sample_exercises(
         ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
             exercise_language='en',
-            language_level='B2',
-            topic='general',
+            language_level=LanguageLevel.B2.value,
+            topic=ExerciseTopic.GENERAL.value,
             exercise_text='Fill in the blank in the sentence.',
             data=FillInTheBlankExerciseData(
                 text_with_blanks='The issue ____ in the latest meeting.',
@@ -297,8 +276,8 @@ async def fill_sample_exercises(
         ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
             exercise_language='en',
-            language_level='C1',
-            topic='general',
+            language_level=LanguageLevel.C1.value,
+            topic=ExerciseTopic.GENERAL.value,
             exercise_text='Fill in the blank in the sentence.',
             data=FillInTheBlankExerciseData(
                 text_with_blanks='The manuscript ____ to have '
@@ -331,12 +310,12 @@ def get_exercises_by_level(fill_sample_exercises: List[ExerciseModel]) -> dict:
 @pytest_asyncio.fixture
 async def add_db_correct_exercise_answer(
     db_session: AsyncSession,
-    sample_exercise,
+    db_sample_exercise,
     request_data_correct_answer_for_sample_exercise,
 ):
     """Create a correct ExerciseAnswerModel in the database."""
     exercise_answer = ExerciseAnswer(
-        exercise_id=sample_exercise.exercise_id,
+        exercise_id=db_sample_exercise.exercise_id,
         answer=FillInTheBlankAnswer(
             words=request_data_correct_answer_for_sample_exercise['answer'][
                 'words'
@@ -365,12 +344,12 @@ async def add_db_correct_exercise_answer(
 @pytest_asyncio.fixture
 async def add_db_incorrect_exercise_answer(
     db_session: AsyncSession,
-    sample_exercise,
+    db_sample_exercise,
     request_data_incorrect_answer_for_sample_exercise,
 ):
     """Create an incorrect ExerciseAnswerModel in the database."""
     exercise_answer = ExerciseAnswer(
-        exercise_id=sample_exercise.exercise_id,
+        exercise_id=db_sample_exercise.exercise_id,
         answer=FillInTheBlankAnswer(
             words=request_data_incorrect_answer_for_sample_exercise['answer'][
                 'words'
@@ -397,17 +376,17 @@ async def add_db_incorrect_exercise_answer(
 
 
 @pytest.fixture
-def fill_in_the_blank_exercise():
+def fill_in_the_blank_exercise(user):
     exercise_data = FillInTheBlankExerciseData(
         text_with_blanks='This is a test ____ for learning.',
         words=['exercise'],
     )
     return Exercise(
         exercise_id=1,
-        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK,
         exercise_language='en',
-        language_level='B1',
-        topic='general',
+        language_level=user.language_level,
+        topic=ExerciseTopic.GENERAL,
         exercise_text='Fill in the blank in the sentence.',
         data=exercise_data,
     )

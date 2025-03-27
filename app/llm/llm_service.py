@@ -18,7 +18,7 @@ from app.core.consts import (
 )
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
-from app.core.enums import ExerciseType
+from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.value_objects.answer import Answer, FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
@@ -97,13 +97,13 @@ class LLMService(LLMProvider):
     async def generate_exercise(
         self,
         user: User,
-        language_level: str,
-        exercise_type: str,
-        topic: str = 'general',
+        language_level: LanguageLevel,
+        exercise_type: ExerciseType,
+        topic: ExerciseTopic,
     ) -> tuple[Exercise, Answer]:
         """Generate exercise for user based on exercise type."""
         exercise_generators = {
-            ExerciseType.FILL_IN_THE_BLANK.value: (
+            ExerciseType.FILL_IN_THE_BLANK: (
                 self._generate_fill_in_the_blank_exercise
             ),
         }
@@ -169,8 +169,8 @@ class LLMService(LLMProvider):
     async def _generate_fill_in_the_blank_exercise(
         self,
         user: User,
-        language_level: str,
-        topic: str,
+        language_level: LanguageLevel,
+        topic: ExerciseTopic,
     ) -> tuple[Exercise, Answer]:
         """Generate a fill-in-the-blank exercise."""
         parser = PydanticOutputParser(
@@ -195,8 +195,8 @@ class LLMService(LLMProvider):
         request_data = {
             'user_language': user.user_language,
             'exercise_language': user.target_language,
-            'language_level': language_level,
-            'topic': topic,
+            'language_level': language_level.value,
+            'topic': topic.value,
         }
 
         parsed_data = await self._run_llm_chain(chain, request_data)
@@ -213,7 +213,7 @@ class LLMService(LLMProvider):
 
         return Exercise(
             exercise_id=None,
-            exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+            exercise_type=ExerciseType.FILL_IN_THE_BLANK,
             exercise_language=user.target_language,
             language_level=language_level,
             topic=topic,
@@ -267,7 +267,7 @@ class LLMService(LLMProvider):
         request_data = {
             'user_language': user.user_language,
             'exercise_language': user.target_language,
-            'topic': exercise.topic,
+            'topic': exercise.topic.value,
             'task': exercise.exercise_text,
             'exercise': exercise.data.text_with_blanks,
             'options': exercise.data.words,

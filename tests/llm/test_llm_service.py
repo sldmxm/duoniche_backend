@@ -3,7 +3,7 @@ import pytest
 from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
-from app.core.enums import ExerciseType
+from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.llm_service import LLMService
@@ -31,12 +31,15 @@ def user():
 async def test_generate_fill_in_the_blank_exercise(user):
     try:
         exercise, answer = await llm_service.generate_exercise(
-            user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
+            user,
+            LanguageLevel.B1,
+            ExerciseType.FILL_IN_THE_BLANK,
+            ExerciseTopic.GENERAL,
         )
     except ValueError:
         return
 
-    assert exercise.exercise_type == ExerciseType.FILL_IN_THE_BLANK.value
+    assert exercise.exercise_type == ExerciseType.FILL_IN_THE_BLANK
     assert exercise.data.text_with_blanks
     assert exercise.data.words
     assert isinstance(answer, FillInTheBlankAnswer)
@@ -47,8 +50,8 @@ async def test_validate_attempt_correct(user):
         exercise_id=1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
         exercise_language='en',
-        language_level='beginner',
-        topic='general',
+        language_level=LanguageLevel.B1,
+        topic=ExerciseTopic.GENERAL,
         exercise_text='Fill in the blank',
         data=FillInTheBlankExerciseData(
             text_with_blanks='The cat ___ on the mat.',
@@ -71,8 +74,8 @@ async def test_validate_attempt_incorrect(user):
         exercise_id=1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
         exercise_language='en',
-        language_level='beginner',
-        topic='general',
+        language_level=LanguageLevel.B1,
+        topic=ExerciseTopic.GENERAL,
         exercise_text='Fill in the blank',
         data=FillInTheBlankExerciseData(
             text_with_blanks='Аз обичам да ___ в парка.',

@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional, Union
 
 from pydantic import BaseModel, Field
 
+from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.value_objects.exercise import (
     FillInTheBlankExerciseData,
     MultipleChoiceExerciseData,
@@ -13,13 +14,13 @@ from app.core.value_objects.exercise import (
 
 class Exercise(BaseModel):
     exercise_id: Optional[int] = Field(description='Exercise ID')
-    exercise_type: str = Field(description='Type of exercise')
+    exercise_type: ExerciseType = Field(description='Type of exercise')
     # TODO: Добавить на всех слоях язык упражнения,
     #  в том числе, при выборке в БД
     exercise_language: str = Field(description='Language of exercise')
     # TODO: Вынести уровень в ENUM в формате A1-C2
-    language_level: str = Field(description='Language level')
-    topic: str = Field(description='Topic')
+    language_level: LanguageLevel = Field(description='Language level')
+    topic: ExerciseTopic = Field(description='Topic')
     # TODO: Заполнять тест задания в зависимости
     #  от типа задания и языка пользователя
     exercise_text: str = Field(description='Exercise text')
@@ -31,16 +32,16 @@ class Exercise(BaseModel):
         TranslationExerciseData,
     ] = Field(description='Exercise data')
 
-    def model_dump(self):
-        return {
-            'exercise_id': self.exercise_id,
-            'exercise_type': self.exercise_type,
-            'exercise_language': self.exercise_language,
-            'language_level': self.language_level,
-            'topic': self.topic,
-            'exercise_text': self.exercise_text,
-            'data': self.data.model_dump(),
-        }
+    # def model_dump(self):
+    #     return {
+    #         'exercise_id': self.exercise_id,
+    #         'exercise_type': self.exercise_type.value,
+    #         'exercise_language': self.exercise_language,
+    #         'language_level': self.language_level.value,
+    #         'topic': self.topic.value,
+    #         'exercise_text': self.exercise_text,
+    #         'data': self.data.model_dump(),
+    #     }
 
     @classmethod
     def get_data_model_validate(cls, data: Dict[str, Any]):

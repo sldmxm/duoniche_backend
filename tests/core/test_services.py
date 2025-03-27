@@ -9,7 +9,7 @@ from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
-from app.core.enums import ExerciseType
+from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.services.exercise import ExerciseService
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
@@ -32,12 +32,16 @@ def exercise_service(
     )
 
 
+@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
 async def test_get_or_create_new_exercise_from_repo(
+    mock_get_level,
     mock_exercise_repository: AsyncMock,
     exercise_service: ExerciseService,
     user: User,
     fill_in_the_blank_exercise: Exercise,
 ):
+    """Test getting a new exercise from repo."""
+    mock_get_level.return_value = LanguageLevel.B2
     mock_exercise_repository.get_new_exercise.return_value = (
         fill_in_the_blank_exercise
     )
@@ -46,20 +50,22 @@ async def test_get_or_create_new_exercise_from_repo(
     )
 
     exercise = await exercise_service.get_or_create_new_exercise(
-        user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
+        user,
     )
 
     assert exercise == fill_in_the_blank_exercise
     mock_exercise_repository.get_new_exercise.assert_awaited_once_with(
         user=user,
-        language_level='beginner',
-        topic='general',
-        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        language_level=LanguageLevel.B2,
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK,
+        topic=ExerciseTopic.GENERAL,
     )
     mock_exercise_repository.save.assert_not_awaited()
 
 
-async def test_get_or_create_new_exercise_from_llm(
+@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
+async def test_get_or_create_new_exercise_from_repetition(
+    mock_get_level,
     mock_exercise_repository: AsyncMock,
     mock_llm_service: AsyncMock,
     exercise_service: ExerciseService,
@@ -69,39 +75,34 @@ async def test_get_or_create_new_exercise_from_llm(
 ):
     """Abstract situation - we have exercises in DB, but can't get it,
     so we generate new"""
+    mock_get_level.return_value = user.language_level
     mock_exercise_repository.get_new_exercise.return_value = None
     mock_exercise_repository.count_new_exercises.return_value = (
         MIN_EXERCISE_COUNT_TO_GENERATE_NEW + 1
     )
-    mock_llm_service.generate_exercise.return_value = (
-        fill_in_the_blank_exercise,
-        fill_in_the_blank_answer,
+    mock_exercise_repository.get_exercise_for_repetition.return_value = (
+        fill_in_the_blank_exercise
     )
-    mock_exercise_repository.save.return_value = fill_in_the_blank_exercise
 
     exercise = await exercise_service.get_or_create_new_exercise(
-        user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
+        user,
     )
 
     assert exercise == fill_in_the_blank_exercise
     mock_exercise_repository.get_new_exercise.assert_awaited_once_with(
         user=user,
-        language_level='beginner',
-        topic='general',
-        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+        language_level=user.language_level,
+        topic=ExerciseTopic.GENERAL,
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK,
     )
-    mock_llm_service.generate_exercise.assert_awaited_once_with(
+    mock_exercise_repository.get_exercise_for_repetition.assert_awaited_once_with(
         user=user,
-        language_level='beginner',
-        topic='general',
-        exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
-    )
-    mock_exercise_repository.save.assert_awaited_once_with(
-        fill_in_the_blank_exercise
     )
 
 
+@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
 async def test_get_or_create_new_exercise_generate_in_background(
+    mock_get_level,
     mock_exercise_repository: AsyncMock,
     mock_llm_service: AsyncMock,
     exercise_service: ExerciseService,
@@ -111,6 +112,7 @@ async def test_get_or_create_new_exercise_generate_in_background(
 ):
     """Test that a new exercise is generated in the background
     when the count is below the threshold."""
+    mock_get_level.return_value = LanguageLevel.B1
     mock_exercise_repository.get_new_exercise.return_value = (
         fill_in_the_blank_exercise
     )
@@ -125,7 +127,7 @@ async def test_get_or_create_new_exercise_generate_in_background(
 
     with patch('asyncio.create_task') as mock_create_task:
         exercise = await exercise_service.get_or_create_new_exercise(
-            user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
+            user,
         )
         assert exercise == fill_in_the_blank_exercise
 
@@ -133,17 +135,9 @@ async def test_get_or_create_new_exercise_generate_in_background(
         args, _ = mock_create_task.call_args
         assert args[0].__name__ == '_generate_and_save_new_exercise'
 
-        mock_exercise_repository.get_new_exercise.assert_awaited_once_with(
-            user=user,
-            language_level='beginner',
-            topic='general',
-            exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
-        )
         mock_exercise_repository.count_new_exercises.assert_awaited_once_with(
             user=user,
-            language_level='beginner',
-            topic='general',
-            exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+            language_level=user.language_level,
         )
 
 
@@ -158,12 +152,12 @@ async def test_get_exercise_for_repetition(
     )
 
     exercise = await exercise_service.get_exercise_for_repetition(
-        user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
+        user,
     )
 
     assert exercise == fill_in_the_blank_exercise
     mock_exercise_repository.get_exercise_for_repetition.assert_awaited_once_with(
-        user, 'beginner', ExerciseType.FILL_IN_THE_BLANK.value
+        user,
     )
 
 
@@ -430,10 +424,10 @@ async def test_record_exercise_attempt_exercise_id_none(
             user,
             Exercise(
                 exercise_id=None,
-                exercise_type='fill_in_the_blank',
+                exercise_type=ExerciseType.FILL_IN_THE_BLANK,
                 exercise_language='en',
-                language_level='B1',
-                topic='general',
+                language_level=LanguageLevel.B1,
+                topic=ExerciseTopic.GENERAL,
                 exercise_text='Fill in the blank in the sentence.',
                 data=fill_in_the_blank_data,
             ),

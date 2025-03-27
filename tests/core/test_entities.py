@@ -1,6 +1,8 @@
+from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
+from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import (
     SentenceConstructionExerciseData,
@@ -12,25 +14,25 @@ def test_user_creation():
     assert user.user_id == 1
     assert user.telegram_id == '123'
     assert user.username == 'testuser'
-    assert user.language_level is None
+    assert user.language_level == DEFAULT_LANGUAGE_LEVEL
 
 
 def test_exercise_creation():
     exercise = Exercise(
         exercise_id=1,
-        exercise_type='sentence_construction',
+        exercise_type=ExerciseType.FILL_IN_THE_BLANK,
         exercise_language='en',
-        language_level='beginner',
-        topic='general',
+        language_level=LanguageLevel.B1,
+        topic=ExerciseTopic.GENERAL,
         exercise_text='Make a test sentence.',
         data=SentenceConstructionExerciseData(
             words=['this', 'is', 'a', 'test', 'sentence']
         ),
     )
     assert exercise.exercise_id == 1
-    assert exercise.exercise_type == 'sentence_construction'
-    assert exercise.language_level == 'beginner'
-    assert exercise.topic == 'general'
+    assert exercise.exercise_type == ExerciseType.FILL_IN_THE_BLANK
+    assert exercise.language_level == LanguageLevel.B1
+    assert exercise.topic == ExerciseTopic.GENERAL
     assert exercise.exercise_text == 'Make a test sentence.'
     assert exercise.data == SentenceConstructionExerciseData(
         words=['this', 'is', 'a', 'test', 'sentence']

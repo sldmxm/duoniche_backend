@@ -1,29 +1,33 @@
 import asyncio
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
 
 from app.api.cache import ValidationCache
-from app.core.enums import ExerciseType
+from app.core.enums import LanguageLevel
 from app.core.value_objects.answer import FillInTheBlankAnswer
 
 
+@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
 @pytest.mark.asyncio
 async def test_get_new_exercise_success(
+    mock_get_level,
     client,
     sample_exercise_request_data,
-    sample_exercise,
+    db_sample_exercise,
     add_db_user,
 ):
     """Test successful retrieval of a new exercise."""
-
+    mock_get_level.return_value = LanguageLevel(
+        db_sample_exercise.language_level
+    )
     response = await client.post(
         '/api/v1/exercises/new', json=sample_exercise_request_data
     )
 
     assert response.status_code == 200
-    assert response.json()['exercise_id'] == sample_exercise.exercise_id
+    assert response.json()['exercise_id'] == db_sample_exercise.exercise_id
 
 
 @pytest.mark.asyncio
@@ -33,29 +37,17 @@ async def test_get_new_exercise_bad_request(
     add_db_user,
 ):
     """Test validation with invalid parameters."""
-    response = await client.post('/api/v1/exercises/new', json={**user_data})
-
-    assert response.status_code == 422
-    assert response.json()['detail'][0]['msg'] == 'Field required'
-    assert response.json()['detail'][0]['loc'] == ['body', 'language_level']
-
     response = await client.post(
-        '/api/v1/exercises/new', json={**user_data, 'language_level': 'B1'}
+        '/api/v1/exercises/new', json={'user_id': 'test'}
     )
     assert response.status_code == 422
-    assert response.json()['detail'][0]['msg'] == 'Field required'
-    assert response.json()['detail'][0]['loc'] == ['body', 'exercise_type']
-
-    response = await client.post(
-        '/api/v1/exercises/new',
-        json={
-            'language_level': 'B1',
-            'exercise_type': ExerciseType.FILL_IN_THE_BLANK.value,
-        },
+    assert (
+        response.json()['detail'][0]['msg']
+        == 'Input should be a valid integer'
     )
-    assert response.status_code == 422
-    assert response.json()['detail'][0]['msg'] == 'Field required'
-    assert response.json()['detail'][0]['loc'] == ['body', 'user_id']
+    assert response.json()['detail'][0]['loc'] == [
+        'body',
+    ]
 
 
 @pytest.mark.asyncio
@@ -109,26 +101,32 @@ async def test_validate_exercise_bad_request(
     assert response.json()['detail'][0]['loc'] == ['body', 'user_id']
 
 
+@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
 @pytest.mark.asyncio
 async def test_validate_exercise_bad_request_answer_type(
+    mock_get_level,
     client,
     user_data,
     sample_exercise_request_data,
+    db_sample_exercise,
     add_db_user,
 ):
     """Test validation with invalid parameters."""
-
+    mock_get_level.return_value = LanguageLevel(
+        db_sample_exercise.language_level
+    )
     response_exercise = await client.post(
         '/api/v1/exercises/new',
         json=sample_exercise_request_data,
     )
+
     exercise_json = response_exercise.json()
     response = await client.post(
         '/api/v1/exercises/validate',
         json={
             'exercise_id': exercise_json['exercise_id'],
             'answer': {'test': ['test']},
-            **user_data,
+            'user_id': user_data['user_id'],
         },
     )
 

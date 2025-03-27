@@ -1,10 +1,12 @@
 import asyncio
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import text
 
 from app.api.cache import validation_cache
-from app.core.enums import ExerciseType
+from app.core.consts import DEFAULT_LANGUAGE_LEVEL
+from app.core.enums import ExerciseType, LanguageLevel
 from app.db.models.user import User as UserModel
 from app.db.repositories.exercise_attempt import (
     SQLAlchemyExerciseAttemptRepository,
@@ -13,14 +15,19 @@ from app.db.repositories.exercise_attempt import (
 pytestmark = pytest.mark.asyncio(scope='function')
 
 
+@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
 @pytest.mark.asyncio
 async def test_get_new_exercise(
+    mock_get_level,
     client,
-    sample_exercise,
+    db_sample_exercise,
     sample_exercise_request_data,
     add_db_user,
 ):
     """Test getting a new exercise from the API."""
+    mock_get_level.return_value = LanguageLevel(
+        db_sample_exercise.language_level
+    )
     response = await client.post(
         '/api/v1/exercises/new', json=sample_exercise_request_data
     )
@@ -33,7 +40,7 @@ async def test_get_new_exercise(
     assert (
         exercise_data['exercise_type'] == ExerciseType.FILL_IN_THE_BLANK.value
     )
-    assert exercise_data['language_level'] == sample_exercise.language_level
+    assert exercise_data['language_level'] == db_sample_exercise.language_level
 
 
 @pytest.mark.asyncio
@@ -62,7 +69,7 @@ async def test_validate_exercise_correct_with_db(
 async def test_validate_exercise_incorrect(
     client,
     request_data_incorrect_answer_for_sample_exercise,
-    sample_exercise,
+    db_sample_exercise,
     add_db_incorrect_exercise_answer,
     add_db_user,
 ):
@@ -96,11 +103,13 @@ async def test_exercise_not_found(
     assert 'Exercise with ID 99999 not found' in response.json()['detail']
 
 
+@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
 @pytest.mark.asyncio
 async def test_multiple_requests_same_user(
+    mock_get_level,
     client,
     user_data,
-    sample_exercise,
+    db_sample_exercise,
     add_db_correct_exercise_answer,
     add_db_incorrect_exercise_answer,
     request_data_correct_answer_for_sample_exercise,
@@ -115,19 +124,17 @@ async def test_multiple_requests_same_user(
     3. Attempt to solve it correctly.
     4. Get a new exercise.
     """
+    mock_get_level.return_value = LanguageLevel(
+        db_sample_exercise.language_level
+    )
+
     # 1. Get a new exercise
-    new_exercise_request = {
-        **user_data,
-        'language_level': sample_exercise.language_level,
-        'exercise_type': sample_exercise.exercise_type,
-    }
+    new_exercise_request = user_data.get('user_id')
 
     response = await client.post(
         '/api/v1/exercises/new', json=new_exercise_request
     )
     assert response.status_code == 200
-    exercise_data = response.json()
-    exercise_id = exercise_data['exercise_id']
 
     # 2. Attempt to solve it incorrectly
     response = await client.post(
@@ -149,20 +156,26 @@ async def test_multiple_requests_same_user(
     assert result['is_correct'] is True
     assert 'feedback' in result
 
+    # 3.5 New exercise
+    second_exercise = db_sample_exercise
+
     response = await client.post(
         '/api/v1/exercises/new', json=new_exercise_request
     )
 
     assert response.status_code == 200
     new_exercise_data = response.json()
-    assert new_exercise_data['exercise_id'] != exercise_id
+    assert new_exercise_data['exercise_id'] == second_exercise.exercise_id
     validation_cache.clear_cache()
 
 
+@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
 @pytest.mark.asyncio
 async def test_concurrent_requests(
+    mock_get_level,
     client,
     user_data,
+    db_sample_exercise,
     sample_exercise_request_data,
     request_data_correct_answer_for_sample_exercise,
     add_db_correct_exercise_answer,
@@ -170,9 +183,10 @@ async def test_concurrent_requests(
     async_session,
 ):
     """Test concurrent requests from multiple users."""
+    mock_get_level.return_value = DEFAULT_LANGUAGE_LEVEL
+    validation_cache.clear_cache()
     num_users = 5
     exercise_responses = []
-    validation_cache.clear_cache()
 
     async def user_task(telegram_id):
         user_specific_data = {
@@ -183,6 +197,7 @@ async def test_concurrent_requests(
             'target_language': 'en',
         }
         db_user = UserModel(**user_specific_data)
+        db_user.language_level = DEFAULT_LANGUAGE_LEVEL.value
         async_session.add(db_user)
         await async_session.commit()
         await async_session.refresh(db_user)
@@ -191,21 +206,12 @@ async def test_concurrent_requests(
         try:
             response = await client.post(
                 '/api/v1/exercises/new',
-                json={
-                    'user_id': db_user.user_id,
-                    'language_level': sample_exercise_request_data[
-                        'language_level'
-                    ],
-                    'exercise_type': sample_exercise_request_data[
-                        'exercise_type'
-                    ],
-                },
+                json=db_user.user_id,
             )
 
             assert response.status_code == 200
             exercise_data = response.json()
             exercise_responses.append(exercise_data)
-
             await asyncio.sleep(0.05)
 
             validation_response = await client.post(
@@ -259,7 +265,7 @@ async def test_concurrent_requests(
 async def test_validation_cache_multiple_requests(
     client,
     user_data,
-    sample_exercise,
+    db_sample_exercise,
     add_db_correct_exercise_answer,
     request_data_correct_answer_for_sample_exercise,
     add_db_user,
@@ -271,11 +277,7 @@ async def test_validation_cache_multiple_requests(
     called once.
     """
     # Get a new exercise
-    new_exercise_request = {
-        **user_data,
-        'language_level': sample_exercise.language_level,
-        'exercise_type': sample_exercise.exercise_type,
-    }
+    new_exercise_request = add_db_user.user_id
 
     response = await client.post(
         '/api/v1/exercises/new', json=new_exercise_request
@@ -316,7 +318,7 @@ async def test_validation_cache_multiple_requests(
 async def test_get_new_exercise_background_task(
     client,
     user_data,
-    sample_exercise,
+    db_sample_exercise,
     add_db_correct_exercise_answer,
     add_db_incorrect_exercise_answer,
     request_data_correct_answer_for_sample_exercise,
@@ -328,11 +330,7 @@ async def test_get_new_exercise_background_task(
     Test that a new exercise is generated in the background
     when the count is below the threshold.
     """
-    new_exercise_request = {
-        **user_data,
-        'language_level': sample_exercise.language_level,
-        'exercise_type': sample_exercise.exercise_type,
-    }
+    new_exercise_request = add_db_user.user_id
     stmt = text('SELECT COUNT(*) FROM exercises')
     result = await async_session.execute(stmt)
     count = result.scalar_one()

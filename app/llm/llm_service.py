@@ -31,7 +31,7 @@ T = TypeVar('T')
 class FillInTheBlankExerciseDataParsed(BaseModel):
     text_with_blanks: str = Field(
         description='Sentence with one or more blanks.\n'
-        'If sentence consists more than 9 words, make 2 blanks.\n'
+        'If sentence consists more than 11 words, make 2 blanks.\n'
         f'Use "{EXERCISE_FILL_IN_THE_BLANK_BLANKS}" for blanks.\n'
         "Don't write the words in brackets."
     )
@@ -53,12 +53,10 @@ class FillInTheBlankExerciseDataParsed(BaseModel):
             'Example:\n'
             'text_with_blanks: '
             '"После университета он планирует ___ в другой стране."\n'
-            'wrong_words: '
-            '["работать", "путешествовать", "отдыхать", "жить"] '
-            '- плохой результат.\n'
-            'wrong_words: '
-            '["работать", "работает", "работают", "путешественник"] '
-            '- ожидаемый результат.\n'
+            'bad wrong_words: '
+            '["работать", "путешествовать", "отдыхать", "жить"]\n'
+            'good ng_words: '
+            '["работать", "работает", "работают", "путешественник"]'
         )
     )
 

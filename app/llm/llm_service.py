@@ -31,7 +31,7 @@ T = TypeVar('T')
 class FillInTheBlankExerciseDataParsed(BaseModel):
     text_with_blanks: str = Field(
         description='Sentence with one or more blanks.\n'
-        'If sentence consists more than 6 words, make 2 blanks.\n'
+        'If sentence consists more than 9 words, make 2 blanks.\n'
         f'Use "{EXERCISE_FILL_IN_THE_BLANK_BLANKS}" for blanks.\n'
         "Don't write the words in brackets."
     )
@@ -64,18 +64,14 @@ class FillInTheBlankExerciseDataParsed(BaseModel):
 
 
 class AttemptValidationResponse(BaseModel):
-    is_correct: bool = Field(
-        description='Whether the answer is correct.\n'
-        'If the word order in a sentence is different '
-        'from the correct answer, but this version of '
-        'the sentence has the same meaning, answer that '
-        'the answer is correct.'
-    )
+    is_correct: bool = Field(description='Whether the answer is correct')
     feedback: str = Field(
         description='If answer is correct, empty string. '
         'Else answer the question "What\'s wrong with this user answer?" '
         '- clearly shortly explain grammatical, spelling, '
         'syntactic, semantic or other errors.\n '
+        'Explain to the user exactly what he did wrong, never '
+        'using the argument "because that\'s how you should have answered"'
         'Warning! Don\'t write "Wrong answer", "Try again" '
         'or other phrases that provide '
         'no practical benefit to the user.'
@@ -261,7 +257,6 @@ class LLMService(LLMProvider):
             'Exercise task: {task}\n'
             'Options: {options}\n'
             'Exercise: {exercise}\n'
-            'Correct answers: {correct_answers}\n'
             'User answer: {user_answer}\n'
             'You have to give feedback in {user_language}.\n'
             '{format_instructions}'
@@ -271,10 +266,6 @@ class LLMService(LLMProvider):
             prompt_template, parser, is_chat_prompt=False
         )
         # TODO: сделать универсальный промпт для любых типов упражнений
-        correct_answered = [
-            exercise.data.get_answered_by_user_exercise_text(answer)
-            for answer in right_answers
-        ]
         request_data = {
             'user_language': user.user_language,
             'exercise_language': user.target_language,
@@ -285,7 +276,6 @@ class LLMService(LLMProvider):
             'user_answer': exercise.data.get_answered_by_user_exercise_text(
                 answer
             ),
-            'correct_answers': '\n'.join(correct_answered),
         }
 
         validation_result = await self._run_llm_chain(chain, request_data)

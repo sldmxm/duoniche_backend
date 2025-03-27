@@ -400,7 +400,7 @@ async def test_record_exercise_attempt(
     )
     mock_exercise_attempt_repository.save.return_value = new_exercise_attempt
 
-    exercise_attempt = await exercise_service.record_exercise_attempt(
+    exercise_attempt = await exercise_service.new_exercise_attempt(
         user,
         fill_in_the_blank_exercise,
         fill_in_the_blank_answer,
@@ -426,7 +426,7 @@ async def test_record_exercise_attempt_exercise_id_none(
         words=['exercise'],
     )
     with pytest.raises(ValueError) as exc_info:
-        await exercise_service.record_exercise_attempt(
+        await exercise_service.new_exercise_attempt(
             user,
             Exercise(
                 exercise_id=None,

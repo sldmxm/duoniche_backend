@@ -125,6 +125,15 @@ async def validate_exercise_attempt(
         if not exercise:
             raise NotFoundError(f'Exercise with ID {exercise_id} not found')
 
+        exercise_attempt = await exercise_service.new_exercise_attempt(
+            user=user,
+            exercise=exercise,
+            answer=FillInTheBlankAnswer(**answer.model_dump()),
+            is_correct=None,
+            feedback=None,
+            exercise_answer_id=None,
+        )
+
         cache_key = (
             f'validation_{exercise_id}_{hash(json.dumps(answer.model_dump()))}'
         )
@@ -137,14 +146,19 @@ async def validate_exercise_attempt(
                 FillInTheBlankAnswer(**answer.model_dump()),
             ),
         )
-        exercise_attempt = await exercise_service.record_exercise_attempt(
-            user=user,
-            exercise=exercise,
-            answer=FillInTheBlankAnswer(**answer.model_dump()),
+
+        if exercise_attempt.attempt_id is None:
+            raise ValueError('Exercise attempt attempt_id must not be None')
+
+        exercise_attempt = await exercise_service.update_exercise_attempt(
+            attempt_id=exercise_attempt.attempt_id,
             is_correct=validation_result.is_correct,
             feedback=validation_result.feedback,
             exercise_answer_id=validation_result.answer_id,
         )
+
+        if exercise_attempt.is_correct is None:
+            raise ValueError('Exercise attempt is_correct must not be None')
 
         return ValidationResultSchema(
             is_correct=exercise_attempt.is_correct,

@@ -172,6 +172,7 @@ async def test_concurrent_requests(
     """Test concurrent requests from multiple users."""
     num_users = 5
     exercise_responses = []
+    validation_cache.clear_cache()
 
     async def user_task(telegram_id):
         user_specific_data = {

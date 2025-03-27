@@ -66,6 +66,25 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
         return [self._to_entity(attempt) for attempt in attempts]
 
     @override
+    async def update(
+        self,
+        attempt_id: int,
+        is_correct: bool,
+        feedback: Optional[str],
+        exercise_answer_id: int,
+    ) -> ExerciseAttemptEntity:
+        attempt = await self.session.get(ExerciseAttempt, attempt_id)
+        if not attempt:
+            raise ValueError('Attempt does not exist')
+
+        attempt.attempt_id = attempt_id
+        attempt.is_correct = is_correct
+        attempt.feedback = feedback
+        attempt.exercise_answer_id = exercise_answer_id
+        await self.session.commit()
+        return self._to_entity(attempt)
+
+    @override
     async def save(
         self, exercise_attempt: ExerciseAttemptEntity
     ) -> ExerciseAttemptEntity:

@@ -35,3 +35,13 @@ class ExerciseAttemptRepository(AsyncRepository[ExerciseAttempt]):
     @abstractmethod
     async def save(self, exercise_attempt: ExerciseAttempt) -> ExerciseAttempt:
         raise NotImplementedError
+
+    @abstractmethod
+    async def update(
+        self,
+        attempt_id: int,
+        is_correct: bool,
+        feedback: Optional[str],
+        exercise_answer_id: int,
+    ) -> ExerciseAttempt:
+        raise NotImplementedError

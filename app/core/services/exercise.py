@@ -148,13 +148,13 @@ class ExerciseService:
             )
         return exercise_answer
 
-    async def record_exercise_attempt(
+    async def new_exercise_attempt(
         self,
         user: User,
         exercise: Exercise,
         answer: Answer,
-        is_correct: bool,
-        feedback: str,
+        is_correct: Optional[bool],
+        feedback: Optional[str],
         exercise_answer_id: Optional[int] = None,
     ) -> ExerciseAttempt:
         if exercise.exercise_id is None:
@@ -172,3 +172,20 @@ class ExerciseService:
             exercise_attempt
         )
         return exercise_attempt
+
+    async def update_exercise_attempt(
+        self,
+        attempt_id: int,
+        is_correct: bool,
+        feedback: Optional[str],
+        exercise_answer_id: int,
+    ) -> ExerciseAttempt:
+        updated_exercise_attempt = (
+            await self.exercise_attempt_repository.update(
+                attempt_id=attempt_id,
+                is_correct=is_correct,
+                feedback=feedback,
+                exercise_answer_id=exercise_answer_id,
+            )
+        )
+        return updated_exercise_attempt

@@ -27,7 +27,7 @@ class ExerciseAttempt(Base):
         nullable=False,
     )
     answer = Column(JSONB, nullable=False)
-    is_correct = Column(Boolean, nullable=False)
+    is_correct = Column(Boolean, nullable=True)
     feedback = Column(String)
     exercise_answers_id = Column(
         Integer, ForeignKey('exercise_answers.answer_id', ondelete='SET NULL')

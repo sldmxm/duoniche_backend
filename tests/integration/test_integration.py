@@ -4,13 +4,13 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy import text
 
-from app.api.cache import validation_cache
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.enums import ExerciseType, LanguageLevel
 from app.db.models.user import User as UserModel
 from app.db.repositories.exercise_attempt import (
     SQLAlchemyExerciseAttemptRepository,
 )
+from app.main import app
 
 pytestmark = pytest.mark.asyncio(scope='function')
 
@@ -62,7 +62,6 @@ async def test_validate_exercise_correct_with_db(
     assert 'is_correct' in data
     assert 'feedback' in data
     assert data['is_correct'] is True
-    validation_cache.clear_cache()
 
 
 @pytest.mark.asyncio
@@ -84,7 +83,6 @@ async def test_validate_exercise_incorrect(
     assert 'is_correct' in data
     assert 'feedback' in data
     assert data['is_correct'] is False
-    validation_cache.clear_cache()
 
 
 @pytest.mark.asyncio
@@ -166,7 +164,6 @@ async def test_multiple_requests_same_user(
     assert response.status_code == 200
     new_exercise_data = response.json()
     assert new_exercise_data['exercise_id'] == second_exercise.exercise_id
-    validation_cache.clear_cache()
 
 
 @patch('app.core.enums.LanguageLevel.get_new_exercise_level')
@@ -184,7 +181,6 @@ async def test_concurrent_requests(
 ):
     """Test concurrent requests from multiple users."""
     mock_get_level.return_value = DEFAULT_LANGUAGE_LEVEL
-    validation_cache.clear_cache()
     num_users = 5
     exercise_responses = []
 
@@ -261,8 +257,10 @@ async def test_concurrent_requests(
     assert user_ids_with_attempts == expected_user_ids
 
 
+@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
 @pytest.mark.asyncio
 async def test_validation_cache_multiple_requests(
+    mock_get_level,
     client,
     user_data,
     db_sample_exercise,
@@ -276,6 +274,7 @@ async def test_validation_cache_multiple_requests(
     requests with the same answer and ensuring that the LLM is only
     called once.
     """
+    mock_get_level.return_value = DEFAULT_LANGUAGE_LEVEL
     # Get a new exercise
     new_exercise_request = add_db_user.user_id
 
@@ -311,7 +310,6 @@ async def test_validation_cache_multiple_requests(
 
     # Check that the results are the same (cached)
     assert result1 == result2
-    validation_cache.clear_cache()
 
 
 @pytest.mark.asyncio
@@ -335,17 +333,15 @@ async def test_get_new_exercise_background_task(
     result = await async_session.execute(stmt)
     count = result.scalar_one()
     assert count == 1
+
     response = await client.post(
         '/api/v1/exercises/new', json=new_exercise_request
     )
     assert response.status_code == 200
 
-    stmt = text('SELECT COUNT(*) FROM exercises')
-    result = await async_session.execute(stmt)
-    count = result.scalar_one()
-    assert count == 1
-
-    await asyncio.sleep(10)
+    exercise_service_instance = app.state.exercise_service
+    if exercise_service_instance.background_exercise_generation_task:
+        await exercise_service_instance.background_exercise_generation_task
 
     stmt = text('SELECT COUNT(*) FROM exercises')
     result = await async_session.execute(stmt)

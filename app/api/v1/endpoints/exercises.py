@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import Annotated, Optional
 
@@ -11,7 +10,6 @@ from fastapi import (
 )
 from fastapi.routing import APIRoute
 
-from app.api.cache import validation_cache
 from app.api.dependencies import get_exercise_service, get_user_service
 from app.api.errors import NotFoundError
 from app.api.schemas.answer import FillInTheBlankAnswerSchema
@@ -116,36 +114,10 @@ async def validate_exercise_attempt(
         if not exercise:
             raise NotFoundError(f'Exercise with ID {exercise_id} not found')
 
-        exercise_attempt = await exercise_service.new_exercise_attempt(
+        exercise_attempt = await exercise_service.validate_exercise_attempt(
             user=user,
             exercise=exercise,
             answer=FillInTheBlankAnswer(**answer.model_dump()),
-            is_correct=None,
-            feedback=None,
-            exercise_answer_id=None,
-        )
-
-        cache_key = (
-            f'validation_{exercise_id}_{hash(json.dumps(answer.model_dump()))}'
-        )
-
-        validation_result = await validation_cache.get_or_create_validation(
-            key=cache_key,
-            validation_func=lambda: exercise_service.validate_exercise_answer(
-                user,
-                exercise,
-                FillInTheBlankAnswer(**answer.model_dump()),
-            ),
-        )
-
-        if exercise_attempt.attempt_id is None:
-            raise ValueError('Exercise attempt attempt_id must not be None')
-
-        exercise_attempt = await exercise_service.update_exercise_attempt(
-            attempt_id=exercise_attempt.attempt_id,
-            is_correct=validation_result.is_correct,
-            feedback=validation_result.feedback,
-            exercise_answer_id=validation_result.answer_id,
         )
 
         if exercise_attempt.is_correct is None:

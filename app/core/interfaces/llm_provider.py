@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import Tuple
 
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
@@ -24,6 +24,5 @@ class LLMProvider(ABC):
         user: User,
         exercise: Exercise,
         answer: Answer,
-        right_answer: List[Answer],
     ) -> Tuple[bool, str]:
         pass

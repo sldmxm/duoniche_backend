@@ -7,6 +7,7 @@ from unittest.mock import create_autospec
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -93,6 +94,21 @@ async def db_session(
             await transaction.rollback()
 
 
+@pytest_asyncio.fixture
+async def redis() -> Redis:
+    redis = Redis.from_url(settings.redis_url)
+    await redis.flushdb()
+    yield redis
+    await redis.aclose()
+
+
+@pytest_asyncio.fixture
+def validation_cache(redis: Redis):
+    from app.core.services.cache import ValidationCache
+
+    return ValidationCache(redis)
+
+
 @pytest_asyncio.fixture(scope='function')
 async def exercise_service(db_session: AsyncSession):
     """Create ExerciseService with test repositories"""
@@ -108,7 +124,9 @@ async def exercise_service(db_session: AsyncSession):
             openai_api_key=settings.openai_api_key,
             model_name=settings.openai_test_model_name,
         ),
+        validation_cache=validation_cache,
     )
+    app.state.exercise_service = service
     yield service
 
 
@@ -142,6 +160,7 @@ async def client(
         try:
             yield ac
         finally:
+            del app.state.exercise_service
             app.dependency_overrides.clear()
 
 

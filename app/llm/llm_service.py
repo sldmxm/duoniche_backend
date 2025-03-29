@@ -229,7 +229,6 @@ class LLMService(LLMProvider):
         user: User,
         exercise: Exercise,
         answer: Answer,
-        right_answers: List[Answer],
     ) -> Tuple[bool, str]:
         """Validate user's answer to the exercise."""
         if not isinstance(answer, FillInTheBlankAnswer):

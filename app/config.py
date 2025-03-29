@@ -2,6 +2,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):  # type: ignore
+    debug: str = 'False'
+
     postgres_user: str = 'postgres'
     postgres_password: str = 'postgres'
     postgres_host: str = 'localhost'
@@ -26,7 +28,8 @@ class Settings(BaseSettings):  # type: ignore
     openai_max_retries: int = 6
     openai_request_timeout: int = 10
 
-    debug: str = 'False'
+    redis_url: str = 'redis://localhost:6379'
+    cache_ttl: int = 60
 
     model_config = SettingsConfigDict(
         env_file='.env',

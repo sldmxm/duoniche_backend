@@ -29,6 +29,7 @@ class Settings(BaseSettings):  # type: ignore
     openai_request_timeout: int = 10
 
     redis_url: str = 'redis://localhost:6379'
+    redis_test_db: int = 1
     cache_ttl: int = 60
 
     model_config = SettingsConfigDict(

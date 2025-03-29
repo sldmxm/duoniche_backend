@@ -97,6 +97,7 @@ async def db_session(
 @pytest_asyncio.fixture
 async def redis() -> Redis:
     redis = Redis.from_url(settings.redis_url)
+    await redis.select(settings.redis_test_db)
     await redis.flushdb()
     yield redis
     await redis.aclose()

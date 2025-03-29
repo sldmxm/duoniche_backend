@@ -24,7 +24,7 @@ class LanguageLevel(Enum):
     C2 = 'C2'
 
     @classmethod
-    def get_new_exercise_level(
+    def get_next_exercise_level(
         cls, current_level: 'LanguageLevel'
     ) -> 'LanguageLevel':
         """

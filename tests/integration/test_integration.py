@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.enums import ExerciseType, LanguageLevel
@@ -15,7 +16,7 @@ from app.main import app
 pytestmark = pytest.mark.asyncio(scope='function')
 
 
-@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
+@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 @pytest.mark.asyncio
 async def test_get_new_exercise(
     mock_get_level,
@@ -29,7 +30,7 @@ async def test_get_new_exercise(
         db_sample_exercise.language_level
     )
     response = await client.post(
-        '/api/v1/exercises/new', json=sample_exercise_request_data
+        '/api/v1/exercises/next', json=sample_exercise_request_data
     )
 
     assert response.status_code == 200
@@ -101,7 +102,7 @@ async def test_exercise_not_found(
     assert 'Exercise with ID 99999 not found' in response.json()['detail']
 
 
-@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
+@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 @pytest.mark.asyncio
 async def test_multiple_requests_same_user(
     mock_get_level,
@@ -130,7 +131,7 @@ async def test_multiple_requests_same_user(
     new_exercise_request = user_data.get('user_id')
 
     response = await client.post(
-        '/api/v1/exercises/new', json=new_exercise_request
+        '/api/v1/exercises/next', json=new_exercise_request
     )
     assert response.status_code == 200
 
@@ -158,7 +159,7 @@ async def test_multiple_requests_same_user(
     second_exercise = db_sample_exercise
 
     response = await client.post(
-        '/api/v1/exercises/new', json=new_exercise_request
+        '/api/v1/exercises/next', json=new_exercise_request
     )
 
     assert response.status_code == 200
@@ -166,7 +167,7 @@ async def test_multiple_requests_same_user(
     assert new_exercise_data['exercise_id'] == second_exercise.exercise_id
 
 
-@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
+@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 @pytest.mark.asyncio
 async def test_concurrent_requests(
     mock_get_level,
@@ -178,6 +179,7 @@ async def test_concurrent_requests(
     add_db_correct_exercise_answer,
     async_engine,
     async_session,
+    redis,
 ):
     """Test concurrent requests from multiple users."""
     mock_get_level.return_value = DEFAULT_LANGUAGE_LEVEL
@@ -185,23 +187,32 @@ async def test_concurrent_requests(
     exercise_responses = []
 
     async def user_task(telegram_id):
-        user_specific_data = {
-            'telegram_id': telegram_id,
-            'username': f'user_{telegram_id}',
-            'name': f'User {telegram_id}',
-            'user_language': 'en',
-            'target_language': 'en',
-        }
-        db_user = UserModel(**user_specific_data)
-        db_user.language_level = DEFAULT_LANGUAGE_LEVEL.value
-        async_session.add(db_user)
-        await async_session.commit()
-        await async_session.refresh(db_user)
-        await asyncio.sleep(0.1)
+        async_session = async_sessionmaker(
+            async_engine, expire_on_commit=False
+        )()
+        try:
+            user_specific_data = {
+                'telegram_id': telegram_id,
+                'username': f'user_{telegram_id}',
+                'name': f'User {telegram_id}',
+                'user_language': 'en',
+                'target_language': 'en',
+            }
+            db_user = UserModel(**user_specific_data)
+            db_user.language_level = DEFAULT_LANGUAGE_LEVEL.value
+            async_session.add(db_user)
+            await async_session.commit()
+            await async_session.refresh(db_user)
+            await asyncio.sleep(0.1)
+        except Exception as e:
+            print(f'Error in user_task for user {telegram_id}: {str(e)}')
+            raise
+        finally:
+            await async_session.close()
 
         try:
             response = await client.post(
-                '/api/v1/exercises/new',
+                '/api/v1/exercises/next',
                 json=db_user.user_id,
             )
 
@@ -243,8 +254,12 @@ async def test_concurrent_requests(
         assert response['exercise_id'] == first_id
         assert response['data']['text_with_blanks'] == first_data_text
 
+    async_session_for_check = async_sessionmaker(
+        async_engine, expire_on_commit=False
+    )()
+
     exercise_attempt_repository = SQLAlchemyExerciseAttemptRepository(
-        async_session
+        async_session_for_check
     )
     exercise_attempts = await exercise_attempt_repository.get_by_exercise_id(
         exercise_id=first_id
@@ -255,9 +270,10 @@ async def test_concurrent_requests(
     user_ids_with_attempts = {attempt.user_id for attempt in exercise_attempts}
     expected_user_ids = set(range(1, num_users + 1))
     assert user_ids_with_attempts == expected_user_ids
+    await async_session_for_check.close()
 
 
-@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
+@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 @pytest.mark.asyncio
 async def test_validation_cache_multiple_requests(
     mock_get_level,
@@ -279,7 +295,7 @@ async def test_validation_cache_multiple_requests(
     new_exercise_request = add_db_user.user_id
 
     response = await client.post(
-        '/api/v1/exercises/new', json=new_exercise_request
+        '/api/v1/exercises/next', json=new_exercise_request
     )
     assert response.status_code == 200
     exercise_data = response.json()
@@ -335,7 +351,7 @@ async def test_get_new_exercise_background_task(
     assert count == 1
 
     response = await client.post(
-        '/api/v1/exercises/new', json=new_exercise_request
+        '/api/v1/exercises/next', json=new_exercise_request
     )
     assert response.status_code == 200
 

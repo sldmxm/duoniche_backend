@@ -5,7 +5,7 @@ import pytest
 from app.core.enums import LanguageLevel
 
 
-@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
+@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 @pytest.mark.asyncio
 async def test_get_new_exercise_success(
     mock_get_level,
@@ -19,7 +19,7 @@ async def test_get_new_exercise_success(
         db_sample_exercise.language_level
     )
     response = await client.post(
-        '/api/v1/exercises/new', json=sample_exercise_request_data
+        '/api/v1/exercises/next', json=sample_exercise_request_data
     )
 
     assert response.status_code == 200
@@ -34,7 +34,7 @@ async def test_get_new_exercise_bad_request(
 ):
     """Test validation with invalid parameters."""
     response = await client.post(
-        '/api/v1/exercises/new', json={'user_id': 'test'}
+        '/api/v1/exercises/next', json={'user_id': 'test'}
     )
     assert response.status_code == 422
     assert (
@@ -97,7 +97,7 @@ async def test_validate_exercise_bad_request(
     assert response.json()['detail'][0]['loc'] == ['body', 'user_id']
 
 
-@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
+@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 @pytest.mark.asyncio
 async def test_validate_exercise_bad_request_answer_type(
     mock_get_level,
@@ -112,7 +112,7 @@ async def test_validate_exercise_bad_request_answer_type(
         db_sample_exercise.language_level
     )
     response_exercise = await client.post(
-        '/api/v1/exercises/new',
+        '/api/v1/exercises/next',
         json=sample_exercise_request_data,
     )
 

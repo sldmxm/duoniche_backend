@@ -36,26 +36,81 @@ class ExerciseService:
         self.exercise_answer_repository = exercise_answers_repository
         self.llm_service = llm_service
         self.validation_cache = validation_cache
+        self.background_exercise_generation_task: Optional[asyncio.Task] = None
 
-    async def get_or_create_new_exercise(
+    async def get_or_create_next_exercise(
         self,
         user: User,
     ) -> Optional[Exercise]:
+        async def generate_new_exercise_if_needed(
+            user: User,
+            exercise_type: ExerciseType,
+            topic: ExerciseTopic,
+            language_level: LanguageLevel,
+        ) -> None:
+            exercises_count = (
+                await self.exercise_repository.count_new_exercises(
+                    user,
+                    language_level,
+                )
+            )
+            if exercises_count < MIN_EXERCISE_COUNT_TO_GENERATE_NEW:
+                self.background_exercise_generation_task = asyncio.create_task(
+                    self.generate_and_save_new_exercise(
+                        user=user,
+                        exercise_type=exercise_type,
+                        topic=topic,
+                        language_level=language_level,
+                    )
+                )
+
+        async def get_some_exercise() -> Exercise:
+            if language_level != user.language_level:
+                user_level_exercise = (
+                    await self.exercise_repository.get_new_exercise(
+                        user=user,
+                        language_level=user.language_level,
+                        exercise_type=exercise_type,
+                        topic=topic,
+                    )
+                )
+                if user_level_exercise:
+                    return user_level_exercise
+
+            exercise_for_repetition = await self.get_exercise_for_repetition(
+                user
+            )
+            if exercise_for_repetition:
+                return exercise_for_repetition
+
+            if self.background_exercise_generation_task:
+                return await self.background_exercise_generation_task
+
+            return await self.generate_and_save_new_exercise(
+                user=user,
+                exercise_type=exercise_type,
+                topic=topic,
+                language_level=language_level,
+            )
+
         # TODO: Добавить обработку исключений:
         #  What happens if the LLM service raises an exception?
         #   (можно запускать get_exercise_for_repetition, как вариант)
         #  What happens if a repository method raises an exception?
 
-        await self._generate_new_exercise(user)
-
-        language_level = LanguageLevel.get_new_exercise_level(
+        language_level = LanguageLevel.get_next_exercise_level(
             user.language_level
         )
-
         # TODO: написать логику выбора типа задания, пока заглушка
         exercise_type = ExerciseType.FILL_IN_THE_BLANK
         # TODO: разобраться с топиками, пока заглушка
         topic = ExerciseTopic.GENERAL
+        await generate_new_exercise_if_needed(
+            user=user,
+            exercise_type=exercise_type,
+            topic=topic,
+            language_level=language_level,
+        )
 
         exercise = await self.exercise_repository.get_new_exercise(
             user=user,
@@ -64,58 +119,33 @@ class ExerciseService:
             topic=topic,
         )
         if exercise is None:
-            exercise = await self.get_exercise_for_repetition(user)
+            exercise = await get_some_exercise()
 
         return exercise
 
-    async def _generate_new_exercise(
+    async def generate_and_save_new_exercise(
         self,
         user: User,
-    ) -> None:
-        async def _generate_and_save_new_exercise(
-            user: User,
-            exercise_type: ExerciseType,
-            topic: ExerciseTopic,
-        ) -> Exercise:
-            try:
-                exercise, answer = await self.llm_service.generate_exercise(
-                    user, user.language_level, exercise_type, topic
-                )
-                exercise = await self.exercise_repository.save(exercise)
-                if exercise.exercise_id:
-                    right_answer = ExerciseAnswer(
-                        answer_id=None,
-                        exercise_id=exercise.exercise_id,
-                        answer=answer,
-                        is_correct=True,
-                        created_by='LLM',
-                        feedback='',
-                        created_at=datetime.now(),
-                    )
-                    await self.exercise_answer_repository.save(right_answer)
-                return exercise
-            except GeneratorExit:
-                logger.warning('LLM request was interrupted')
-                raise
-
-        exercises_count = await self.exercise_repository.count_new_exercises(
-            user,
-            user.language_level,
+        language_level: LanguageLevel,
+        exercise_type: ExerciseType,
+        topic: ExerciseTopic,
+    ) -> Exercise:
+        exercise, answer = await self.llm_service.generate_exercise(
+            user, language_level, exercise_type, topic
         )
-
-        if exercises_count < MIN_EXERCISE_COUNT_TO_GENERATE_NEW:
-            # TODO: написать логику выбора типа задания, пока заглушка
-            exercise_type = ExerciseType.FILL_IN_THE_BLANK
-            # TODO: разобраться с топиками, пока заглушка
-            topic = ExerciseTopic.GENERAL
-
-            self.background_exercise_generation_task = asyncio.create_task(
-                _generate_and_save_new_exercise(
-                    user,
-                    exercise_type,
-                    topic,
-                )
+        exercise = await self.exercise_repository.save(exercise)
+        if exercise.exercise_id:
+            right_answer = ExerciseAnswer(
+                answer_id=None,
+                exercise_id=exercise.exercise_id,
+                answer=answer,
+                is_correct=True,
+                created_by='LLM',
+                feedback='',
+                created_at=datetime.now(),
             )
+            await self.exercise_answer_repository.save(right_answer)
+        return exercise
 
     async def get_exercise_for_repetition(
         self,

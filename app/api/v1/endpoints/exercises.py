@@ -25,16 +25,13 @@ router = APIRouter(route_class=APIRoute)
 
 
 @router.post(
-    '/new',
+    '/next',
     response_model=ExerciseSchema,
     response_model_exclude_none=True,
-    summary='Get a new exercise',
-    description=(
-        'Returns a new exercise '
-        "based on user's language level and exercise type"
-    ),
+    summary='Get a next exercise',
+    description=('Returns a next exercise based on user'),
 )
-async def get_or_create_new_exercise(
+async def get_or_create_next_exercise(
     exercise_service: Annotated[
         ExerciseService, Depends(get_exercise_service)
     ],
@@ -42,7 +39,7 @@ async def get_or_create_new_exercise(
     user_id: Annotated[int, Body(description='User ID')],
 ) -> ExerciseSchema:
     """
-    Get or create a new exercise for the user based on their
+    Get or create a next exercise for the user based on their
     language level and preferred exercise type.
 
     Returns a 404 error if no suitable exercise is found.
@@ -56,7 +53,7 @@ async def get_or_create_new_exercise(
 
         exercise: Optional[
             Exercise
-        ] = await exercise_service.get_or_create_new_exercise(
+        ] = await exercise_service.get_or_create_next_exercise(
             user=user,
         )
 

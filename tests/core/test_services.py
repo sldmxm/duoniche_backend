@@ -33,7 +33,7 @@ def exercise_service(
     )
 
 
-@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
+@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 async def test_get_or_create_new_exercise_from_repo(
     mock_get_level,
     mock_exercise_repository: AsyncMock,
@@ -50,7 +50,7 @@ async def test_get_or_create_new_exercise_from_repo(
         MIN_EXERCISE_COUNT_TO_GENERATE_NEW + 1
     )
 
-    exercise = await exercise_service.get_or_create_new_exercise(
+    exercise = await exercise_service.get_or_create_next_exercise(
         user,
     )
 
@@ -64,7 +64,7 @@ async def test_get_or_create_new_exercise_from_repo(
     mock_exercise_repository.save.assert_not_awaited()
 
 
-@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
+@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 async def test_get_or_create_new_exercise_from_repetition(
     mock_get_level,
     mock_exercise_repository: AsyncMock,
@@ -85,7 +85,7 @@ async def test_get_or_create_new_exercise_from_repetition(
         fill_in_the_blank_exercise
     )
 
-    exercise = await exercise_service.get_or_create_new_exercise(
+    exercise = await exercise_service.get_or_create_next_exercise(
         user,
     )
 
@@ -101,7 +101,7 @@ async def test_get_or_create_new_exercise_from_repetition(
     )
 
 
-@patch('app.core.enums.LanguageLevel.get_new_exercise_level')
+@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 async def test_get_or_create_new_exercise_generate_in_background(
     mock_get_level,
     mock_exercise_repository: AsyncMock,
@@ -127,18 +127,18 @@ async def test_get_or_create_new_exercise_generate_in_background(
     mock_exercise_repository.save.return_value = fill_in_the_blank_exercise
 
     with patch('asyncio.create_task') as mock_create_task:
-        exercise = await exercise_service.get_or_create_new_exercise(
+        exercise = await exercise_service.get_or_create_next_exercise(
             user,
         )
         assert exercise == fill_in_the_blank_exercise
 
         mock_create_task.assert_called_once()
         args, _ = mock_create_task.call_args
-        assert args[0].__name__ == '_generate_and_save_new_exercise'
+        assert args[0].__name__ == 'generate_and_save_new_exercise'
 
         mock_exercise_repository.count_new_exercises.assert_awaited_once_with(
             user=user,
-            language_level=user.language_level,
+            language_level=LanguageLevel.B1,
         )
 
 
@@ -147,6 +147,7 @@ async def test_get_exercise_for_repetition(
     exercise_service: ExerciseService,
     user: User,
     fill_in_the_blank_exercise: Exercise,
+    redis,
 ):
     mock_exercise_repository.get_exercise_for_repetition.return_value = (
         fill_in_the_blank_exercise

@@ -29,7 +29,7 @@ router = APIRouter(route_class=APIRoute)
     response_model=ExerciseSchema,
     response_model_exclude_none=True,
     summary='Get a next exercise',
-    description=('Returns a next exercise based on user'),
+    description='Returns a next exercise based on user',
 )
 async def get_or_create_next_exercise(
     exercise_service: Annotated[
@@ -119,6 +119,8 @@ async def validate_exercise_attempt(
 
         if exercise_attempt.is_correct is None:
             raise ValueError('Exercise attempt is_correct must not be None')
+
+        logger.debug(f'{exercise_attempt=}')
 
         return ValidationResultSchema(
             is_correct=exercise_attempt.is_correct,

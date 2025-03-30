@@ -29,6 +29,9 @@ class ExerciseAnswerRepository(AsyncRepository[ExerciseAnswer]):
 
     @abstractmethod
     async def get_by_exercise_and_answer(
-        self, exercise_id: int, answer: Answer
+        self,
+        exercise_id: int,
+        answer: Answer,
+        language: str,
     ) -> Optional[ExerciseAnswer]:
         raise NotImplementedError

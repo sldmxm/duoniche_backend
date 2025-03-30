@@ -101,6 +101,7 @@ class ExerciseService:
         language_level = LanguageLevel.get_next_exercise_level(
             user.language_level
         )
+        logger.debug(f'Next exercise level: {language_level} for user {user}')
         # TODO: написать логику выбора типа задания, пока заглушка
         exercise_type = ExerciseType.FILL_IN_THE_BLANK
         # TODO: разобраться с топиками, пока заглушка
@@ -142,6 +143,7 @@ class ExerciseService:
                 is_correct=True,
                 created_by='LLM',
                 feedback='',
+                feedback_language='',
                 created_at=datetime.now(),
             )
             await self.exercise_answer_repository.save(right_answer)
@@ -178,15 +180,27 @@ class ExerciseService:
             exercise_answer_id=None,
         )
 
+        logger.debug('exercise_answer_repository.get_by_exercise_and_answer')
+
         exercise_answer = (
             await self.exercise_answer_repository.get_by_exercise_and_answer(
-                exercise.exercise_id, answer
+                exercise.exercise_id, answer, user.user_language
             )
         )
+
+        logger.debug(f'exercise_answer from DB {exercise_answer}')
+
         if exercise_answer:
             exercise_attempt.is_correct = exercise_answer.is_correct
             exercise_attempt.feedback = exercise_answer.feedback
             exercise_attempt.exercise_answer_id = exercise_answer.answer_id
+
+            if exercise_answer.feedback_language != user.user_language:
+                logger.warning(
+                    f'Feedback language mismatch: '
+                    f'{exercise_answer.feedback_language} '
+                    f'!= {user.user_language}'
+                )
 
             exercise_attempt = await self.exercise_attempt_repository.save(
                 exercise_attempt
@@ -242,6 +256,7 @@ class ExerciseService:
             answer=answer,
             is_correct=is_correct,
             feedback=feedback,
+            feedback_language=user.user_language,
             created_at=datetime.now(),
             # TODO: Вынести в константу
             #  ИЛИ добавить атрибуты в модель, чтобы понимать,

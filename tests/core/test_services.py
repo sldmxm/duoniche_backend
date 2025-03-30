@@ -197,6 +197,7 @@ async def test_validate_exercise_attempt_correct_exercise(
         answer=fill_in_the_blank_answer,
         is_correct=True,
         feedback='Correct!',
+        feedback_language=user.user_language,
         created_by=f'LLM:user:{user.user_id}',
         created_at=datetime(2023, 1, 1),
     )
@@ -218,7 +219,9 @@ async def test_validate_exercise_attempt_correct_exercise(
     )
 
     mock_exercise_answer_repository.get_by_exercise_and_answer.assert_awaited_once_with(
-        fill_in_the_blank_exercise.exercise_id, fill_in_the_blank_answer
+        fill_in_the_blank_exercise.exercise_id,
+        fill_in_the_blank_answer,
+        user.user_language,
     )
     mock_llm_service.validate_attempt.assert_not_awaited()
     mock_exercise_attempt_repository.save.assert_awaited_once()
@@ -242,6 +245,7 @@ async def test_validate_exercise_attempt_incorrect_exercise(
         answer=fill_in_the_blank_answer,
         is_correct=False,
         feedback='Wrong!',
+        feedback_language=user.user_language,
         created_by=f'LLM:user:{user.user_id}',
         created_at=datetime(2023, 1, 1),
     )
@@ -263,7 +267,9 @@ async def test_validate_exercise_attempt_incorrect_exercise(
     )
 
     mock_exercise_answer_repository.get_by_exercise_and_answer.assert_awaited_once_with(
-        fill_in_the_blank_exercise.exercise_id, fill_in_the_blank_answer
+        fill_in_the_blank_exercise.exercise_id,
+        fill_in_the_blank_answer,
+        user.user_language,
     )
     mock_llm_service.validate_attempt.assert_not_awaited()
     mock_exercise_attempt_repository.save.assert_awaited_once()
@@ -292,6 +298,7 @@ async def test_validate_exercise_attempt_new_correct(
         answer=fill_in_the_blank_answer,
         is_correct=True,
         feedback='Correct!',
+        feedback_language=user.user_language,
         created_by=f'LLM:user:{user.user_id}',
         created_at=datetime.now(),
     )
@@ -320,7 +327,9 @@ async def test_validate_exercise_attempt_new_correct(
     )
 
     mock_exercise_answer_repository.get_by_exercise_and_answer.assert_awaited_once_with(
-        fill_in_the_blank_exercise.exercise_id, fill_in_the_blank_answer
+        fill_in_the_blank_exercise.exercise_id,
+        fill_in_the_blank_answer,
+        user.user_language,
     )
     mock_llm_service.validate_attempt.assert_awaited_once_with(
         user,
@@ -354,6 +363,7 @@ async def test_validate_exercise_attempt_new_incorrect(
         answer=fill_in_the_blank_answer,
         is_correct=False,
         feedback='Wrong!',
+        feedback_language=user.user_language,
         created_by=f'LLM:user:{user.user_id}',
         created_at=datetime.now(),
     )
@@ -382,7 +392,9 @@ async def test_validate_exercise_attempt_new_incorrect(
     )
 
     mock_exercise_answer_repository.get_by_exercise_and_answer.assert_awaited_once_with(
-        fill_in_the_blank_exercise.exercise_id, fill_in_the_blank_answer
+        fill_in_the_blank_exercise.exercise_id,
+        fill_in_the_blank_answer,
+        user.user_language,
     )
     mock_llm_service.validate_attempt.assert_awaited_once_with(
         user,

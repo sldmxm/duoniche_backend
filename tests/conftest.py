@@ -332,6 +332,7 @@ async def add_db_correct_exercise_answer(
     db_session: AsyncSession,
     db_sample_exercise,
     request_data_correct_answer_for_sample_exercise,
+    user,
 ):
     """Create a correct ExerciseAnswerModel in the database."""
     exercise_answer = ExerciseAnswer(
@@ -343,6 +344,7 @@ async def add_db_correct_exercise_answer(
         ),
         is_correct=True,
         feedback='',
+        feedback_language=user.user_language,
         created_by='LLM',
         created_at=datetime.now(),
         answer_id=1,
@@ -353,6 +355,7 @@ async def add_db_correct_exercise_answer(
         answer_text=exercise_answer.answer.get_answer_text(),
         is_correct=exercise_answer.is_correct,
         feedback=exercise_answer.feedback,
+        feedback_language=exercise_answer.feedback_language,
         created_at=exercise_answer.created_at,
         created_by=exercise_answer.created_by,
     )
@@ -366,6 +369,7 @@ async def add_db_incorrect_exercise_answer(
     db_session: AsyncSession,
     db_sample_exercise,
     request_data_incorrect_answer_for_sample_exercise,
+    user,
 ):
     """Create an incorrect ExerciseAnswerModel in the database."""
     exercise_answer = ExerciseAnswer(
@@ -377,6 +381,7 @@ async def add_db_incorrect_exercise_answer(
         ),
         is_correct=False,
         feedback='incorrect',
+        feedback_language=user.user_language,
         created_by='LLM',
         created_at=datetime.now(),
         answer_id=1,
@@ -387,6 +392,7 @@ async def add_db_incorrect_exercise_answer(
         answer_text=exercise_answer.answer.get_answer_text(),
         is_correct=exercise_answer.is_correct,
         feedback=exercise_answer.feedback,
+        feedback_language=user.user_language,
         created_at=exercise_answer.created_at,
         created_by=exercise_answer.created_by,
     )

@@ -5,5 +5,3 @@ from app.db.models.exercise_attempt import ExerciseAttempt
 from app.db.models.user import User
 
 __all__ = ['Base', 'Exercise', 'ExerciseAnswer', 'ExerciseAttempt', 'User']
-
-Base.metadata = Base.metadata

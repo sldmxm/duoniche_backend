@@ -30,6 +30,7 @@ class ExerciseAnswer(Base):
     answer_text = Column(Text, nullable=False)
     is_correct = Column(Boolean, nullable=False)
     feedback = Column(String)
+    feedback_language = Column(String)
     created_at = Column(
         DateTime(timezone=True), default=datetime.now(), nullable=False
     )

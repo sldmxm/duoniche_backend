@@ -1,8 +1,11 @@
+import logging
 from unittest.mock import patch
 
 import pytest
 
 from app.core.enums import LanguageLevel
+
+logger = logging.getLogger(__name__)
 
 
 @patch('app.core.enums.LanguageLevel.get_next_exercise_level')
@@ -58,6 +61,8 @@ async def test_validate_exercise_success(
         '/api/v1/exercises/validate',
         json=request_data_correct_answer_for_sample_exercise,
     )
+
+    logger.debug(response.json())
 
     assert response.status_code == 200
     assert response.json() == {

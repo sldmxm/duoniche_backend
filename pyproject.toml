@@ -32,7 +32,7 @@ quote-style = "single"
 
 [tool.ruff]
 lint.select = ["E", "F", "B", "I", "SIM",]
-exclude = ["settings.py","migrations"]
+exclude = ["settings.py","migrations", "alembic/*"]
 line-length = 79
 
 [tool.mypy]

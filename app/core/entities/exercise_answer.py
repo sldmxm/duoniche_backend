@@ -12,5 +12,6 @@ class ExerciseAnswer(BaseModel):
     answer: Answer = Field()
     is_correct: bool = Field()
     feedback: str = Field()
+    feedback_language: str = Field()
     created_at: datetime = Field()
     created_by: str = Field()

@@ -6,11 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.entities.exercise_answer import (
     ExerciseAnswer as ExerciseAnswerEntity,
 )
-from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.repositories.exercise_answer import ExerciseAnswerRepository
 from app.core.value_objects.answer import Answer, create_answer_model_validate
 from app.db.models import ExerciseAnswer as ExerciseAnswerModel
-from app.db.models import ExerciseAttempt as ExerciseAttemptModel
 
 
 class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
@@ -57,6 +55,7 @@ class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
             answer_text=exercise_answers.answer.get_answer_text(),
             is_correct=exercise_answers.is_correct,
             feedback=exercise_answers.feedback,
+            feedback_language=exercise_answers.feedback_language,
             created_at=exercise_answers.created_at,
             created_by=exercise_answers.created_by,
         )
@@ -66,11 +65,15 @@ class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
         return self._to_entity(db_answer)
 
     async def get_by_exercise_and_answer(
-        self, exercise_id: int, answer: Answer
+        self,
+        exercise_id: int,
+        answer: Answer,
+        language: str,
     ) -> Optional[ExerciseAnswerEntity]:
         stmt = select(ExerciseAnswerModel).where(
             ExerciseAnswerModel.exercise_id == exercise_id,
             ExerciseAnswerModel.answer_text == answer.get_answer_text(),
+            ExerciseAnswerModel.feedback_language == language,
         )
         result = await self.session.execute(stmt)
         db_answer = result.scalar_one_or_none()
@@ -87,19 +90,7 @@ class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
             answer=create_answer_model_validate(db_answer.answer),
             is_correct=db_answer.is_correct,
             feedback=db_answer.feedback,
+            feedback_language=db_answer.feedback_language,
             created_at=db_answer.created_at,
             created_by=db_answer.created_by,
-        )
-
-    def _attempt_to_entity(
-        self, db_attempt: ExerciseAttemptModel
-    ) -> ExerciseAttempt:
-        return ExerciseAttempt(
-            attempt_id=db_attempt.attempt_id,
-            user_id=db_attempt.user_id,
-            exercise_id=db_attempt.exercise_id,
-            answer=create_answer_model_validate(db_attempt.answer),
-            is_correct=db_attempt.is_correct,
-            feedback=db_attempt.feedback,
-            exercise_answer_id=db_attempt.exercise_answers_id,
         )

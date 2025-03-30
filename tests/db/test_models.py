@@ -62,10 +62,11 @@ async def exercise_attempt(
     exercise,
     exercise_answer,
     sentence_construction_answer,
+    add_db_user,
 ):
     async with async_session as session:
         db_exercise_attempt = ExerciseAttempt(
-            user_id=1,
+            user_id=add_db_user.user_id,
             exercise_id=exercise.exercise_id,
             answer=sentence_construction_answer.model_dump(),
             is_correct=True,

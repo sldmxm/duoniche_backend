@@ -69,7 +69,9 @@ async def test_get_all(db_session, fill_sample_exercises):
 
 
 @pytest.mark.asyncio
-async def test_get_new_exercise(db_session, get_exercises_by_level, user):
+async def test_get_new_exercise(
+    db_session, get_exercises_by_level, user, add_db_user
+):
     """Test getting exercises by language level and topic."""
     exercise_repository = SQLAlchemyExerciseRepository(db_session)
     language_level = LanguageLevel.B1

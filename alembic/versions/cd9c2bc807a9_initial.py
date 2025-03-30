@@ -1,8 +1,8 @@
-"""Initial migration
+"""Initial
 
-Revision ID: 422c6cb186e6
+Revision ID: cd9c2bc807a9
 Revises:
-Create Date: 2025-03-30 00:47:06.088875
+Create Date: 2025-03-30 22:03:08.380044
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '422c6cb186e6'
+revision: str = 'cd9c2bc807a9'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -35,13 +35,15 @@ def upgrade() -> None:
     op.create_index(op.f('ix_exercises_exercise_id'), 'exercises', ['exercise_id'], unique=False)
     op.create_table('users',
     sa.Column('user_id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('telegram_id', sa.String(), nullable=True),
+    sa.Column('telegram_id', sa.String(), nullable=False),
     sa.Column('username', sa.String(), nullable=True),
     sa.Column('name', sa.String(), nullable=True),
-    sa.Column('user_language', sa.String(), nullable=True),
-    sa.Column('target_language', sa.String(), nullable=True),
-    sa.Column('is_active', sa.Boolean(), nullable=True),
-    sa.Column('language_level', sa.String(), nullable=True),
+    sa.Column('user_language', sa.String(), nullable=False),
+    sa.Column('target_language', sa.String(), nullable=False),
+    sa.Column('language_level', sa.String(), nullable=False),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
     sa.PrimaryKeyConstraint('user_id')
     )
     op.create_index(op.f('ix_users_telegram_id'), 'users', ['telegram_id'], unique=True)
@@ -71,6 +73,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['exercise_answers_id'], ['exercise_answers.answer_id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['exercise_id'], ['exercises.exercise_id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.user_id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('attempt_id')
     )
     op.create_index(op.f('ix_exercise_attempts_attempt_id'), 'exercise_attempts', ['attempt_id'], unique=False)

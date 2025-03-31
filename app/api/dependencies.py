@@ -12,6 +12,7 @@ from app.db.repositories.exercise_attempt import (
 )
 from app.db.repositories.user import SQLAlchemyUserRepository
 from app.llm.llm_service import LLMService
+from app.translator.translator import Translator
 
 
 async def get_exercise_service() -> AsyncGenerator[ExerciseService, Any]:
@@ -25,6 +26,7 @@ async def get_exercise_service() -> AsyncGenerator[ExerciseService, Any]:
                 session
             ),
             llm_service=LLMService(),
+            translator=Translator(),
         )
 
 

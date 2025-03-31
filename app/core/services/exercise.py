@@ -10,12 +10,15 @@ from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.interfaces.llm_provider import LLMProvider
+from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.repositories.exercise import ExerciseRepository
 from app.core.repositories.exercise_answer import ExerciseAnswerRepository
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
-from app.core.services.cache import ValidationCache
-from app.core.services.cache import (
-    validation_cache as default_validation_cache,
+from app.core.services.async_task_cache import (
+    AsyncTaskCache,
+)
+from app.core.services.async_task_cache import (
+    async_task_cache as default_async_task_cache,
 )
 from app.core.value_objects.answer import Answer
 
@@ -29,25 +32,22 @@ class ExerciseService:
         exercise_attempt_repository: ExerciseAttemptRepository,
         exercise_answers_repository: ExerciseAnswerRepository,
         llm_service: LLMProvider,
-        validation_cache: ValidationCache = default_validation_cache,
+        translator: TranslateProvider,
+        async_task_cache: AsyncTaskCache = default_async_task_cache,
     ):
         self.exercise_repository = exercise_repository
         self.exercise_attempt_repository = exercise_attempt_repository
         self.exercise_answer_repository = exercise_answers_repository
         self.llm_service = llm_service
-        self.validation_cache = validation_cache
+        self.translator = translator
+        self.async_task_cache = async_task_cache
         self.background_exercise_generation_task: Optional[asyncio.Task] = None
 
     async def get_or_create_next_exercise(
         self,
         user: User,
     ) -> Optional[Exercise]:
-        async def generate_new_exercise_if_needed(
-            user: User,
-            exercise_type: ExerciseType,
-            topic: ExerciseTopic,
-            language_level: LanguageLevel,
-        ) -> None:
+        async def generate_new_exercise_if_needed() -> None:
             exercises_count = (
                 await self.exercise_repository.count_new_exercises(
                     user,
@@ -106,12 +106,7 @@ class ExerciseService:
         exercise_type = ExerciseType.FILL_IN_THE_BLANK
         # TODO: разобраться с топиками, пока заглушка
         topic = ExerciseTopic.GENERAL
-        await generate_new_exercise_if_needed(
-            user=user,
-            exercise_type=exercise_type,
-            topic=topic,
-            language_level=language_level,
-        )
+        await generate_new_exercise_if_needed()
 
         exercise = await self.exercise_repository.get_new_exercise(
             user=user,
@@ -167,8 +162,53 @@ class ExerciseService:
         Validate a user's answer to an exercise,
         handling caching and database operations.
         """
+
+        async def _get_answer_from_db() -> Optional[ExerciseAnswer]:
+            if exercise.exercise_id is None:
+                raise ValueError('Cannot validate an exercise without an ID')
+            all_answers = (
+                await self.exercise_answer_repository.get_all_by_user_answer(
+                    exercise.exercise_id, answer
+                )
+            )
+            logger.debug(f'All answers from DB: {all_answers}')
+            correct_answer: Optional[ExerciseAnswer] = next(
+                (a for a in all_answers if a.is_correct), None
+            )
+            user_lang_answer: Optional[ExerciseAnswer] = next(
+                (
+                    a
+                    for a in all_answers
+                    if a.feedback_language == user.user_language
+                ),
+                None,
+            )
+            other_lang_answer: Optional[ExerciseAnswer] = next(
+                (
+                    a
+                    for a in all_answers
+                    if a.feedback_language != user.user_language
+                ),
+                None,
+            )
+            if correct_answer:
+                chosen_answer = correct_answer
+            elif user_lang_answer:
+                chosen_answer = user_lang_answer
+            elif other_lang_answer:
+                chosen_answer = other_lang_answer
+            else:
+                chosen_answer = None
+            return chosen_answer
+
+        def serialize_exercise_answer(obj: ExerciseAnswer) -> bytes:
+            return obj.model_dump_json().encode('utf-8')
+
+        def deserialize_exercise_answer(data: bytes) -> ExerciseAnswer:
+            return ExerciseAnswer.model_validate_json(data)
+
         if exercise.exercise_id is None:
-            raise ValueError('Exercise ID must not be None')
+            raise ValueError('Cannot validate an exercise without an ID')
 
         exercise_attempt = ExerciseAttempt(
             attempt_id=None,
@@ -180,73 +220,87 @@ class ExerciseService:
             exercise_answer_id=None,
         )
 
-        logger.debug('exercise_answer_repository.get_by_exercise_and_answer')
+        db_answer = await _get_answer_from_db()
 
-        exercise_answer = (
-            await self.exercise_answer_repository.get_by_exercise_and_answer(
-                exercise.exercise_id, answer, user.user_language
+        if db_answer and (
+            db_answer.is_correct
+            or db_answer.feedback_language == user.user_language
+        ):
+            exercise_attempt.is_correct = db_answer.is_correct
+            exercise_attempt.feedback = db_answer.feedback
+            exercise_attempt.exercise_answer_id = db_answer.answer_id
+            return await self.exercise_attempt_repository.save(
+                exercise_attempt
             )
+
+        pre_saved_attempt = await self.exercise_attempt_repository.save(
+            exercise_attempt
         )
 
-        logger.debug(f'exercise_answer from DB {exercise_answer}')
-
-        if exercise_answer:
-            exercise_attempt.is_correct = exercise_answer.is_correct
-            exercise_attempt.feedback = exercise_answer.feedback
-            exercise_attempt.exercise_answer_id = exercise_answer.answer_id
-
-            if exercise_answer.feedback_language != user.user_language:
-                logger.warning(
-                    f'Feedback language mismatch: '
-                    f'{exercise_answer.feedback_language} '
-                    f'!= {user.user_language}'
-                )
-
-            exercise_attempt = await self.exercise_attempt_repository.save(
-                exercise_attempt
+        if db_answer and db_answer.feedback_language != user.user_language:
+            logger.debug(
+                f'Begin translation process for {db_answer} '
+                f'to {user.user_language}'
+            )
+            cache_key = (
+                f'translation_{db_answer.answer_id}_{user.user_language}'
+            )
+            translated = await self.async_task_cache.get_or_create_task(
+                key=cache_key,
+                task_func=lambda: self.copy_answer_with_translated_feedback(
+                    db_answer,
+                    user.user_language,
+                ),
+                serializer=serialize_exercise_answer,
+                deserializer=deserialize_exercise_answer,
+            )
+            if translated.answer_id is None:
+                raise ValueError('Exercise answer answer_id must not be None')
+            new_answer = translated
+            logger.debug(
+                f'Translated answer retrieved/generated: {new_answer}'
             )
 
         else:
-            exercise_attempt = await self.exercise_attempt_repository.save(
-                exercise_attempt
-            )
             cache_key = (
                 'validation'
                 f'_{exercise.exercise_id}'
                 f'_{hash(answer.get_answer_text())}'
             )
-            validation_result = (
-                await self.validation_cache.get_or_create_validation(
-                    key=cache_key,
-                    validation_func=lambda: self.llm_validate_exercise_answer(
-                        user,
-                        exercise,
-                        answer,
-                    ),
-                )
+
+            validated = await self.async_task_cache.get_or_create_task(
+                key=cache_key,
+                task_func=lambda: self.llm_validate_and_save_exercise_answer(
+                    user,
+                    exercise,
+                    answer,
+                ),
+                serializer=serialize_exercise_answer,
+                deserializer=deserialize_exercise_answer,
             )
-            if exercise_attempt.attempt_id is None:
-                raise ValueError(
-                    'Exercise attempt attempt_id must not be None'
-                )
-            if validation_result.answer_id is None:
+            if validated.answer_id is None:
                 raise ValueError('Exercise answer answer_id must not be None')
 
-            exercise_attempt = await self.exercise_attempt_repository.update(
-                attempt_id=exercise_attempt.attempt_id,
-                is_correct=validation_result.is_correct,
-                feedback=validation_result.feedback,
-                exercise_answer_id=validation_result.answer_id,
-            )
+            logger.debug(f'Validation answer retrieved/generated: {validated}')
+            new_answer = validated
+
+        if pre_saved_attempt.attempt_id is None:
+            raise ValueError('Exercise attempt attempt_id must not be None')
+
+        exercise_attempt = await self.exercise_attempt_repository.update(
+            attempt_id=pre_saved_attempt.attempt_id,
+            is_correct=new_answer.is_correct,
+            feedback=new_answer.feedback,
+            exercise_answer_id=new_answer.answer_id,
+        )
 
         return exercise_attempt
 
-    async def llm_validate_exercise_answer(
+    async def llm_validate_and_save_exercise_answer(
         self, user: User, exercise: Exercise, answer: Answer
     ) -> ExerciseAnswer:
         if exercise.exercise_id is None:
-            raise ValueError('Exercise ID must not be None')
-
+            raise ValueError('Cannot validate an exercise without an ID')
         is_correct, feedback = await self.llm_service.validate_attempt(
             user, exercise, answer
         )
@@ -258,13 +312,25 @@ class ExerciseService:
             feedback=feedback,
             feedback_language=user.user_language,
             created_at=datetime.now(),
-            # TODO: Вынести в константу
-            #  ИЛИ добавить атрибуты в модель, чтобы понимать,
-            #  как принято решение о правильности ответа
             created_by=f'LLM:user:{user.user_id}',
         )
-
-        exercise_answer = await self.exercise_answer_repository.save(
+        saved_answer = await self.exercise_answer_repository.save(
             exercise_answer
         )
-        return exercise_answer
+        return saved_answer
+
+    async def copy_answer_with_translated_feedback(
+        self,
+        answer: ExerciseAnswer,
+        target_language: str,
+    ) -> ExerciseAnswer:
+        new_answer = answer.model_copy(deep=True)
+        new_answer.answer_id = None
+        new_answer.feedback = await self.translator.translate_text(
+            text=answer.feedback, target_language=target_language
+        )
+        new_answer.feedback_language = target_language
+        new_answer.created_by = f'translated_answer:{answer.answer_id}'
+
+        saved_answer = await self.exercise_answer_repository.save(new_answer)
+        return saved_answer

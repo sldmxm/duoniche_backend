@@ -19,6 +19,7 @@ from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
 from app.db.repositories.user import SQLAlchemyUserRepository
+from app.translator.translator import Translator
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -104,10 +105,10 @@ async def redis() -> Redis:
 
 
 @pytest_asyncio.fixture
-def validation_cache(redis: Redis):
-    from app.core.services.cache import ValidationCache
+def async_task_cache(redis: Redis):
+    from app.core.services.async_task_cache import AsyncTaskCache
 
-    return ValidationCache(redis)
+    return AsyncTaskCache(redis)
 
 
 @pytest_asyncio.fixture(scope='function')
@@ -125,7 +126,8 @@ async def exercise_service(db_session: AsyncSession):
             openai_api_key=settings.openai_api_key,
             model_name=settings.openai_test_model_name,
         ),
-        validation_cache=validation_cache,
+        async_task_cache=async_task_cache,
+        translator=Translator(),
     )
     app.state.exercise_service = service
     yield service

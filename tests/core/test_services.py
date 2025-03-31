@@ -22,14 +22,14 @@ def exercise_service(
     mock_exercise_attempt_repository: AsyncMock,
     mock_exercise_answer_repository: AsyncMock,
     mock_llm_service: AsyncMock,
-    validation_cache,
+    async_task_cache,
 ) -> ExerciseService:
     return ExerciseService(
         mock_exercise_repository,
         mock_exercise_attempt_repository,
         mock_exercise_answer_repository,
         mock_llm_service,
-        validation_cache,
+        async_task_cache,
     )
 
 
@@ -201,9 +201,9 @@ async def test_validate_exercise_attempt_correct_exercise(
         created_by=f'LLM:user:{user.user_id}',
         created_at=datetime(2023, 1, 1),
     )
-    mock_exercise_answer_repository.get_by_exercise_and_answer.return_value = (
+    mock_exercise_answer_repository.get_all_by_user_answer.return_value = [
         exercise_answer
-    )
+    ]
     mock_exercise_attempt_repository.save.return_value = ExerciseAttempt(
         attempt_id=1,
         user_id=user.user_id,
@@ -218,10 +218,9 @@ async def test_validate_exercise_attempt_correct_exercise(
         user, fill_in_the_blank_exercise, fill_in_the_blank_answer
     )
 
-    mock_exercise_answer_repository.get_by_exercise_and_answer.assert_awaited_once_with(
+    mock_exercise_answer_repository.get_all_by_user_answer.assert_awaited_once_with(
         fill_in_the_blank_exercise.exercise_id,
         fill_in_the_blank_answer,
-        user.user_language,
     )
     mock_llm_service.validate_attempt.assert_not_awaited()
     mock_exercise_attempt_repository.save.assert_awaited_once()
@@ -249,9 +248,9 @@ async def test_validate_exercise_attempt_incorrect_exercise(
         created_by=f'LLM:user:{user.user_id}',
         created_at=datetime(2023, 1, 1),
     )
-    mock_exercise_answer_repository.get_by_exercise_and_answer.return_value = (
+    mock_exercise_answer_repository.get_all_by_user_answer.return_value = [
         exercise_answer
-    )
+    ]
     mock_exercise_attempt_repository.save.return_value = ExerciseAttempt(
         attempt_id=1,
         user_id=user.user_id,
@@ -266,10 +265,9 @@ async def test_validate_exercise_attempt_incorrect_exercise(
         user, fill_in_the_blank_exercise, fill_in_the_blank_answer
     )
 
-    mock_exercise_answer_repository.get_by_exercise_and_answer.assert_awaited_once_with(
+    mock_exercise_answer_repository.get_all_by_user_answer.assert_awaited_once_with(
         fill_in_the_blank_exercise.exercise_id,
         fill_in_the_blank_answer,
-        user.user_language,
     )
     mock_llm_service.validate_attempt.assert_not_awaited()
     mock_exercise_attempt_repository.save.assert_awaited_once()
@@ -289,9 +287,7 @@ async def test_validate_exercise_attempt_new_correct(
     fill_in_the_blank_answer: FillInTheBlankAnswer,
 ):
     mock_llm_service.validate_attempt.return_value = True, 'Correct!'
-    mock_exercise_answer_repository.get_by_exercise_and_answer.return_value = (
-        None
-    )
+    mock_exercise_answer_repository.get_all_by_user_answer.return_value = []
     new_exercise_answer = ExerciseAnswer(
         answer_id=1,
         exercise_id=fill_in_the_blank_exercise.exercise_id,
@@ -326,10 +322,9 @@ async def test_validate_exercise_attempt_new_correct(
         user, fill_in_the_blank_exercise, fill_in_the_blank_answer
     )
 
-    mock_exercise_answer_repository.get_by_exercise_and_answer.assert_awaited_once_with(
+    mock_exercise_answer_repository.get_all_by_user_answer.assert_awaited_once_with(
         fill_in_the_blank_exercise.exercise_id,
         fill_in_the_blank_answer,
-        user.user_language,
     )
     mock_llm_service.validate_attempt.assert_awaited_once_with(
         user,
@@ -354,9 +349,7 @@ async def test_validate_exercise_attempt_new_incorrect(
     fill_in_the_blank_answer: FillInTheBlankAnswer,
 ):
     mock_llm_service.validate_attempt.return_value = False, 'Wrong!'
-    mock_exercise_answer_repository.get_by_exercise_and_answer.return_value = (
-        None
-    )
+    mock_exercise_answer_repository.get_all_by_user_answer.return_value = []
     new_exercise_answer = ExerciseAnswer(
         answer_id=1,
         exercise_id=fill_in_the_blank_exercise.exercise_id,
@@ -391,10 +384,9 @@ async def test_validate_exercise_attempt_new_incorrect(
         user, fill_in_the_blank_exercise, fill_in_the_blank_answer
     )
 
-    mock_exercise_answer_repository.get_by_exercise_and_answer.assert_awaited_once_with(
+    mock_exercise_answer_repository.get_all_by_user_answer.assert_awaited_once_with(
         fill_in_the_blank_exercise.exercise_id,
         fill_in_the_blank_answer,
-        user.user_language,
     )
     mock_llm_service.validate_attempt.assert_awaited_once_with(
         user,

@@ -64,22 +64,20 @@ class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
         await self.session.refresh(db_answer)
         return self._to_entity(db_answer)
 
-    async def get_by_exercise_and_answer(
+    async def get_all_by_user_answer(
         self,
         exercise_id: int,
         answer: Answer,
-        language: str,
-    ) -> Optional[ExerciseAnswerEntity]:
+    ) -> List[ExerciseAnswerEntity]:
         stmt = select(ExerciseAnswerModel).where(
             ExerciseAnswerModel.exercise_id == exercise_id,
             ExerciseAnswerModel.answer_text == answer.get_answer_text(),
-            ExerciseAnswerModel.feedback_language == language,
         )
         result = await self.session.execute(stmt)
-        db_answer = result.scalar_one_or_none()
-        if not db_answer:
-            return None
-        return self._to_entity(db_answer)
+        db_answers = result.scalars().all()
+        if not db_answers:
+            return []
+        return [self._to_entity(answer) for answer in db_answers]
 
     def _to_entity(
         self, db_answer: ExerciseAnswerModel

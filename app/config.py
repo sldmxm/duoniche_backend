@@ -28,9 +28,12 @@ class Settings(BaseSettings):  # type: ignore
     openai_max_retries: int = 6
     openai_request_timeout: int = 10
 
+    google_api_key: str = ''
+
     redis_url: str = 'redis://localhost:6379'
     redis_test_db: int = 1
-    cache_ttl: int = 60
+    # нет смысла дольше, уже будет в БД и новые не будут начаты
+    async_task_cache_ttl: int = 60 * 2
 
     model_config = SettingsConfigDict(
         env_file='.env',

@@ -29,11 +29,11 @@ class ExerciseAttempt(Base):
     answer: Mapped[dict] = mapped_column(JSONB, nullable=False)
     is_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     feedback: Mapped[str | None] = mapped_column(String)
-    exercise_answers_id: Mapped[int | None] = mapped_column(
+    answer_id: Mapped[int | None] = mapped_column(
         ForeignKey('exercise_answers.answer_id', ondelete='SET NULL')
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.now(), nullable=False
+        DateTime(timezone=True), default=datetime.now, nullable=False
     )
 
     user: Mapped['User'] = relationship(back_populates='attempts')

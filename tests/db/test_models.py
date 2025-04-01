@@ -71,7 +71,7 @@ async def exercise_attempt(
             answer=sentence_construction_answer.model_dump(),
             is_correct=True,
             feedback='Good!',
-            exercise_answers_id=exercise_answer.answer_id,
+            answer_id=exercise_answer.answer_id,
         )
         session.add(db_exercise_attempt)
         await session.commit()

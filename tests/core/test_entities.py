@@ -48,7 +48,7 @@ def test_exercise_attempt_creation():
         answer=answer,
         is_correct=True,
         feedback='test',
-        exercise_answer_id=1,
+        answer_id=1,
     )
     assert attempt.attempt_id == 1
     assert attempt.exercise_id == 1

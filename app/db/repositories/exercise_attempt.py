@@ -71,17 +71,17 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
         attempt_id: int,
         is_correct: bool,
         feedback: Optional[str],
-        exercise_answer_id: int,
+        answer_id: int,
     ) -> ExerciseAttemptEntity:
         attempt = await self.session.get(ExerciseAttempt, attempt_id)
         if not attempt:
             raise ValueError('Attempt does not exist')
 
-        attempt.attempt_id = attempt_id
         attempt.is_correct = is_correct
         attempt.feedback = feedback
-        attempt.exercise_answer_id = exercise_answer_id
+        attempt.answer_id = answer_id
         await self.session.commit()
+        await self.session.refresh(attempt)
         return self._to_entity(attempt)
 
     @override
@@ -95,7 +95,7 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
             answer=exercise_attempt.answer.model_dump(),
             is_correct=exercise_attempt.is_correct,
             feedback=exercise_attempt.feedback,
-            exercise_answers_id=exercise_attempt.exercise_answer_id,
+            answer_id=exercise_attempt.answer_id,
         )
         self.session.add(db_attempt)
         await self.session.commit()
@@ -110,5 +110,5 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
             answer=create_answer_model_validate(db_attempt.answer),
             is_correct=db_attempt.is_correct,
             feedback=db_attempt.feedback,
-            exercise_answer_id=db_attempt.exercise_answers_id,
+            answer_id=db_attempt.answer_id,
         )

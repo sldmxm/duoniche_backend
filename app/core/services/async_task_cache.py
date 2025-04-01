@@ -163,6 +163,9 @@ class AsyncTaskCache(Generic[T]):
             )
             raise
 
+    def clear(self):
+        self.running_tasks.clear()
+
 
 async_task_cache: AsyncTaskCache = AsyncTaskCache(
     Redis.from_url(settings.redis_url)

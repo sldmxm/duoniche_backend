@@ -25,7 +25,7 @@ class Exercise(Base):
     exercise_text: Mapped[str] = mapped_column(Text, nullable=False)
     data: Mapped[dict] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.now(), nullable=False
+        DateTime(timezone=True), default=datetime.now, nullable=False
     )
 
     attempts: Mapped[list['ExerciseAttempt']] = relationship(

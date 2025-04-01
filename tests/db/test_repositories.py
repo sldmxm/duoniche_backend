@@ -97,7 +97,7 @@ async def test_get_new_exercise(
             ),
             is_correct=True,
             feedback='Test feedback',
-            exercise_answer_id=None,
+            answer_id=None,
             attempt_id=None,
         )
     )

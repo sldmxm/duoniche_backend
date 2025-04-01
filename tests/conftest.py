@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL
+from app.core.services.async_task_cache import AsyncTaskCache
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
 from app.db.repositories.user import SQLAlchemyUserRepository
@@ -104,13 +105,6 @@ async def redis() -> Redis:
     await redis.aclose()
 
 
-@pytest_asyncio.fixture
-def async_task_cache(redis: Redis):
-    from app.core.services.async_task_cache import AsyncTaskCache
-
-    return AsyncTaskCache(redis)
-
-
 @pytest_asyncio.fixture(scope='function')
 async def exercise_service(db_session: AsyncSession):
     """Create ExerciseService with test repositories"""
@@ -126,7 +120,7 @@ async def exercise_service(db_session: AsyncSession):
             openai_api_key=settings.openai_api_key,
             model_name=settings.openai_test_model_name,
         ),
-        async_task_cache=async_task_cache,
+        async_task_cache=AsyncTaskCache(redis),
         translator=Translator(),
     )
     app.state.exercise_service = service
@@ -442,6 +436,12 @@ async def mock_exercise_answer_repository():
 async def mock_llm_service():
     """Mock LLMService for testing."""
     return create_autospec(LLMService, instance=True)
+
+
+@pytest_asyncio.fixture
+async def mock_translator():
+    """Mock LLMService for testing."""
+    return create_autospec(Translator, instance=True)
 
 
 @pytest.fixture

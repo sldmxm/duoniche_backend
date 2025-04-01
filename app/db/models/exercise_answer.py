@@ -28,7 +28,7 @@ class ExerciseAnswer(Base):
     feedback: Mapped[str | None] = mapped_column(String)
     feedback_language: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.now(), nullable=False
+        DateTime(timezone=True), default=datetime.now, nullable=False
     )
     created_by: Mapped[str | None] = mapped_column(String)
 

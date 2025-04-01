@@ -24,7 +24,7 @@ class User(Base):
     language_level: Mapped[str] = mapped_column(String, default='A2')
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.now(), nullable=False
+        DateTime(timezone=True), default=datetime.now, nullable=False
     )
     description: Mapped[str | None] = mapped_column(Text)
 

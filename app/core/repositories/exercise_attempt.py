@@ -42,6 +42,6 @@ class ExerciseAttemptRepository(AsyncRepository[ExerciseAttempt]):
         attempt_id: int,
         is_correct: bool,
         feedback: Optional[str],
-        exercise_answer_id: int,
+        answer_id: int,
     ) -> ExerciseAttempt:
         raise NotImplementedError

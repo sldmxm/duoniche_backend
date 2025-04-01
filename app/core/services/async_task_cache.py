@@ -6,6 +6,8 @@ from redis.asyncio import Redis
 from redis.exceptions import ConnectionError
 
 from app.config import settings
+from app.core.entities.exercise_answer import ExerciseAnswer
+from app.core.entities.exercise_attempt import ExerciseAttempt
 
 logger = logging.getLogger(__name__)
 
@@ -170,3 +172,19 @@ class AsyncTaskCache(Generic[T]):
 async_task_cache: AsyncTaskCache = AsyncTaskCache(
     Redis.from_url(settings.redis_url)
 )
+
+
+def deserialize_exercise_answer(data: bytes) -> ExerciseAnswer:
+    return ExerciseAnswer.model_validate_json(data)
+
+
+def serialize_exercise_answer(obj: ExerciseAnswer) -> bytes:
+    return obj.model_dump_json().encode('utf-8')
+
+
+def serialize_exercise_attempt(obj: ExerciseAttempt) -> bytes:
+    return obj.model_dump_json().encode('utf-8')
+
+
+def deserialize_exercise_attempt(data: bytes) -> ExerciseAttempt:
+    return ExerciseAttempt.model_validate_json(data)

@@ -25,13 +25,17 @@ class Translator(TranslateProvider):
             'q': text,
             'target': target_language,
         }
-        url_with_key = f'{self.URL}?key={self.google_api_key}'
+        headers = {
+            'Content-Type': 'application/json',
+            'X-goog-api-key': self.google_api_key,
+        }
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.request(
                     'post',
-                    url_with_key,
+                    self.URL,
                     json=request_data,
+                    headers=headers,
                 )
                 response.raise_for_status()
                 logger.debug(f'Response: {response.json()}')

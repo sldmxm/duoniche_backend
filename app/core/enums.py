@@ -1,5 +1,5 @@
 import random
-from enum import Enum, auto
+from enum import Enum
 from typing import List
 
 
@@ -41,7 +41,8 @@ class LanguageLevel(Enum):
         return levels[new_idx]
 
 
-class AttemptStatus(Enum):
-    CORRECT = auto()
-    INCORRECT = auto()
-    PARTIALLY_CORRECT = auto()
+class UserAction(str, Enum):
+    new_exercise = 'new_exercise'
+    praise_and_next_set = 'praise_and_next_set'
+    congratulations_and_wait = 'congratulations_and_wait'
+    limit_reached = 'limit_reached'

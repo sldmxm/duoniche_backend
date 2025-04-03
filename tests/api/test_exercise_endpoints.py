@@ -26,7 +26,10 @@ async def test_get_new_exercise_success(
     )
 
     assert response.status_code == 200
-    assert response.json()['exercise_id'] == db_sample_exercise.exercise_id
+    assert (
+        response.json()['exercise']['exercise_id']
+        == db_sample_exercise.exercise_id
+    )
 
 
 @pytest.mark.asyncio
@@ -125,7 +128,7 @@ async def test_validate_exercise_bad_request_answer_type(
     response = await client.post(
         '/api/v1/exercises/validate',
         json={
-            'exercise_id': exercise_json['exercise_id'],
+            'exercise_id': exercise_json['exercise']['exercise_id'],
             'answer': {'test': ['test']},
             'user_id': user_data['user_id'],
         },

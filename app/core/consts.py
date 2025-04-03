@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from app.core.enums import LanguageLevel
 
 EXERCISE_FILL_IN_THE_BLANK_BLANKS = '___'
@@ -6,3 +8,9 @@ EXERCISE_FILL_IN_THE_BLANK_TASK = 'Заполни пробелы в предло
 MIN_EXERCISE_COUNT_TO_GENERATE_NEW = 5
 
 DEFAULT_LANGUAGE_LEVEL = LanguageLevel.A2
+DEFAULT_USER_LEVEL = 'ru'
+DEFAULT_TARGET_LANGUAGE = 'bg'
+
+EXERCISES_IN_SET = 5
+EXERCISES_IN_SESSION = EXERCISES_IN_SET * 5
+DELTA_BETWEEN_SESSIONS = timedelta(seconds=3 * 60 * 60)

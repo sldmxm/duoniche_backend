@@ -19,6 +19,7 @@ from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.services.async_task_cache import AsyncTaskCache
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
+from app.core.services.user_progress import UserProgressService
 from app.db.repositories.user import SQLAlchemyUserRepository
 from app.translator.translator import Translator
 
@@ -26,7 +27,11 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 )
 
-from app.api.dependencies import get_exercise_service, get_user_service
+from app.api.dependencies import (
+    get_exercise_service,
+    get_user_progress_service,
+    get_user_service,
+)
 from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
@@ -106,7 +111,7 @@ async def redis() -> Redis:
 
 
 @pytest_asyncio.fixture(scope='function')
-async def exercise_service(db_session: AsyncSession):
+async def exercise_service(db_session: AsyncSession, redis):
     """Create ExerciseService with test repositories"""
     service = ExerciseService(
         exercise_repository=SQLAlchemyExerciseRepository(db_session),
@@ -123,7 +128,6 @@ async def exercise_service(db_session: AsyncSession):
         async_task_cache=AsyncTaskCache(redis),
         translator=Translator(),
     )
-    app.state.exercise_service = service
     yield service
 
 
@@ -135,21 +139,54 @@ async def user_service(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture(scope='function')
+async def user_progress_service(db_session):
+    """Create ExerciseService with test repositories"""
+    user_service = UserService(SQLAlchemyUserRepository(db_session))
+    exercise_service = ExerciseService(
+        exercise_repository=SQLAlchemyExerciseRepository(db_session),
+        exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
+            db_session
+        ),
+        exercise_answers_repository=SQLAlchemyExerciseAnswerRepository(
+            db_session
+        ),
+        llm_service=LLMService(),
+        translator=Translator(),
+    )
+
+    service = UserProgressService(
+        user_service=user_service,
+        exercise_service=exercise_service,
+    )
+    yield service
+
+
+@pytest_asyncio.fixture(scope='function')
 async def client(
-    exercise_service, user_service
+    user_progress_service,
+    user_service,
+    exercise_service,
 ) -> AsyncGenerator[AsyncClient, Any]:
     """Create test client with overridden dependencies"""
 
-    def override_get_exercise_service():
-        return exercise_service
+    def override_get_user_progress_service():
+        return user_progress_service
 
     def override_get_user_service():
         return user_service
 
+    def override_get_exercise_service():
+        return exercise_service
+
+    app.dependency_overrides[get_user_progress_service] = (
+        override_get_user_progress_service
+    )
+    app.dependency_overrides[get_user_service] = override_get_user_service
     app.dependency_overrides[get_exercise_service] = (
         override_get_exercise_service
     )
-    app.dependency_overrides[get_user_service] = override_get_user_service
+    app.state.user_progress_service = user_progress_service
+    app.state.exercise_service = exercise_service
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url='http://test'
@@ -157,6 +194,7 @@ async def client(
         try:
             yield ac
         finally:
+            del app.state.user_progress_service
             del app.state.exercise_service
             app.dependency_overrides.clear()
 
@@ -170,6 +208,10 @@ def user_data():
         'name': 'Test User',
         'user_language': 'en',
         'target_language': 'en',
+        'is_waiting_next_session': False,
+        'exercises_get_in_session': 0,
+        'exercises_get_in_set': 0,
+        'errors_count_in_set': 0,
     }
 
 

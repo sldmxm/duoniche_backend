@@ -26,6 +26,17 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.now, nullable=False
     )
+
+    exercises_get_in_session: Mapped[int] = mapped_column(Integer, default=0)
+    exercises_get_in_set: Mapped[int] = mapped_column(Integer, default=0)
+    errors_count_in_set: Mapped[int] = mapped_column(Integer, default=0)
+    last_exercise_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    is_waiting_next_session: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+
     description: Mapped[str | None] = mapped_column(Text)
 
     attempts: Mapped[list['ExerciseAttempt']] = relationship(

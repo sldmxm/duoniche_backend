@@ -10,14 +10,21 @@ from fastapi import (
 )
 from fastapi.routing import APIRoute
 
-from app.api.dependencies import get_exercise_service, get_user_service
+from app.api.dependencies import (
+    get_exercise_service,
+    get_user_progress_service,
+    get_user_service,
+)
 from app.api.errors import NotFoundError
 from app.api.schemas.answer import FillInTheBlankAnswerSchema
 from app.api.schemas.exercise import ExerciseSchema
+from app.api.schemas.next_action_result import NextActionSchema
 from app.api.schemas.validation_result import ValidationResultSchema
 from app.core.entities.exercise import Exercise
+from app.core.entities.next_action_result import NextAction
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
+from app.core.services.user_progress import UserProgressService
 from app.core.value_objects.answer import FillInTheBlankAnswer
 
 logger = logging.getLogger(__name__)
@@ -26,45 +33,39 @@ router = APIRouter(route_class=APIRoute)
 
 @router.post(
     '/next',
-    response_model=ExerciseSchema,
+    response_model=NextActionSchema,
     response_model_exclude_none=True,
-    summary='Get a next exercise',
-    description='Returns a next exercise based on user',
+    summary='Get next action for user',
+    description='Usually get or create a next exercise for the user',
 )
 async def get_or_create_next_exercise(
-    exercise_service: Annotated[
-        ExerciseService, Depends(get_exercise_service)
+    user_progress_service: Annotated[
+        UserProgressService, Depends(get_user_progress_service)
     ],
-    user_service: Annotated[UserService, Depends(get_user_service)],
     user_id: Annotated[int, Body(description='User ID')],
-) -> ExerciseSchema:
+) -> NextActionSchema:
     """
-    Get or create a next exercise for the user based on their
-    language level and preferred exercise type.
+    Get next action for user.
+    Usually get or create a next exercise for the user.
 
     Returns a 404 error if no suitable exercise is found.
     """
     try:
-        user = await user_service.get_by_id(user_id)
-        if not user:
-            raise NotFoundError(
-                'User with provided ID not found in the database'
-            )
-
-        exercise: Optional[
-            Exercise
-        ] = await exercise_service.get_or_create_next_exercise(
-            user=user,
+        next_action: NextAction = await user_progress_service.get_next_action(
+            user_id=user_id,
         )
-
-        logger.debug(f'Exercise: {exercise}')
-
-        if not exercise:
-            raise NotFoundError(
-                'No suitable exercise found for the provided criteria'
+        output = NextActionSchema(
+            exercise=ExerciseSchema.model_validate(
+                next_action.exercise.model_dump()
             )
-
-        return ExerciseSchema.model_validate(exercise.model_dump())
+            if next_action.exercise
+            else None,
+            action=next_action.action,
+            message=next_action.message,
+            pause=next_action.pause,
+        )
+        logger.debug(f'Result: {output}')
+        return output
 
     except ValueError as e:
         raise HTTPException(

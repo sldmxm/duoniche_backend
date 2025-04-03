@@ -34,7 +34,12 @@ async def test_get_new_exercise(
     )
 
     assert response.status_code == 200
-    exercise_data = response.json()
+    response_data = response.json()
+    assert 'action' in response_data
+    assert 'exercise' in response_data
+    assert response_data['action'] == 'new_exercise'
+
+    exercise_data = response_data['exercise']
     assert 'exercise_id' in exercise_data
     assert 'exercise_text' in exercise_data
     assert 'exercise_type' in exercise_data
@@ -164,7 +169,12 @@ async def test_multiple_requests_same_user(
 
     assert response.status_code == 200
     new_exercise_data = response.json()
-    assert new_exercise_data['exercise_id'] == second_exercise.exercise_id
+    assert 'action' in new_exercise_data
+    assert 'exercise' in new_exercise_data
+    assert new_exercise_data['action'] == 'new_exercise'
+
+    exercise_data = new_exercise_data['exercise']
+    assert exercise_data['exercise_id'] == second_exercise.exercise_id
 
 
 @patch('app.core.enums.LanguageLevel.get_next_exercise_level')
@@ -225,7 +235,7 @@ async def test_concurrent_requests(
                 '/api/v1/exercises/validate',
                 json={
                     **request_data_correct_answer_for_sample_exercise,
-                    'exercise_id': exercise_data['exercise_id'],
+                    'exercise_id': exercise_data['exercise']['exercise_id'],
                     'user_id': db_user.user_id,
                 },
             )
@@ -248,11 +258,15 @@ async def test_concurrent_requests(
 
     assert len(exercise_responses) == num_users
 
-    first_id = exercise_responses[0]['exercise_id']
-    first_data_text = exercise_responses[0]['data']['text_with_blanks']
+    first_id = exercise_responses[0]['exercise']['exercise_id']
+    first_data_text = exercise_responses[0]['exercise']['data'][
+        'text_with_blanks'
+    ]
     for response in exercise_responses:
-        assert response['exercise_id'] == first_id
-        assert response['data']['text_with_blanks'] == first_data_text
+        assert response['exercise']['exercise_id'] == first_id
+        assert (
+            response['exercise']['data']['text_with_blanks'] == first_data_text
+        )
 
     async_session_for_check = async_sessionmaker(
         async_engine, expire_on_commit=False
@@ -299,7 +313,7 @@ async def test_validation_cache_multiple_requests(
     )
     assert response.status_code == 200
     exercise_data = response.json()
-    exercise_id = exercise_data['exercise_id']
+    exercise_id = exercise_data['exercise']['exercise_id']
 
     # First validation request
     request_data_correct_answer_for_sample_exercise['exercise_id'] = (
@@ -355,7 +369,8 @@ async def test_get_new_exercise_background_task(
     )
     assert response.status_code == 200
 
-    exercise_service_instance = app.state.exercise_service
+    user_progress_service_instance = app.state.user_progress_service
+    exercise_service_instance = user_progress_service_instance.exercise_service
     if exercise_service_instance.background_exercise_generation_task:
         await exercise_service_instance.background_exercise_generation_task
 

@@ -16,7 +16,7 @@ class SQLAlchemyUserRepository(UserRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def _to_entity(self, db_user: UserModel) -> User:
+    def _to_entity(self, db_user: UserModel) -> User:
         """Converts a UserModel to a User entity."""
         user_data = db_user.__dict__
         user_data['language_level'] = LanguageLevel(
@@ -24,7 +24,7 @@ class SQLAlchemyUserRepository(UserRepository):
         )
         return User.model_validate(user_data)
 
-    async def _to_db_model(self, user: User) -> UserModel:
+    def _to_db_model(self, user: User) -> UserModel:
         """Converts a User entity to a UserModel."""
         user_data = user.model_dump()
         user_data['language_level'] = user.language_level.value
@@ -35,7 +35,7 @@ class SQLAlchemyUserRepository(UserRepository):
         db_user = await self.session.get(UserModel, user_id)
         if not db_user:
             return None
-        return await self._to_entity(db_user)
+        return self._to_entity(db_user)
 
     @override
     async def get_by_telegram_id(self, telegram_id: str) -> Optional[User]:
@@ -44,14 +44,14 @@ class SQLAlchemyUserRepository(UserRepository):
         db_user = result.scalar_one_or_none()
         if not db_user:
             return None
-        return await self._to_entity(db_user)
+        return self._to_entity(db_user)
 
     @override
     async def get_all(self) -> List[User]:
         stmt = select(UserModel)
         result = await self.session.execute(stmt)
         db_users = result.scalars().all()
-        return [await self._to_entity(db_user) for db_user in db_users]
+        return [self._to_entity(db_user) for db_user in db_users]
 
     @override
     async def update(self, user: User) -> User:
@@ -59,19 +59,19 @@ class SQLAlchemyUserRepository(UserRepository):
         if not existed_db_user:
             raise ValueError('User does not exist')
 
-        updated_db_user_data = await self._to_db_model(user)
+        updated_db_user_data = self._to_db_model(user)
 
         for field, value in updated_db_user_data.__dict__.items():
-            print(f'{field}: {value}')
-            setattr(existed_db_user, field, value)
+            if field != 'user_id':
+                setattr(existed_db_user, field, value)
 
         await self.session.commit()
-        return await self._to_entity(existed_db_user)
+        return self._to_entity(existed_db_user)
 
     @override
     async def save(self, user: User) -> User:
-        db_user = await self._to_db_model(user)
+        db_user = self._to_db_model(user)
         self.session.add(db_user)
         await self.session.commit()
         await self.session.refresh(db_user)
-        return await self._to_entity(db_user)
+        return self._to_entity(db_user)

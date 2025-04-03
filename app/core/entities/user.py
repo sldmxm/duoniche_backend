@@ -1,8 +1,13 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
 
-from app.core.consts import DEFAULT_LANGUAGE_LEVEL
+from app.core.consts import (
+    DEFAULT_LANGUAGE_LEVEL,
+    DEFAULT_TARGET_LANGUAGE,
+    DEFAULT_USER_LEVEL,
+)
 from app.core.enums import LanguageLevel
 
 
@@ -12,6 +17,12 @@ class User(BaseModel):
     username: Optional[str] = None
     name: Optional[str] = None
     language_level: LanguageLevel = DEFAULT_LANGUAGE_LEVEL
-    user_language: str = 'RU'
-    target_language: str = 'BG'
+    user_language: str = DEFAULT_USER_LEVEL
+    target_language: str = DEFAULT_TARGET_LANGUAGE
     is_active: bool = True
+
+    exercises_get_in_session: int = 0
+    exercises_get_in_set: int = 0
+    errors_count_in_set: int = 0
+    last_exercise_at: Optional[datetime] = None
+    is_waiting_next_session: bool = False

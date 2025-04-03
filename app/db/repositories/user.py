@@ -55,18 +55,19 @@ class SQLAlchemyUserRepository(UserRepository):
 
     @override
     async def update(self, user: User) -> User:
-        existed_db_user = await self.session.get(UserModel, user.user_id)
-        if not existed_db_user:
+        db_user = await self.session.get(UserModel, user.user_id)
+        if not db_user:
             raise ValueError('User does not exist')
 
-        updated_db_user_data = self._to_db_model(user)
-
-        for field, value in updated_db_user_data.__dict__.items():
-            if field != 'user_id':
-                setattr(existed_db_user, field, value)
-
+        update_data = {
+            key: value
+            for key, value in self._to_db_model(user).__dict__.items()
+            if not key.startswith('_') and key != 'user_id'
+        }
+        for key, value in update_data.items():
+            setattr(db_user, key, value)
         await self.session.commit()
-        return self._to_entity(existed_db_user)
+        return self._to_entity(db_user)
 
     @override
     async def save(self, user: User) -> User:

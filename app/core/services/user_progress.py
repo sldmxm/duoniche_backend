@@ -56,6 +56,13 @@ class UserProgressService:
         if not user:
             raise ValueError('User with provided ID not found in the database')
 
+        logger.debug(f'!!!!! На входе {user.model_dump()}')
+
+        # TODO: !!!!!!!!!!!!!!!!!!!!!!!!!!! Надо использовать один и тот же
+        #  часовой пояс иначе
+        #  TypeError: can't compare offset-naive and offset-aware datetimes
+        #  при user.last_exercise_at + DELTA_BETWEEN_SESSIONS > now
+
         now = datetime.now()
         if user.is_waiting_next_session:
             if (
@@ -113,7 +120,10 @@ class UserProgressService:
             #   за короткое или длинное время сессии
             #  - Второе сообщение отдельно в боте
             #   "подожди или плоти", разделить \n
-            message = f'Wow! {EXERCISES_IN_SESSION} in row!\n '
+            message = (
+                f'Wow! {EXERCISES_IN_SESSION} in row!\n'
+                f'Wait for NNN hours!!!!!!'
+            )
 
             return NextAction(
                 action=UserAction.congratulations_and_wait,

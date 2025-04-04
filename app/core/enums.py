@@ -46,3 +46,4 @@ class UserAction(str, Enum):
     praise_and_next_set = 'praise_and_next_set'
     congratulations_and_wait = 'congratulations_and_wait'
     limit_reached = 'limit_reached'
+    error = 'error'

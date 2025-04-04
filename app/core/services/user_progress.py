@@ -12,6 +12,7 @@ from app.core.entities.user import User
 from app.core.enums import UserAction
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
+from app.core.texts import Messages, get_text
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class UserProgressService:
         Determine the next action for the user based on their progress.
         """
 
-        async def _next_exercise(user: User) -> Exercise:
+        async def _get_next_exercise(user: User) -> Exercise:
             # TODO:
             #  - переместить логику выбора следующего уровня, темы и типа
             #  - перенести из enum логику выбора уровня для пользователя
@@ -42,9 +43,6 @@ class UserProgressService:
                     'No suitable exercise found for the provided criteria'
                 )
             return exercise
-
-        # TODO: ровно в момент окончания паузы бот
-        #  должен отправить запрос на API
 
         # TODO: разобраться, как собирать количество ошибок,
         #  возможно, просто в верификации брать и писать в бд пользователя
@@ -64,62 +62,57 @@ class UserProgressService:
             ):
                 return NextAction(
                     action=UserAction.limit_reached,
-                    # TODO: Писать на болгарском или языке пользователя,
-                    #  сделать словарь фиксированных сообщений
-                    message="I'll send you new exercise ASAP...",
+                    message=get_text(
+                        Messages.LIMIT_REACHED,
+                        user.user_language,
+                    ),
                 )
             else:
                 user.is_waiting_next_session = False
 
         if user.exercises_get_in_session < EXERCISES_IN_SESSION:
             if user.exercises_get_in_set < EXERCISES_IN_SET:
-                next_exercise = await _next_exercise(user)
-
-                user.exercises_get_in_session += 1
-                user.exercises_get_in_set += 1
-                user.last_exercise_at = now
-                await self.user_service.update(user)
-
-                return NextAction(
-                    exercise=next_exercise,
-                    action=UserAction.new_exercise,
-                )
+                try:
+                    next_exercise = await _get_next_exercise(user)
+                    user.exercises_get_in_session += 1
+                    user.exercises_get_in_set += 1
+                    user.last_exercise_at = now
+                    await self.user_service.update(user)
+                    return NextAction(
+                        exercise=next_exercise,
+                        action=UserAction.new_exercise,
+                    )
+                except ValueError:
+                    return NextAction(
+                        action=UserAction.error,
+                        message=get_text(
+                            Messages.ERROR_GETTING_NEW_EXERCISE,
+                            user.user_language,
+                        ),
+                    )
             else:
-                # TODO: Разные сообщения для разного количества ошибок
-                #  найти за что хвалить, например,
-                #  за короткое или длинное время сета
-                message = (
-                    'You are doing great!\n '
-                    f'You have {user.errors_count_in_set} '
-                    f'errors in previous set!'
-                )
-
                 user.exercises_get_in_set = 0
                 user.errors_count_in_set = 0
                 await self.user_service.update(user)
 
                 return NextAction(
                     action=UserAction.praise_and_next_set,
-                    message=message,
+                    message=get_text(
+                        Messages.PRAISE_AND_NEXT_SET,
+                        user.user_language,
+                    ),
                 )
         else:
             user.is_waiting_next_session = True
             user.exercises_get_in_session = 0
             user.exercises_get_in_set = 0
             await self.user_service.update(user)
-            # TODO:
-            #  - Разные сообщения для разного количества ошибок
-            #  найти за что хвалить, например,
-            #   за короткое или длинное время сессии
-            #  - Второе сообщение отдельно в боте
-            #   "подожди или плоти", разделить \n
-            message = (
-                f'Wow! {EXERCISES_IN_SESSION} in row!\n'
-                f'Wait for NNN hours!!!!!!'
-            )
 
             return NextAction(
                 action=UserAction.congratulations_and_wait,
-                message=message,
+                message=get_text(
+                    Messages.CONGRATULATIONS_AND_WAIT,
+                    user.user_language,
+                ),
                 pause=DELTA_BETWEEN_SESSIONS,
             )

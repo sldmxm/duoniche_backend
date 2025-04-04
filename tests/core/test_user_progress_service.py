@@ -208,7 +208,7 @@ class TestUserProgressService:
     ):
         """
         Scenario: There is no suitable exercise for the user.
-        Expected: Raise ValueError.
+        Expected: Error message.
         """
         # Arrange
         user.is_waiting_next_session = False
@@ -217,6 +217,9 @@ class TestUserProgressService:
         mock_user_service.get_by_id.return_value = user
         mock_exercise_service.get_or_create_next_exercise.return_value = None
 
+        result: NextAction = await user_progress_service.get_next_action(
+            user.user_id
+        )
+
         # Act & Assert
-        with pytest.raises(ValueError):
-            await user_progress_service.get_next_action(user.user_id)
+        assert result.action == UserAction.error

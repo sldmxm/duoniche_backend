@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.consts import (
     DELTA_BETWEEN_SESSIONS,
@@ -56,14 +56,7 @@ class UserProgressService:
         if not user:
             raise ValueError('User with provided ID not found in the database')
 
-        logger.debug(f'!!!!! На входе {user.model_dump()}')
-
-        # TODO: !!!!!!!!!!!!!!!!!!!!!!!!!!! Надо использовать один и тот же
-        #  часовой пояс иначе
-        #  TypeError: can't compare offset-naive and offset-aware datetimes
-        #  при user.last_exercise_at + DELTA_BETWEEN_SESSIONS > now
-
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         if user.is_waiting_next_session:
             if (
                 user.last_exercise_at

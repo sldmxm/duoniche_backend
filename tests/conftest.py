@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL
-from app.core.services.async_task_cache import AsyncTaskCache
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
 from app.core.services.user_progress import UserProgressService
@@ -68,7 +67,7 @@ async def async_engine():
 
 @pytest_asyncio.fixture(scope='function')
 async def async_session(
-    async_engine: AsyncEngine,
+    async_engine: AsyncEngine, redis: Redis
 ) -> AsyncGenerator[AsyncSession, Any]:
     """Create a SQLAlchemy async session for each test function."""
     async with async_engine.begin() as conn:
@@ -86,6 +85,7 @@ async def async_session(
         finally:
             await session.close()
             await async_engine.dispose()
+            await redis.flushdb()
 
 
 @pytest_asyncio.fixture(scope='function')
@@ -99,6 +99,7 @@ async def db_session(
     finally:
         if transaction.is_active:
             await transaction.rollback()
+        await async_session.close()
 
 
 @pytest_asyncio.fixture
@@ -113,36 +114,7 @@ async def redis() -> Redis:
 @pytest_asyncio.fixture(scope='function')
 async def exercise_service(db_session: AsyncSession, redis):
     """Create ExerciseService with test repositories"""
-    service = ExerciseService(
-        exercise_repository=SQLAlchemyExerciseRepository(db_session),
-        exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
-            db_session
-        ),
-        exercise_answers_repository=SQLAlchemyExerciseAnswerRepository(
-            db_session
-        ),
-        llm_service=LLMService(
-            openai_api_key=settings.openai_api_key,
-            model_name=settings.openai_test_model_name,
-        ),
-        async_task_cache=AsyncTaskCache(redis),
-        translator=Translator(),
-    )
-    yield service
-
-
-@pytest_asyncio.fixture(scope='function')
-async def user_service(db_session: AsyncSession):
-    """Create ExerciseService with test repositories"""
-    service = UserService(user_repository=SQLAlchemyUserRepository(db_session))
-    yield service
-
-
-@pytest_asyncio.fixture(scope='function')
-async def user_progress_service(db_session):
-    """Create ExerciseService with test repositories"""
-    user_service = UserService(SQLAlchemyUserRepository(db_session))
-    exercise_service = ExerciseService(
+    return ExerciseService(
         exercise_repository=SQLAlchemyExerciseRepository(db_session),
         exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
             db_session
@@ -154,11 +126,30 @@ async def user_progress_service(db_session):
         translator=Translator(),
     )
 
-    service = UserProgressService(
-        user_service=user_service,
-        exercise_service=exercise_service,
+
+@pytest_asyncio.fixture(scope='function')
+async def user_service(db_session: AsyncSession):
+    """Create ExerciseService with test repositories"""
+    return UserService(SQLAlchemyUserRepository(db_session))
+
+
+@pytest_asyncio.fixture(scope='function')
+async def user_progress_service(db_session, redis):
+    """Create ExerciseService with test repositories"""
+    return UserProgressService(
+        user_service=UserService(SQLAlchemyUserRepository(db_session)),
+        exercise_service=ExerciseService(
+            exercise_repository=SQLAlchemyExerciseRepository(db_session),
+            exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
+                db_session
+            ),
+            exercise_answers_repository=SQLAlchemyExerciseAnswerRepository(
+                db_session
+            ),
+            llm_service=LLMService(),
+            translator=Translator(),
+        ),
     )
-    yield service
 
 
 @pytest_asyncio.fixture(scope='function')

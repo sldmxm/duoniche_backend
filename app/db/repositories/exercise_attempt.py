@@ -76,7 +76,6 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
         attempt = await self.session.get(ExerciseAttempt, attempt_id)
         if not attempt:
             raise ValueError('Attempt does not exist')
-
         attempt.is_correct = is_correct
         attempt.feedback = feedback
         attempt.answer_id = answer_id

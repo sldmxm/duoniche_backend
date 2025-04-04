@@ -1,4 +1,7 @@
-from typing import Any, AsyncGenerator
+from typing import Annotated
+
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
@@ -16,9 +19,34 @@ from app.llm.llm_service import LLMService
 from app.translator.translator import Translator
 
 
-async def get_exercise_service() -> AsyncGenerator[ExerciseService, Any]:
-    async for session in get_async_session():
-        yield ExerciseService(
+def get_user_service(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> UserService:
+    return UserService(SQLAlchemyUserRepository(session))
+
+
+def get_exercise_service(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> ExerciseService:
+    return ExerciseService(
+        exercise_repository=SQLAlchemyExerciseRepository(session),
+        exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
+            session
+        ),
+        exercise_answers_repository=SQLAlchemyExerciseAnswerRepository(
+            session
+        ),
+        llm_service=LLMService(),
+        translator=Translator(),
+    )
+
+
+def get_user_progress_service(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> UserProgressService:
+    return UserProgressService(
+        user_service=UserService(SQLAlchemyUserRepository(session)),
+        exercise_service=ExerciseService(
             exercise_repository=SQLAlchemyExerciseRepository(session),
             exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
                 session
@@ -28,32 +56,5 @@ async def get_exercise_service() -> AsyncGenerator[ExerciseService, Any]:
             ),
             llm_service=LLMService(),
             translator=Translator(),
-        )
-
-
-async def get_user_service() -> AsyncGenerator[UserService, Any]:
-    async for session in get_async_session():
-        yield UserService(SQLAlchemyUserRepository(session))
-
-
-async def get_user_progress_service() -> (
-    AsyncGenerator[UserProgressService, Any]
-):
-    async for session in get_async_session():
-        user_service = UserService(SQLAlchemyUserRepository(session))
-        exercise_service = ExerciseService(
-            exercise_repository=SQLAlchemyExerciseRepository(session),
-            exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
-                session
-            ),
-            exercise_answers_repository=SQLAlchemyExerciseAnswerRepository(
-                session
-            ),
-            llm_service=LLMService(),
-            translator=Translator(),
-        )
-
-        yield UserProgressService(
-            user_service=user_service,
-            exercise_service=exercise_service,
-        )
+        ),
+    )

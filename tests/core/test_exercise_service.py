@@ -105,7 +105,6 @@ def mock_translator(mocker):
 async def async_task_cache(mocker, redis) -> AsyncTaskCache:
     cache = AsyncTaskCache(redis)
     yield cache
-    cache.clear()
 
 
 # --- Service Instance Fixture ---
@@ -500,6 +499,8 @@ class TestExerciseServiceValidation:
         fill_in_the_blank_exercise: Exercise,
         fill_in_the_blank_answer: FillInTheBlankAnswer,
     ):
+        user.user_id = 157
+
         mock_llm_service.validate_attempt.return_value = False, 'Wrong!'
         mock_answer_repo.get_all_by_user_answer.return_value = []
         mock_attempt_repo.save.return_value = ExerciseAttempt(
@@ -539,7 +540,7 @@ class TestExerciseServiceValidation:
         )
 
         # Assertions
-        assert mock_answer_repo.get_all_by_user_answer.await_count <= 2
+        assert mock_answer_repo.get_all_by_user_answer.assert_awaited_once
         mock_llm_service.validate_attempt.assert_awaited_once_with(
             user,
             fill_in_the_blank_exercise,

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 
 import pytest
@@ -64,7 +64,7 @@ class TestUserProgressService:
         """
         # Arrange
         user.is_waiting_next_session = True
-        user.last_exercise_at = datetime.now() - timedelta(
+        user.last_exercise_at = datetime.now(timezone.utc) - timedelta(
             minutes=10
         )  # Set last_exercise_at to 10 minutes ago
         mock_user_service.get_by_id.return_value = user

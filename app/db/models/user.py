@@ -33,8 +33,11 @@ class User(Base):
     last_exercise_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    is_waiting_next_session: Mapped[bool] = mapped_column(
-        Boolean, default=False
+    session_started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_frozen_until: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     description: Mapped[str | None] = mapped_column(Text)

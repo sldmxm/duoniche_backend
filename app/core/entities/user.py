@@ -25,4 +25,5 @@ class User(BaseModel):
     exercises_get_in_set: int = 0
     errors_count_in_set: int = 0
     last_exercise_at: Optional[datetime] = None
-    is_waiting_next_session: bool = False
+    session_started_at: Optional[datetime] = None
+    session_frozen_until: Optional[datetime] = None

@@ -3,8 +3,9 @@ from datetime import datetime, timezone
 
 from app.core.consts import (
     DELTA_BETWEEN_SESSIONS,
-    EXERCISES_IN_SESSION,
     EXERCISES_IN_SET,
+    RENEWING_SET_PERIOD,
+    SETS_IN_SESSION,
 )
 from app.core.entities.exercise import Exercise
 from app.core.entities.next_action_result import NextAction
@@ -27,10 +28,6 @@ class UserProgressService:
         self.exercise_service = exercise_service
 
     async def get_next_action(self, user_id: int) -> NextAction:
-        """
-        Determine the next action for the user based on their progress.
-        """
-
         async def _get_next_exercise(user: User) -> Exercise:
             # TODO:
             #  - переместить логику выбора следующего уровня, темы и типа
@@ -55,55 +52,30 @@ class UserProgressService:
             raise ValueError('User with provided ID not found in the database')
 
         now = datetime.now(timezone.utc)
-        if user.is_waiting_next_session:
-            if (
-                user.last_exercise_at
-                and user.last_exercise_at + DELTA_BETWEEN_SESSIONS > now
-            ):
-                return NextAction(
-                    action=UserAction.limit_reached,
-                    message=get_text(
-                        Messages.LIMIT_REACHED,
-                        user.user_language,
-                    ),
-                )
-            else:
-                user.is_waiting_next_session = False
 
-        if user.exercises_get_in_session < EXERCISES_IN_SESSION:
-            if user.exercises_get_in_set < EXERCISES_IN_SET:
-                try:
-                    next_exercise = await _get_next_exercise(user)
-                    user.exercises_get_in_session += 1
-                    user.exercises_get_in_set += 1
-                    user.last_exercise_at = now
-                    await self.user_service.update(user)
-                    return NextAction(
-                        exercise=next_exercise,
-                        action=UserAction.new_exercise,
-                    )
-                except ValueError:
-                    return NextAction(
-                        action=UserAction.error,
-                        message=get_text(
-                            Messages.ERROR_GETTING_NEW_EXERCISE,
-                            user.user_language,
-                        ),
-                    )
-            else:
-                user.exercises_get_in_set = 0
-                user.errors_count_in_set = 0
-                await self.user_service.update(user)
+        if user.session_frozen_until and now < user.session_frozen_until:
+            return NextAction(
+                action=UserAction.limit_reached,
+                message=get_text(Messages.LIMIT_REACHED, user.user_language),
+            )
 
-                return NextAction(
-                    action=UserAction.praise_and_next_set,
-                    message=get_text(
-                        Messages.PRAISE_AND_NEXT_SET,
-                        user.user_language,
-                    ),
-                )
-        else:
-            user.is_waiting_next_session = True
+        if not user.session_started_at:
+            user.session_started_at = now
+            user.exercises_get_in_session = 0
+            user.exercises_get_in_set = 0
+
+        current_session_time = now - user.session_started_at
+        renewed_sets = int(
+            current_session_time.total_seconds()
+            // RENEWING_SET_PERIOD.total_seconds()
+        )
+        current_set_limit = max(SETS_IN_SESSION, renewed_sets)
+        current_exercises_limit = current_set_limit * EXERCISES_IN_SET
+
+        if current_exercises_limit - user.exercises_get_in_session <= 0:
+            user.session_frozen_until = now + DELTA_BETWEEN_SESSIONS
+            user.session_started_at = None
+            exercise_num = user.exercises_get_in_session
             user.exercises_get_in_session = 0
             user.exercises_get_in_set = 0
             await self.user_service.update(user)
@@ -113,6 +85,37 @@ class UserProgressService:
                 message=get_text(
                     Messages.CONGRATULATIONS_AND_WAIT,
                     user.user_language,
+                    exercise_num=exercise_num,
                 ),
                 pause=DELTA_BETWEEN_SESSIONS,
+            )
+
+        if user.exercises_get_in_set < EXERCISES_IN_SET:
+            try:
+                next_exercise = await _get_next_exercise(user)
+                user.exercises_get_in_session += 1
+                user.exercises_get_in_set += 1
+                user.last_exercise_at = now
+                await self.user_service.update(user)
+                return NextAction(
+                    exercise=next_exercise,
+                    action=UserAction.new_exercise,
+                )
+            except ValueError:
+                return NextAction(
+                    action=UserAction.error,
+                    message=get_text(
+                        Messages.ERROR_GETTING_NEW_EXERCISE, user.user_language
+                    ),
+                )
+        else:
+            user.exercises_get_in_set = 0
+            user.errors_count_in_set = 0
+            await self.user_service.update(user)
+
+            return NextAction(
+                action=UserAction.praise_and_next_set,
+                message=get_text(
+                    Messages.PRAISE_AND_NEXT_SET, user.user_language
+                ),
             )

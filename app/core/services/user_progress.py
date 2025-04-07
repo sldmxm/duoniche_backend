@@ -53,16 +53,23 @@ class UserProgressService:
 
         now = datetime.now(timezone.utc)
 
-        if user.session_frozen_until and now < user.session_frozen_until:
+        if (
+            user.session_frozen_until is not None
+            and now < user.session_frozen_until
+        ):
             return NextAction(
                 action=UserAction.limit_reached,
                 message=get_text(Messages.LIMIT_REACHED, user.user_language),
             )
-
-        if not user.session_started_at:
+        elif (
+            user.session_frozen_until is not None
+            or not user.session_started_at
+        ):
+            user.session_frozen_until = None
             user.session_started_at = now
             user.exercises_get_in_session = 0
             user.exercises_get_in_set = 0
+            await self.user_service.update(user)
 
         current_session_time = now - user.session_started_at
         renewed_sets = int(
@@ -74,10 +81,6 @@ class UserProgressService:
 
         if current_exercises_limit - user.exercises_get_in_session <= 0:
             user.session_frozen_until = now + DELTA_BETWEEN_SESSIONS
-            user.session_started_at = None
-            exercise_num = user.exercises_get_in_session
-            user.exercises_get_in_session = 0
-            user.exercises_get_in_set = 0
             await self.user_service.update(user)
 
             return NextAction(
@@ -85,7 +88,7 @@ class UserProgressService:
                 message=get_text(
                     Messages.CONGRATULATIONS_AND_WAIT,
                     user.user_language,
-                    exercise_num=exercise_num,
+                    exercise_num=user.exercises_get_in_session,
                 ),
                 pause=DELTA_BETWEEN_SESSIONS,
             )

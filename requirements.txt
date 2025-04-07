@@ -36,6 +36,8 @@ mdurl==0.1.2
 openai==1.65.5
 orjson==3.10.15 ; platform_python_implementation != 'PyPy'
 packaging==24.2
+prometheus-client==0.21.1
+prometheus-fastapi-instrumentator==7.1.0
 psycopg2-binary==2.9.10
 pycparser==2.22 ; platform_python_implementation == 'PyPy'
 pydantic==2.10.6

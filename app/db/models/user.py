@@ -22,6 +22,8 @@ class User(Base):
     user_language: Mapped[str] = mapped_column(String, default='ru')
     target_language: Mapped[str] = mapped_column(String, default='bg')
     language_level: Mapped[str] = mapped_column(String, default='A2')
+    cohort: Mapped[str] = mapped_column(String, nullable=True)
+    plan: Mapped[str] = mapped_column(String, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.now, nullable=False

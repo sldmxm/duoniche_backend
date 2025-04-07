@@ -1,0 +1,203 @@
+import asyncio
+import collections
+import logging
+from datetime import datetime, timezone
+from typing import Set
+
+from asyncpg.pgproto.pgproto import timedelta
+from prometheus_client import Counter, Gauge, Histogram
+
+from app.db.db import get_async_session
+from app.db.repositories.user import SQLAlchemyUserRepository
+
+logger = logging.getLogger(__name__)
+
+UPDATE_USER_METRICS_INTERVAL = 60
+SESSION_TTL_SINCE_LAST_EXERCISE = timedelta(minutes=5)
+
+backend_exercise_metrics_label_names = [
+    'exercise_type',
+    'level',
+]
+BACKEND_EXERCISE_METRICS = {
+    'sent': Counter(
+        'exercise_sent_total',
+        'Total number of exercises sent to users',
+        labelnames=backend_exercise_metrics_label_names,
+    ),
+    'attempts': Counter(
+        'exercise_attempt_total',
+        'Total number of user attempts to solve exercises',
+        labelnames=backend_exercise_metrics_label_names,
+    ),
+    'attempt_time': Histogram(
+        'exercise_time_for_attempt_seconds',
+        'Time spent for answer an exercise',
+        labelnames=backend_exercise_metrics_label_names,
+        buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
+    ),
+    'validation_time': Histogram(
+        'exercise_validation_time_seconds',
+        "Time spent validating a user's solution",
+        labelnames=backend_exercise_metrics_label_names + ['is_correct'],
+        buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
+    ),
+    'incorrect_attempts': Counter(
+        'exercise_error_total',
+        'Total number of incorrect attempts made by users in exercises',
+        labelnames=backend_exercise_metrics_label_names,
+    ),
+}
+
+backend_user_metrics_label_names = [
+    'cohort',
+    'plan',
+    'target_language',
+    'user_language',
+    'language_level',
+]
+BACKEND_USER_METRICS = {
+    'new': Counter(
+        'new_users_total',
+        'Total number of new users',
+        labelnames=backend_user_metrics_label_names,
+    ),
+    'returning': Counter(
+        'returning_users_total',
+        'Total number of returning users',
+        labelnames=backend_user_metrics_label_names,
+    ),
+    'active': Gauge(
+        'active_users_total',
+        'Total number of active users',
+        labelnames=backend_user_metrics_label_names,
+    ),
+    'session_length': Histogram(
+        'user_session_length_seconds',
+        'Length of user sessions in seconds',
+        labelnames=backend_user_metrics_label_names,
+        buckets=(10, 30, 60, 120, 300, 600, 900, 1800, 3600),
+    ),
+    'frozen_attempts': Counter(
+        'frozen_attempts_total',
+        'Total number of attempts to start exercises when frozen',
+        labelnames=backend_user_metrics_label_names,
+    ),
+    'exercises_per_session': Counter(
+        'exercises_per_session',
+        'Number of exercises per session',
+        labelnames=backend_user_metrics_label_names,
+    ),
+}
+
+backend_llm_metrics_label_names = [
+    'exercise_type',
+    'level',
+    'user_language',
+    'target_language',
+    'llm_model',
+]
+BACKEND_LLM_METRICS = {
+    'exercises_created': Counter(
+        'exercise_created_total',
+        'Total number of exercises created by LLM',
+        labelnames=backend_llm_metrics_label_names,
+    ),
+    'verification_time': Histogram(
+        'exercise_verification_time_seconds',
+        "Time spent for verification a user's solution by LLM",
+        labelnames=backend_llm_metrics_label_names + ['is_correct'],
+        buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
+    ),
+    'exercises_verified': Counter(
+        'exercise_verified_total',
+        'Total number of exercise verifications by LLM',
+        labelnames=backend_llm_metrics_label_names,
+    ),
+    'input_tokens': Counter(
+        'llm_input_tokens_total',
+        'Total number of input tokens used by LLM',
+        labelnames=backend_llm_metrics_label_names,
+    ),
+    'output_tokens': Counter(
+        'llm_output_tokens_total',
+        'Total number of output tokens used by LLM',
+        labelnames=backend_llm_metrics_label_names,
+    ),
+}
+
+all_possible_active_user_labels: Set[tuple] = set()
+
+
+async def update_user_sessions_metrics():
+    now = datetime.now(timezone.utc)
+    active_users_label_counts = collections.Counter()
+
+    async for session in get_async_session():
+        user_repository = SQLAlchemyUserRepository(session)
+        period_seconds = int(
+            SESSION_TTL_SINCE_LAST_EXERCISE.total_seconds()
+            + UPDATE_USER_METRICS_INTERVAL
+        )
+        users = await user_repository.get_users_with_exercise_lately(
+            period_seconds
+        )
+
+        for user in users:
+            label_tuple = (
+                user.cohort,
+                user.plan,
+                user.target_language,
+                user.user_language,
+                user.language_level.value,
+            )
+            label_dict = dict(
+                zip(
+                    backend_user_metrics_label_names, label_tuple, strict=False
+                )
+            )
+            all_possible_active_user_labels.add(label_tuple)
+
+            if (
+                user.session_frozen_until is not None
+                or now - user.last_exercise_at
+                > SESSION_TTL_SINCE_LAST_EXERCISE
+            ):
+                session_duration = (
+                    user.last_exercise_at - user.session_started_at
+                ).total_seconds()
+                BACKEND_USER_METRICS['session_length'].labels(
+                    **label_dict
+                ).observe(session_duration)
+                BACKEND_USER_METRICS['exercises_per_session'].labels(
+                    **label_dict
+                ).inc(user.exercises_get_in_session)
+                logger.debug(
+                    f'Session ended for user {user.user_id}: '
+                    f'{session_duration}'
+                )
+            else:
+                session_duration = (
+                    now - user.session_started_at
+                ).total_seconds()
+                logger.debug(
+                    f'Session duration for user {user.user_id}: '
+                    f'{session_duration}'
+                )
+                active_users_label_counts[label_tuple] += 1
+
+        for label_tuple in all_possible_active_user_labels:
+            label_dict = dict(
+                zip(
+                    backend_user_metrics_label_names, label_tuple, strict=False
+                )
+            )
+            count = active_users_label_counts.get(label_tuple, 0)
+            BACKEND_USER_METRICS['active'].labels(**label_dict).set(count)
+        logger.info('Users metrics updated.')
+
+
+async def metrics_loop():
+    while True:
+        await update_user_sessions_metrics()
+        await asyncio.sleep(UPDATE_USER_METRICS_INTERVAL)

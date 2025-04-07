@@ -25,3 +25,9 @@ class UserRepository(AsyncRepository[User]):
     @abstractmethod
     async def save(self, user: User) -> User:
         raise NotImplementedError
+
+    @abstractmethod
+    async def get_users_with_exercise_lately(
+        self, period_seconds: int
+    ) -> List[User]:
+        raise NotImplementedError

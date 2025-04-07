@@ -1,3 +1,5 @@
+from typing import Any, AsyncGenerator
+
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -24,7 +26,7 @@ async def drop_models(engine: AsyncEngine = engine) -> None:
         await conn.run_sync(Base.metadata.drop_all)
 
 
-async def get_async_session() -> AsyncSession:
+async def get_async_session() -> AsyncGenerator[AsyncSession, Any]:
     session = async_session_maker()
     try:
         yield session

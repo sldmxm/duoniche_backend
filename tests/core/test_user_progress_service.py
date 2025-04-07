@@ -189,7 +189,7 @@ async def test_get_next_action_returns_congratulations_and_wait(
         exercise_num=EXERCISES_IN_SESSION,
     )
     assert result.pause == DELTA_BETWEEN_SESSIONS
-    assert user.exercises_get_in_session == 0
+    assert user.exercises_get_in_session == EXERCISES_IN_SESSION
     assert user.exercises_get_in_set == 0
 
 

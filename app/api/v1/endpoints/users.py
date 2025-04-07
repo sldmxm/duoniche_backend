@@ -12,6 +12,13 @@ from app.core.services.user import UserService
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# TODO: Новых пользователей лучше отслеживать здесь или в Core, не в боте
+# USER_METRICS = {
+#     "registration_count": Counter(
+#         "user_registration_count", "Total number of user registrations"
+#     ),
+# }
+
 
 @router.put(
     '/',

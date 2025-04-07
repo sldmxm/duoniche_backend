@@ -19,6 +19,9 @@ class User(BaseModel):
     language_level: LanguageLevel = DEFAULT_LANGUAGE_LEVEL
     user_language: str = DEFAULT_USER_LEVEL
     target_language: str = DEFAULT_TARGET_LANGUAGE
+    cohort: Optional[str] = None
+    plan: Optional[str] = None
+
     is_active: bool = True
 
     exercises_get_in_session: int = 0

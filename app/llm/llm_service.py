@@ -2,6 +2,7 @@ import logging
 import re
 from typing import Any, Dict, List, Tuple, TypeVar, Union
 
+import tiktoken
 from langchain_core.output_parsers import (
     JsonOutputParser,
     PydanticOutputParser,
@@ -22,6 +23,7 @@ from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.value_objects.answer import Answer, FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
+from app.metrics import BACKEND_LLM_METRICS
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +95,11 @@ class LLMService(LLMProvider):
             # max_retries=settings.openai_max_retries,
             # timeout=settings.openai_request_timeout,
         )
+        self.encoding = tiktoken.encoding_for_model(model_name)
+
+    def _count_tokens(self, text: str) -> int:
+        """Count tokens in a text string."""
+        return len(self.encoding.encode(text))
 
     async def generate_exercise(
         self,
@@ -113,10 +120,30 @@ class LLMService(LLMProvider):
             raise NotImplementedError(
                 f"Exercise type '{exercise_type}' is not implemented"
             )
+        with (
+            BACKEND_LLM_METRICS['exercises_creation_time']
+            .labels(
+                exercise_type=exercise_type.value,
+                level=language_level.value,
+                user_language=user.user_language,
+                target_language=user.target_language,
+                llm_model=self.model.model_name,
+            )
+            .time()
+        ):
+            new_exercise, new_answer = await generator(
+                user=user, language_level=language_level, topic=topic
+            )
 
-        return await generator(
-            user=user, language_level=language_level, topic=topic
-        )
+        BACKEND_LLM_METRICS['exercises_created'].labels(
+            exercise_type=exercise_type.value,
+            level=language_level.value,
+            user_language=user.user_language,
+            target_language=user.target_language,
+            llm_model=self.model.model_name,
+        ).inc()
+
+        return new_exercise, new_answer
 
     async def _create_llm_chain(
         self,
@@ -149,12 +176,36 @@ class LLMService(LLMProvider):
         self,
         chain: RunnableSerializable,
         input_data: Dict[str, Any],
+        user: User,
+        exercise_type: ExerciseType,
+        language_level: LanguageLevel,
     ) -> Any:
         """Execute LLM chain with standardized logging and error handling."""
         try:
             logger.debug(f'LLM request data: {input_data}')
+            input_text = str(input_data)
+            input_tokens = self._count_tokens(input_text)
             response = await chain.ainvoke(input_data)
+            response_text = str(response)
+            output_tokens = self._count_tokens(response_text)
             logger.debug(f'LLM response: {response}')
+
+            BACKEND_LLM_METRICS['input_tokens'].labels(
+                exercise_type=exercise_type.value,
+                level=language_level.value,
+                user_language=user.user_language,
+                target_language=user.target_language,
+                llm_model=self.model.model_name,
+            ).inc(input_tokens)
+
+            BACKEND_LLM_METRICS['output_tokens'].labels(
+                exercise_type=exercise_type.value,
+                level=language_level.value,
+                user_language=user.user_language,
+                target_language=user.target_language,
+                llm_model=self.model.model_name,
+            ).inc(output_tokens)
+
             return response
         except ValidationError as e:
             logger.error(f'Validation error in LLM response: {e}')
@@ -199,11 +250,13 @@ class LLMService(LLMProvider):
             'topic': topic.value,
         }
 
-        parsed_data = await self._run_llm_chain(chain, request_data)
-
-        # TODO: проверить, что в set(правильные+неправильные) > 3
-        # TODO: если правильных слов больше чем пропусков,
-        #  удалить лишние правильные слова
+        parsed_data = await self._run_llm_chain(
+            chain,
+            request_data,
+            user,
+            ExerciseType.FILL_IN_THE_BLANK,
+            language_level,
+        )
 
         text_with_blanks = re.sub(
             r'_{2,}',
@@ -274,6 +327,31 @@ class LLMService(LLMProvider):
                 answer
             ),
         }
+        with (
+            BACKEND_LLM_METRICS['verification_time']
+            .labels(
+                exercise_type=exercise.exercise_type.value,
+                level=exercise.language_level.value,
+                user_language=user.user_language,
+                target_language=user.target_language,
+                llm_model=self.model.model_name,
+            )
+            .time()
+        ):
+            validation_result = await self._run_llm_chain(
+                chain,
+                request_data,
+                user,
+                exercise.exercise_type,
+                exercise.language_level,
+            )
 
-        validation_result = await self._run_llm_chain(chain, request_data)
+        BACKEND_LLM_METRICS['exercises_verified'].labels(
+            exercise_type=exercise.exercise_type.value,
+            level=exercise.language_level.value,
+            user_language=user.user_language,
+            target_language=user.target_language,
+            llm_model=self.model.model_name,
+        ).inc()
+
         return validation_result.is_correct, validation_result.feedback

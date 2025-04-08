@@ -4,6 +4,7 @@ import httpx
 
 from app.config import settings
 from app.core.interfaces.translate_provider import TranslateProvider
+from app.metrics import BACKEND_TRANSLATOR_METRICS
 
 logger = logging.getLogger(__name__)
 
@@ -30,17 +31,32 @@ class Translator(TranslateProvider):
             'X-goog-api-key': self.google_api_key,
         }
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.request(
-                    'post',
-                    self.URL,
-                    json=request_data,
-                    headers=headers,
+            with (
+                BACKEND_TRANSLATOR_METRICS['translation_time']
+                .labels(
+                    target_language=target_language,
                 )
-                response.raise_for_status()
-                logger.debug(f'Response: {response.json()}')
-                data = response.json()
-                return data['data']['translations'][0]['translatedText']
+                .time()
+            ):
+                async with httpx.AsyncClient() as client:
+                    response = await client.request(
+                        'post',
+                        self.URL,
+                        json=request_data,
+                        headers=headers,
+                    )
+                    response.raise_for_status()
+                    logger.debug(f'Response: {response.json()}')
+                    data = response.json()
+
+                    BACKEND_TRANSLATOR_METRICS['translations'].labels(
+                        target_language=target_language,
+                    ).inc()
+                    BACKEND_TRANSLATOR_METRICS['translations_chars'].labels(
+                        target_language=target_language,
+                    ).inc(len(text))
+
+                    return data['data']['translations'][0]['translatedText']
         except httpx.HTTPStatusError as exc:
             error_text = (
                 f'HTTP error with status code '

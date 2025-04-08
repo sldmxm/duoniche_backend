@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from app.core.consts import MIN_EXERCISE_COUNT_TO_GENERATE_NEW
@@ -25,6 +25,7 @@ from app.core.services.async_task_cache import (
     async_task_cache as default_async_task_cache,
 )
 from app.core.value_objects.answer import Answer
+from app.metrics import BACKEND_EXERCISE_METRICS
 
 logger = logging.getLogger(__name__)
 
@@ -285,23 +286,48 @@ class ExerciseService:
             )
             return updated_exercise_attempt
 
-        attempt_key = (
-            f'validate_attempt'
-            f'_{user.user_id}'
-            f'_{exercise.exercise_id}'
-            f'_{hash(answer.get_answer_text())}'
-        )
+        BACKEND_EXERCISE_METRICS['attempts'].labels(
+            exercise_type=exercise.exercise_type.value,
+            level=exercise.language_level.value,
+        ).inc()
+        if user.last_exercise_at:
+            answer_duration = (
+                datetime.now(timezone.utc) - user.last_exercise_at
+            ).total_seconds()
+            BACKEND_EXERCISE_METRICS['attempt_time'].labels(
+                exercise_type=exercise.exercise_type.value,
+                level=exercise.language_level.value,
+            ).observe(answer_duration)
+        with (
+            BACKEND_EXERCISE_METRICS['validation_time']
+            .labels(
+                exercise_type=exercise.exercise_type.value,
+                level=exercise.language_level.value,
+            )
+            .time()
+        ):
+            attempt_key = (
+                f'validate_attempt'
+                f'_{user.user_id}'
+                f'_{exercise.exercise_id}'
+                f'_{hash(answer.get_answer_text())}'
+            )
 
-        exercise_attempt = await self.async_task_cache.get_or_create_task(
-            key=attempt_key,
-            task_func=lambda: _handle_exercise_attempt(
-                user,
-                exercise,
-                answer,
-            ),
-            serializer=serialize_exercise_attempt,
-            deserializer=deserialize_exercise_attempt,
-        )
+            exercise_attempt = await self.async_task_cache.get_or_create_task(
+                key=attempt_key,
+                task_func=lambda: _handle_exercise_attempt(
+                    user,
+                    exercise,
+                    answer,
+                ),
+                serializer=serialize_exercise_attempt,
+                deserializer=deserialize_exercise_attempt,
+            )
+            if exercise_attempt.is_correct:
+                BACKEND_EXERCISE_METRICS['incorrect_attempts'].labels(
+                    exercise_type=exercise.exercise_type.value,
+                    level=exercise.language_level.value,
+                ).inc()
 
         return exercise_attempt
 

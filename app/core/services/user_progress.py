@@ -14,6 +14,7 @@ from app.core.enums import UserAction
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
 from app.core.texts import Messages, get_text
+from app.metrics import BACKEND_EXERCISE_METRICS, BACKEND_USER_METRICS
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,14 @@ class UserProgressService:
             user.session_frozen_until is not None
             and now < user.session_frozen_until
         ):
+            BACKEND_USER_METRICS['frozen_attempts'].labels(
+                cohort=user.cohort,
+                plan=user.plan,
+                target_language=user.target_language,
+                user_language=user.user_language,
+                language_level=user.language_level.value,
+            ).inc()
+
             return NextAction(
                 action=UserAction.limit_reached,
                 message=get_text(Messages.LIMIT_REACHED, user.user_language),
@@ -96,10 +105,17 @@ class UserProgressService:
         if user.exercises_get_in_set < EXERCISES_IN_SET:
             try:
                 next_exercise = await _get_next_exercise(user)
+
                 user.exercises_get_in_session += 1
                 user.exercises_get_in_set += 1
                 user.last_exercise_at = now
                 await self.user_service.update(user)
+
+                BACKEND_EXERCISE_METRICS['sent'].labels(
+                    exercise_type=next_exercise.exercise_type.value,
+                    level=next_exercise.language_level.value,
+                ).inc()
+
                 return NextAction(
                     exercise=next_exercise,
                     action=UserAction.new_exercise,

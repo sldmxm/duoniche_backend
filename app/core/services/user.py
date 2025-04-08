@@ -3,6 +3,7 @@ from typing import Optional
 
 from app.core.entities.user import User
 from app.core.repositories.user import UserRepository
+from app.metrics import BACKEND_USER_METRICS
 
 logger = logging.getLogger(__name__)
 
@@ -30,5 +31,14 @@ class UserService:
             return existing_user
         logger.debug('User does not exist.')
         new_user = await self.user_repository.save(user)
+
+        BACKEND_USER_METRICS['new'].labels(
+            cohort=new_user.cohort,
+            plan=new_user.plan,
+            target_language=new_user.target_language,
+            user_language=new_user.user_language,
+            language_level=new_user.language_level.value,
+        ).inc()
+
         logger.debug(f'Created new user {new_user}')
         return new_user

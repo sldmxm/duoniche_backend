@@ -32,14 +32,14 @@ BACKEND_EXERCISE_METRICS = {
     ),
     'attempt_time': Histogram(
         'exercise_time_for_attempt_seconds',
-        'Time spent for answer an exercise',
+        'Time spent by user for answer an exercise',
         labelnames=backend_exercise_metrics_label_names,
         buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
     ),
     'validation_time': Histogram(
         'exercise_validation_time_seconds',
         "Time spent validating a user's solution",
-        labelnames=backend_exercise_metrics_label_names + ['is_correct'],
+        labelnames=backend_exercise_metrics_label_names,
         buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
     ),
     'incorrect_attempts': Counter(
@@ -62,11 +62,6 @@ BACKEND_USER_METRICS = {
         'Total number of new users',
         labelnames=backend_user_metrics_label_names,
     ),
-    'returning': Counter(
-        'returning_users_total',
-        'Total number of returning users',
-        labelnames=backend_user_metrics_label_names,
-    ),
     'active': Gauge(
         'active_users_total',
         'Total number of active users',
@@ -78,14 +73,14 @@ BACKEND_USER_METRICS = {
         labelnames=backend_user_metrics_label_names,
         buckets=(10, 30, 60, 120, 300, 600, 900, 1800, 3600),
     ),
-    'frozen_attempts': Counter(
-        'frozen_attempts_total',
-        'Total number of attempts to start exercises when frozen',
-        labelnames=backend_user_metrics_label_names,
-    ),
     'exercises_per_session': Counter(
         'exercises_per_session',
         'Number of exercises per session',
+        labelnames=backend_user_metrics_label_names,
+    ),
+    'frozen_attempts': Counter(
+        'frozen_attempts_total',
+        'Total number of attempts to start exercises when frozen',
         labelnames=backend_user_metrics_label_names,
     ),
 }
@@ -103,10 +98,16 @@ BACKEND_LLM_METRICS = {
         'Total number of exercises created by LLM',
         labelnames=backend_llm_metrics_label_names,
     ),
+    'exercises_creation_time': Histogram(
+        'exercise_creation_time_seconds',
+        'Time spent for creation an exercise by LLM',
+        labelnames=backend_llm_metrics_label_names,
+        buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
+    ),
     'verification_time': Histogram(
         'exercise_verification_time_seconds',
         "Time spent for verification a user's solution by LLM",
-        labelnames=backend_llm_metrics_label_names + ['is_correct'],
+        labelnames=backend_llm_metrics_label_names,
         buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
     ),
     'exercises_verified': Counter(
@@ -123,6 +124,28 @@ BACKEND_LLM_METRICS = {
         'llm_output_tokens_total',
         'Total number of output tokens used by LLM',
         labelnames=backend_llm_metrics_label_names,
+    ),
+}
+
+backend_translator_metrics_label_names = [
+    'target_language',
+]
+BACKEND_TRANSLATOR_METRICS = {
+    'translations': Counter(
+        'translations_total',
+        'Total number of translations',
+        labelnames=backend_llm_metrics_label_names,
+    ),
+    'translations_chars': Counter(
+        'translations_chars_total',
+        'Total number of translations',
+        labelnames=backend_llm_metrics_label_names,
+    ),
+    'translation_time': Histogram(
+        'translation_time_seconds',
+        'Time for translation',
+        labelnames=backend_llm_metrics_label_names,
+        buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
     ),
 }
 

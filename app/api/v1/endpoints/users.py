@@ -12,13 +12,6 @@ from app.core.services.user import UserService
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# TODO: Новых пользователей лучше отслеживать здесь или в Core, не в боте
-# USER_METRICS = {
-#     "registration_count": Counter(
-#         "user_registration_count", "Total number of user registrations"
-#     ),
-# }
-
 
 @router.put(
     '/',
@@ -33,7 +26,10 @@ async def get_or_create_user(
     Get or create a user.
     """
     user = User(**user_data.model_dump())
-    return await user_service.get_or_create(user)
+    logger.debug(f'User data: {user}')
+    user_from_service = await user_service.get_or_create(user)
+    logger.debug(f'Saved user: {user_from_service}')
+    return user_from_service
 
 
 @router.get(

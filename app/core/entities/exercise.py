@@ -15,33 +15,17 @@ from app.core.value_objects.exercise import (
 class Exercise(BaseModel):
     exercise_id: Optional[int] = Field(description='Exercise ID')
     exercise_type: ExerciseType = Field(description='Type of exercise')
-    # TODO: Добавить на всех слоях язык упражнения,
-    #  в том числе, при выборке в БД
     exercise_language: str = Field(description='Language of exercise')
-    # TODO: Вынести уровень в ENUM в формате A1-C2
     language_level: LanguageLevel = Field(description='Language level')
     topic: ExerciseTopic = Field(description='Topic')
-    # TODO: Заполнять тест задания в зависимости
-    #  от типа задания и языка пользователя
     exercise_text: str = Field(description='Exercise text')
-    # TODO: Добавить на всех слоях created_at и created_by
+
     data: Union[
         SentenceConstructionExerciseData,
         MultipleChoiceExerciseData,
         FillInTheBlankExerciseData,
         TranslationExerciseData,
     ] = Field(description='Exercise data')
-
-    # def model_dump(self):
-    #     return {
-    #         'exercise_id': self.exercise_id,
-    #         'exercise_type': self.exercise_type.value,
-    #         'exercise_language': self.exercise_language,
-    #         'language_level': self.language_level.value,
-    #         'topic': self.topic.value,
-    #         'exercise_text': self.exercise_text,
-    #         'data': self.data.model_dump(),
-    #     }
 
     @classmethod
     def get_data_model_validate(cls, data: Dict[str, Any]):

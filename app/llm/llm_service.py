@@ -315,7 +315,6 @@ class LLMService(LLMProvider):
         chain = await self._create_llm_chain(
             prompt_template, parser, is_chat_prompt=False
         )
-        # TODO: сделать универсальный промпт для любых типов упражнений
         request_data = {
             'user_language': user.user_language,
             'exercise_language': user.target_language,

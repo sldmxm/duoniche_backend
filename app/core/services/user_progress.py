@@ -10,7 +10,12 @@ from app.core.consts import (
 from app.core.entities.exercise import Exercise
 from app.core.entities.next_action_result import NextAction
 from app.core.entities.user import User
-from app.core.enums import UserAction
+from app.core.enums import (
+    ExerciseTopic,
+    ExerciseType,
+    LanguageLevel,
+    UserAction,
+)
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
 from app.core.texts import Messages, get_text
@@ -31,10 +36,22 @@ class UserProgressService:
     async def get_next_action(self, user_id: int) -> NextAction:
         async def _get_next_exercise(user: User) -> Exercise:
             # TODO:
-            #  - переместить логику выбора следующего уровня, темы и типа
             #  - перенести из enum логику выбора уровня для пользователя
+            #  - написать логику выбора типа задания, пока заглушка
+            language_level = LanguageLevel.get_next_exercise_level(
+                user.language_level
+            )
+            logger.debug(
+                f'Next exercise level: {language_level} for user {user}'
+            )
+            exercise_type = ExerciseType.FILL_IN_THE_BLANK
+            topic = ExerciseTopic.get_next_topic()
+            logger.debug(f'Next exercise topic: {topic} for user {user}')
             exercise = await self.exercise_service.get_or_create_next_exercise(
-                user
+                user=user,
+                exercise_type=exercise_type,
+                topic=topic,
+                language_level=language_level,
             )
             if not exercise:
                 raise ValueError(

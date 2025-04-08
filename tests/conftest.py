@@ -2,7 +2,7 @@ import os
 import sys
 from datetime import datetime
 from typing import Any, AsyncGenerator, List
-from unittest.mock import create_autospec
+from unittest.mock import create_autospec, patch
 
 import pytest
 import pytest_asyncio
@@ -480,3 +480,19 @@ async def mock_translator():
 @pytest.fixture
 def fill_in_the_blank_answer():
     return FillInTheBlankAnswer(words=['exercise'])
+
+
+@pytest.fixture(autouse=True)
+def mock_get_next_exercise_level():
+    """Mocks LanguageLevel.get_next_exercise_level for all tests."""
+    with patch('app.core.enums.LanguageLevel.get_next_exercise_level') as mock:
+        mock.return_value = LanguageLevel.A2
+        yield mock
+
+
+@pytest.fixture(autouse=True)
+def mock_get_next_topic():
+    """Mocks ExerciseTopic.get_next_topic for all tests."""
+    with patch('app.core.enums.ExerciseTopic.get_next_topic') as mock:
+        mock.return_value = ExerciseTopic.GENERAL
+        yield mock

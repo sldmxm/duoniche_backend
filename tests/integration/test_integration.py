@@ -1,12 +1,11 @@
 import asyncio
-from unittest.mock import patch
 
 import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL
-from app.core.enums import ExerciseType, LanguageLevel
+from app.core.enums import ExerciseType
 from app.db.models.user import User as UserModel
 from app.db.repositories.exercise_attempt import (
     SQLAlchemyExerciseAttemptRepository,
@@ -16,19 +15,14 @@ from app.main import app
 pytestmark = pytest.mark.asyncio(scope='function')
 
 
-@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 @pytest.mark.asyncio
 async def test_get_new_exercise(
-    mock_get_level,
     client,
     db_sample_exercise,
     sample_exercise_request_data,
     add_db_user,
 ):
     """Test getting a new exercise from the API."""
-    mock_get_level.return_value = LanguageLevel(
-        db_sample_exercise.language_level
-    )
     response = await client.post(
         '/api/v1/exercises/next', json=sample_exercise_request_data
     )
@@ -107,10 +101,8 @@ async def test_exercise_not_found(
     assert 'Exercise with ID 99999 not found' in response.json()['detail']
 
 
-@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 @pytest.mark.asyncio
 async def test_multiple_requests_same_user(
-    mock_get_level,
     client,
     user_data,
     db_sample_exercise,
@@ -128,10 +120,6 @@ async def test_multiple_requests_same_user(
     3. Attempt to solve it correctly.
     4. Get a new exercise.
     """
-    mock_get_level.return_value = LanguageLevel(
-        db_sample_exercise.language_level
-    )
-
     # 1. Get a new exercise
     new_exercise_request = user_data.get('user_id')
 
@@ -177,10 +165,8 @@ async def test_multiple_requests_same_user(
     assert exercise_data['exercise_id'] == second_exercise.exercise_id
 
 
-@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 @pytest.mark.asyncio
 async def test_concurrent_requests(
-    mock_get_level,
     client,
     user_data,
     db_sample_exercise,
@@ -192,7 +178,6 @@ async def test_concurrent_requests(
     redis,
 ):
     """Test concurrent requests from multiple users."""
-    mock_get_level.return_value = DEFAULT_LANGUAGE_LEVEL
     num_users = 5
     exercise_responses = []
 
@@ -287,10 +272,8 @@ async def test_concurrent_requests(
     await async_session_for_check.close()
 
 
-@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 @pytest.mark.asyncio
 async def test_validation_cache_multiple_requests(
-    mock_get_level,
     client,
     user_data,
     db_sample_exercise,
@@ -304,7 +287,6 @@ async def test_validation_cache_multiple_requests(
     requests with the same answer and ensuring that the LLM is only
     called once.
     """
-    mock_get_level.return_value = DEFAULT_LANGUAGE_LEVEL
     # Get a new exercise
     new_exercise_request = add_db_user.user_id
 

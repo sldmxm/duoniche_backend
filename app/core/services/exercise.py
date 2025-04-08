@@ -3,7 +3,10 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.core.consts import MIN_EXERCISE_COUNT_TO_GENERATE_NEW
+from app.core.consts import (
+    DEFAULT_LANGUAGE_LEVEL,
+    MIN_EXERCISE_COUNT_TO_GENERATE_NEW,
+)
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
@@ -51,6 +54,9 @@ class ExerciseService:
     async def get_or_create_next_exercise(
         self,
         user: User,
+        exercise_type: ExerciseType = ExerciseType.FILL_IN_THE_BLANK,
+        topic: ExerciseTopic = ExerciseTopic.GENERAL,
+        language_level: LanguageLevel = DEFAULT_LANGUAGE_LEVEL,
     ) -> Optional[Exercise]:
         async def generate_new_exercise_if_needed() -> None:
             exercises_count = (
@@ -71,16 +77,16 @@ class ExerciseService:
 
         async def get_some_exercise() -> Exercise:
             if language_level != user.language_level:
-                user_level_exercise = (
+                user_level_general_exercise = (
                     await self.exercise_repository.get_new_exercise(
                         user=user,
                         language_level=user.language_level,
                         exercise_type=exercise_type,
-                        topic=topic,
+                        topic=ExerciseTopic.GENERAL,
                     )
                 )
-                if user_level_exercise:
-                    return user_level_exercise
+                if user_level_general_exercise:
+                    return user_level_general_exercise
 
             exercise_for_repetition = await self.get_exercise_for_repetition(
                 user
@@ -98,19 +104,6 @@ class ExerciseService:
                 language_level=language_level,
             )
 
-        # TODO: Добавить обработку исключений:
-        #  What happens if the LLM service raises an exception?
-        #   (можно запускать get_exercise_for_repetition, как вариант)
-        #  What happens if a repository method raises an exception?
-
-        language_level = LanguageLevel.get_next_exercise_level(
-            user.language_level
-        )
-        logger.debug(f'Next exercise level: {language_level} for user {user}')
-        # TODO: написать логику выбора типа задания, пока заглушка
-        exercise_type = ExerciseType.FILL_IN_THE_BLANK
-        # TODO: разобраться с топиками, пока заглушка
-        topic = ExerciseTopic.GENERAL
         await generate_new_exercise_if_needed()
 
         exercise = await self.exercise_repository.get_new_exercise(

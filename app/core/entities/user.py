@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from app.core.consts import (
     DEFAULT_LANGUAGE_LEVEL,
     DEFAULT_TARGET_LANGUAGE,
-    DEFAULT_USER_LEVEL,
+    DEFAULT_USER_LANGUAGE,
 )
 from app.core.enums import LanguageLevel
 
@@ -17,7 +17,7 @@ class User(BaseModel):
     username: Optional[str] = None
     name: Optional[str] = None
     language_level: LanguageLevel = DEFAULT_LANGUAGE_LEVEL
-    user_language: str = DEFAULT_USER_LEVEL
+    user_language: str = DEFAULT_USER_LANGUAGE
     target_language: str = DEFAULT_TARGET_LANGUAGE
     cohort: Optional[str] = None
     plan: Optional[str] = None

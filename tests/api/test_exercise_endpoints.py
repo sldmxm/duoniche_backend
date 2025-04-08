@@ -1,26 +1,18 @@
 import logging
-from unittest.mock import patch
 
 import pytest
-
-from app.core.enums import LanguageLevel
 
 logger = logging.getLogger(__name__)
 
 
-@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 @pytest.mark.asyncio
 async def test_get_new_exercise_success(
-    mock_get_level,
     client,
     sample_exercise_request_data,
     db_sample_exercise,
     add_db_user,
 ):
     """Test successful retrieval of a new exercise."""
-    mock_get_level.return_value = LanguageLevel(
-        db_sample_exercise.language_level
-    )
     response = await client.post(
         '/api/v1/exercises/next', json=sample_exercise_request_data
     )
@@ -105,10 +97,8 @@ async def test_validate_exercise_bad_request(
     assert response.json()['detail'][0]['loc'] == ['body', 'user_id']
 
 
-@patch('app.core.enums.LanguageLevel.get_next_exercise_level')
 @pytest.mark.asyncio
 async def test_validate_exercise_bad_request_answer_type(
-    mock_get_level,
     client,
     user_data,
     sample_exercise_request_data,
@@ -116,9 +106,6 @@ async def test_validate_exercise_bad_request_answer_type(
     add_db_user,
 ):
     """Test validation with invalid parameters."""
-    mock_get_level.return_value = LanguageLevel(
-        db_sample_exercise.language_level
-    )
     response_exercise = await client.post(
         '/api/v1/exercises/next',
         json=sample_exercise_request_data,

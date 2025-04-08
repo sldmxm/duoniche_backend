@@ -111,7 +111,10 @@ async def test_get_next_action_returns_new_exercise(
     # Assert
     mock_user_service.get_by_id.assert_awaited_once_with(user.user_id)
     mock_exercise_service.get_or_create_next_exercise.assert_awaited_once_with(
-        user
+        user=user,
+        exercise_type=fill_in_the_blank_exercise.exercise_type,
+        topic=fill_in_the_blank_exercise.topic,
+        language_level=fill_in_the_blank_exercise.language_level,
     )
     mock_user_service.update.assert_awaited_once_with(user)
     assert result.action == UserAction.new_exercise

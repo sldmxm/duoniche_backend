@@ -44,7 +44,7 @@ class UserProgressService:
             logger.debug(
                 f'Next exercise level: {language_level} for user {user}'
             )
-            exercise_type = ExerciseType.FILL_IN_THE_BLANK
+            exercise_type = ExerciseType.get_next_type()
             topic = ExerciseTopic.get_next_topic()
             logger.debug(f'Next exercise topic: {topic} for user {user}')
             exercise = await self.exercise_service.get_or_create_next_exercise(

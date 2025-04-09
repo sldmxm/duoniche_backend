@@ -3,6 +3,7 @@ from typing import Union
 from pydantic import BaseModel, Field
 
 from app.api.schemas.exercise_data import (
+    ChooseSentenceExerciseDataSchema,
     FillInTheBlankExerciseDataSchema,
     MultipleChoiceExerciseDataSchema,
     SentenceConstructionExerciseDataSchema,
@@ -18,8 +19,9 @@ class ExerciseSchema(BaseModel):
     topic: str = Field(description='Topic')
     exercise_text: str = Field(description='Exercise text')
     data: Union[
+        FillInTheBlankExerciseDataSchema,
+        ChooseSentenceExerciseDataSchema,
         SentenceConstructionExerciseDataSchema,
         MultipleChoiceExerciseDataSchema,
-        FillInTheBlankExerciseDataSchema,
         TranslationExerciseDataSchema,
     ] = Field(description='Exercise data')

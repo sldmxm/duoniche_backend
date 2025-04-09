@@ -258,7 +258,7 @@ def request_data_correct_answer_for_sample_exercise(
     return {
         'user_id': user_data['user_id'],
         'exercise_id': db_sample_exercise.exercise_id,
-        'answer': {'words': ['exercise']},
+        'answer': {'type': 'FillInTheBlankAnswer', 'words': ['exercise']},
     }
 
 
@@ -269,7 +269,7 @@ def request_data_incorrect_answer_for_sample_exercise(
     return {
         'user_id': user_data['user_id'],
         'exercise_id': db_sample_exercise.exercise_id,
-        'answer': {'words': ['wrong']},
+        'answer': {'type': 'FillInTheBlankAnswer', 'words': ['wrong']},
     }
 
 
@@ -495,4 +495,12 @@ def mock_get_next_topic():
     """Mocks ExerciseTopic.get_next_topic for all tests."""
     with patch('app.core.enums.ExerciseTopic.get_next_topic') as mock:
         mock.return_value = ExerciseTopic.GENERAL
+        yield mock
+
+
+@pytest.fixture(autouse=True)
+def mock_get_next_type():
+    """Mocks ExerciseType.get_next_type for all tests."""
+    with patch('app.core.enums.ExerciseType.get_next_type') as mock:
+        mock.return_value = ExerciseType.FILL_IN_THE_BLANK
         yield mock

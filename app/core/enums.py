@@ -10,6 +10,13 @@ class ExerciseType(Enum):
     MULTIPLE_CHOICE = 'multiple_choice'
     TRANSLATION = 'translation'
 
+    @classmethod
+    def get_next_type(cls) -> 'ExerciseType':
+        if random.random() < 0.75:
+            return ExerciseType.FILL_IN_THE_BLANK
+        else:
+            return ExerciseType.CHOOSE_SENTENCE
+
 
 class ExerciseTopic(Enum):
     GENERAL = 'general'

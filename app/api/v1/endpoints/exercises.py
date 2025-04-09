@@ -1,5 +1,5 @@
 import logging
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Union
 
 from fastapi import (
     APIRouter,
@@ -16,7 +16,10 @@ from app.api.dependencies import (
     get_user_service,
 )
 from app.api.errors import NotFoundError
-from app.api.schemas.answer import FillInTheBlankAnswerSchema
+from app.api.schemas.answer import (
+    ChooseSentenceAnswerSchema,
+    FillInTheBlankAnswerSchema,
+)
 from app.api.schemas.exercise import ExerciseSchema
 from app.api.schemas.next_action_result import NextActionSchema
 from app.api.schemas.validation_result import ValidationResultSchema
@@ -25,7 +28,9 @@ from app.core.entities.next_action_result import NextAction
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
 from app.core.services.user_progress import UserProgressService
-from app.core.value_objects.answer import FillInTheBlankAnswer
+from app.core.value_objects.answer import (
+    create_answer_model_validate,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(route_class=APIRoute)
@@ -55,11 +60,13 @@ async def get_or_create_next_exercise(
             user_id=user_id,
         )
         output = NextActionSchema(
-            exercise=ExerciseSchema.model_validate(
-                next_action.exercise.model_dump()
-            )
-            if next_action.exercise
-            else None,
+            exercise=(
+                ExerciseSchema.model_validate(
+                    next_action.exercise.model_dump()
+                )
+                if next_action.exercise
+                else None
+            ),
             action=next_action.action,
             message=next_action.message,
             pause=next_action.pause,
@@ -68,6 +75,8 @@ async def get_or_create_next_exercise(
         return output
 
     except ValueError as e:
+        logger.error(f'Invalid parameter value: {str(e)}')
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f'Invalid parameter value: {str(e)}',
@@ -90,7 +99,11 @@ async def validate_exercise_attempt(
     user_service: Annotated[UserService, Depends(get_user_service)],
     exercise_id: Annotated[int, Body(description='Exercise ID')],
     answer: Annotated[
-        FillInTheBlankAnswerSchema, Body(description="User's answer")
+        Union[
+            FillInTheBlankAnswerSchema,
+            ChooseSentenceAnswerSchema,
+        ],
+        Body(description="User's answer"),
     ],
     user_id: Annotated[int, Body(description='User ID')],
 ) -> ValidationResultSchema:
@@ -112,10 +125,12 @@ async def validate_exercise_attempt(
         if not exercise:
             raise NotFoundError(f'Exercise with ID {exercise_id} not found')
 
+        user_answer = create_answer_model_validate(answer.model_dump())
+
         exercise_attempt = await exercise_service.validate_exercise_attempt(
             user=user,
             exercise=exercise,
-            answer=FillInTheBlankAnswer(**answer.model_dump()),
+            answer=user_answer,
         )
 
         if exercise_attempt.is_correct is None:

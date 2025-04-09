@@ -94,7 +94,12 @@ async def test_validate_exercise_bad_request(
     )
     assert response.status_code == 422
     assert response.json()['detail'][0]['msg'] == 'Field required'
-    assert response.json()['detail'][0]['loc'] == ['body', 'user_id']
+    assert response.json()['detail'][0]['loc'] == [
+        'body',
+        'answer',
+        'FillInTheBlankAnswerSchema',
+        'type',
+    ]
 
 
 @pytest.mark.asyncio
@@ -116,11 +121,19 @@ async def test_validate_exercise_bad_request_answer_type(
         '/api/v1/exercises/validate',
         json={
             'exercise_id': exercise_json['exercise']['exercise_id'],
-            'answer': {'test': ['test']},
+            'answer': {
+                'answer_type': 'FillInTheBlankAnswer',
+                'test': ['test'],
+            },
             'user_id': user_data['user_id'],
         },
     )
 
     assert response.status_code == 422
     assert response.json()['detail'][0]['msg'] == 'Field required'
-    assert response.json()['detail'][0]['loc'] == ['body', 'answer', 'words']
+    assert response.json()['detail'][0]['loc'] == [
+        'body',
+        'answer',
+        'FillInTheBlankAnswerSchema',
+        'type',
+    ]

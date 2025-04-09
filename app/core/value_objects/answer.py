@@ -68,9 +68,10 @@ def create_answer_model_validate(data: Dict[str, Any]) -> Answer:
         raise ValueError('Missing or invalid "type" key in Answer data')
 
     answer_types: Dict[str, Type[Answer]] = {
+        'FillInTheBlankAnswer': FillInTheBlankAnswer,
+        'ChooseSentenceAnswer': ChooseSentenceAnswer,
         'SentenceConstructionAnswer': SentenceConstructionAnswer,
         'MultipleChoiceAnswer': MultipleChoiceAnswer,
-        'FillInTheBlankAnswer': FillInTheBlankAnswer,
         'TranslationAnswer': TranslationAnswer,
     }
 

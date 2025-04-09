@@ -8,6 +8,10 @@ class FillInTheBlankExerciseDataSchema(BaseModel):
     words: List[str] = Field(description='Words to fill in the blanks')
 
 
+class ChooseSentenceExerciseDataSchema(BaseModel):
+    sentences: List[str] = Field(description='List of sentences')
+
+
 class MultipleChoiceExerciseDataSchema(BaseModel):
     question: str = Field(description='Question')
     options: List[str] = Field(description='Options')

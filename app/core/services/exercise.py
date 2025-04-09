@@ -86,23 +86,46 @@ class ExerciseService:
                     )
                 )
                 if user_level_general_exercise:
+                    logger.debug(
+                        f'New exercise from db but standard level and topic'
+                        f'({exercise_type.value}, {topic.value}, '
+                        f'{language_level.value}): '
+                        f'{user_level_general_exercise}'
+                    )
                     return user_level_general_exercise
 
             exercise_for_repetition = await self.get_exercise_for_repetition(
                 user
             )
             if exercise_for_repetition:
+                logger.debug(
+                    f'Exercise for repetition from db only'
+                    f'({exercise_type.value}, {topic.value}, '
+                    f'{language_level.value}): {exercise_for_repetition}'
+                )
                 return exercise_for_repetition
 
             if self.background_exercise_generation_task:
-                return await self.background_exercise_generation_task
+                generated_task = await self.background_exercise_generation_task
+                logger.debug(
+                    f'New generated exercise from background task'
+                    f'({exercise_type.value}, {topic.value}, '
+                    f'{language_level.value}): {generated_task}'
+                )
+                return generated_task
 
-            return await self.generate_and_save_new_exercise(
+            generated_task = await self.generate_and_save_new_exercise(
                 user=user,
                 exercise_type=exercise_type,
                 topic=topic,
                 language_level=language_level,
             )
+            logger.debug(
+                f'Slow New generated exercise'
+                f'({exercise_type.value}, {topic.value}, '
+                f'{language_level.value}): {generated_task}'
+            )
+            return generated_task
 
         await generate_new_exercise_if_needed()
 
@@ -112,6 +135,13 @@ class ExerciseService:
             exercise_type=exercise_type,
             topic=topic,
         )
+
+        if exercise:
+            logger.debug(
+                f'New exercise from db ({exercise_type.value}, {topic.value}, '
+                f'{language_level.value}): {exercise}'
+            )
+
         if exercise is None:
             exercise = await get_some_exercise()
 

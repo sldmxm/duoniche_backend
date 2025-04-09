@@ -29,6 +29,7 @@ class Exercise(BaseModel):
         TranslationExerciseData,
     ] = Field(description='Exercise data')
 
+    # TODO: Сделать такое же в Answer и поменять в модулях
     @classmethod
     def get_data_model_validate(cls, data: Dict[str, Any]):
         return create_exercise_data_model_validate(data)

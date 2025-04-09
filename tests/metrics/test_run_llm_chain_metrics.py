@@ -4,6 +4,7 @@ import pytest
 
 from app.core.entities.user import User
 from app.core.enums import ExerciseType, LanguageLevel
+from app.llm.llm_base import BaseLLMService
 from app.llm.llm_service import LLMService
 
 pytestmark = pytest.mark.asyncio
@@ -18,7 +19,7 @@ def mock_llm_model():
 
 @pytest.fixture
 @patch('tiktoken.encoding_for_model')
-@patch.object(LLMService, '_count_tokens')
+@patch.object(BaseLLMService, '_count_tokens')
 def llm_service(mock_count_tokens, mock_encoding_for_model, mock_llm_model):
     mock_encoding = MagicMock()
     mock_encoding.encode.return_value = [1, 2]
@@ -47,7 +48,7 @@ def mock_backend_llm_metrics():
         'input_tokens': MagicMock(),
         'output_tokens': MagicMock(),
     }
-    with patch('app.llm.llm_service.BACKEND_LLM_METRICS', metrics):
+    with patch('app.llm.llm_base.BACKEND_LLM_METRICS', metrics):
         yield metrics
 
 
@@ -66,7 +67,7 @@ async def test_run_llm_chain_token_counting(
     language_level = LanguageLevel.A1
 
     # Act
-    await llm_service._run_llm_chain(
+    await llm_service.run_llm_chain(
         mock_chain, input_data, user, exercise_type, language_level
     )
 

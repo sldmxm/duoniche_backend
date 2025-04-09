@@ -12,6 +12,7 @@ class ExerciseType(Enum):
 
     @classmethod
     def get_next_type(cls) -> 'ExerciseType':
+        # TODO: Переписать логику после появления типов
         if random.random() < 0.75:
             return ExerciseType.FILL_IN_THE_BLANK
         else:

@@ -27,6 +27,7 @@ from app.core.services.async_task_cache import (
 from app.core.services.async_task_cache import (
     async_task_cache as default_async_task_cache,
 )
+from app.core.texts import get_text
 from app.core.value_objects.answer import Answer
 from app.metrics import BACKEND_EXERCISE_METRICS
 
@@ -86,6 +87,10 @@ class ExerciseService:
                     )
                 )
                 if user_level_general_exercise:
+                    user_level_general_exercise.exercise_text = get_text(
+                        user_level_general_exercise.exercise_type,
+                        user.user_language,
+                    )
                     logger.debug(
                         f'New exercise from db but standard level and topic'
                         f'({exercise_type.value}, {topic.value}, '
@@ -98,6 +103,9 @@ class ExerciseService:
                 user
             )
             if exercise_for_repetition:
+                exercise_for_repetition.exercise_text = get_text(
+                    exercise_for_repetition.exercise_type, user.user_language
+                )
                 logger.debug(
                     f'Exercise for repetition from db only'
                     f'({exercise_type.value}, {topic.value}, '
@@ -112,6 +120,9 @@ class ExerciseService:
                     f'({exercise_type.value}, {topic.value}, '
                     f'{language_level.value}): {generated_task}'
                 )
+                generated_task.exercise_text = get_text(
+                    generated_task.exercise_type, user.user_language
+                )
                 return generated_task
 
             generated_task = await self.generate_and_save_new_exercise(
@@ -119,6 +130,9 @@ class ExerciseService:
                 exercise_type=exercise_type,
                 topic=topic,
                 language_level=language_level,
+            )
+            generated_task.exercise_text = get_text(
+                generated_task.exercise_type, user.user_language
             )
             logger.debug(
                 f'Slow New generated exercise'
@@ -137,6 +151,9 @@ class ExerciseService:
         )
 
         if exercise:
+            exercise.exercise_text = get_text(
+                exercise.exercise_type, user.user_language
+            )
             logger.debug(
                 f'New exercise from db ({exercise_type.value}, {topic.value}, '
                 f'{language_level.value}): {exercise}'

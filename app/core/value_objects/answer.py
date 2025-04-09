@@ -48,6 +48,13 @@ class FillInTheBlankAnswer(Answer):
         return ';'.join(self.words)
 
 
+class ChooseSentenceAnswer(Answer):
+    sentence: str = Field(description='Chosen sentence')
+
+    def get_answer_text(self) -> str:
+        return self.sentence
+
+
 class TranslationAnswer(Answer):
     translation: str = Field(description='Translated text')
 

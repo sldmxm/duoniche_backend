@@ -4,9 +4,10 @@ from typing import List
 
 
 class ExerciseType(Enum):
+    FILL_IN_THE_BLANK = 'fill_in_the_blank'
+    CHOOSE_SENTENCE = 'choose_sentence'
     SENTENCE_CONSTRUCTION = 'sentence_construction'
     MULTIPLE_CHOICE = 'multiple_choice'
-    FILL_IN_THE_BLANK = 'fill_in_the_blank'
     TRANSLATION = 'translation'
 
 

@@ -6,7 +6,11 @@ from typing import Any, Dict, List, Optional, Type
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.consts import EXERCISE_FILL_IN_THE_BLANK_BLANKS
-from app.core.value_objects.answer import Answer, FillInTheBlankAnswer
+from app.core.value_objects.answer import (
+    Answer,
+    ChooseSentenceAnswer,
+    FillInTheBlankAnswer,
+)
 
 
 class ExerciseData(ABC, BaseModel):
@@ -26,20 +30,6 @@ class ExerciseData(ABC, BaseModel):
         data = super().model_dump(**kwargs)
         data['type'] = self.type
         return data
-
-
-class SentenceConstructionExerciseData(ExerciseData):
-    words: List[str] = Field(description='List of words')
-
-    def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
-        raise NotImplementedError
-
-
-class MultipleChoiceExerciseData(ExerciseData):
-    options: List[str] = Field(description='List of options')
-
-    def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
-        raise NotImplementedError
 
 
 class FillInTheBlankExerciseData(ExerciseData):
@@ -67,6 +57,29 @@ class FillInTheBlankExerciseData(ExerciseData):
         return result
 
 
+class ChooseSentenceExerciseData(ExerciseData):
+    sentences: List[str] = Field(description='List of sentences')
+
+    def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
+        if not isinstance(answer, ChooseSentenceAnswer):
+            raise ValueError('Answer must be ChooseSentenceAnswer')
+        return answer.sentence
+
+
+class SentenceConstructionExerciseData(ExerciseData):
+    words: List[str] = Field(description='List of words')
+
+    def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
+        raise NotImplementedError
+
+
+class MultipleChoiceExerciseData(ExerciseData):
+    options: List[str] = Field(description='List of options')
+
+    def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
+        raise NotImplementedError
+
+
 class TranslationExerciseData(ExerciseData):
     translations: List[str] = Field(description='List of translations')
 
@@ -80,9 +93,10 @@ def create_exercise_data_model_validate(data: Dict[str, Any]) -> ExerciseData:
         raise ValueError('Missing or invalid "type" key in ExerciseData data')
 
     exercise_data_types: Dict[str, Type[ExerciseData]] = {
+        'FillInTheBlankExerciseData': FillInTheBlankExerciseData,
+        'ChooseSentenceExerciseData': ChooseSentenceExerciseData,
         'SentenceConstructionExerciseData': SentenceConstructionExerciseData,
         'MultipleChoiceExerciseData': MultipleChoiceExerciseData,
-        'FillInTheBlankExerciseData': FillInTheBlankExerciseData,
         'TranslationExerciseData': TranslationExerciseData,
     }
 

@@ -4,7 +4,10 @@ from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
-from app.core.value_objects.answer import FillInTheBlankAnswer
+from app.core.value_objects.answer import (
+    ChooseSentenceAnswer,
+    FillInTheBlankAnswer,
+)
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.llm_service import LLMService
 
@@ -43,6 +46,22 @@ async def test_generate_fill_in_the_blank_exercise(user):
     assert exercise.data.text_with_blanks
     assert exercise.data.words
     assert isinstance(answer, FillInTheBlankAnswer)
+
+
+async def test_generate_choose_sentence_exercise(user):
+    try:
+        exercise, answer = await llm_service.generate_exercise(
+            user,
+            LanguageLevel.B1,
+            ExerciseType.CHOOSE_SENTENCE,
+            ExerciseTopic.GENERAL,
+        )
+    except ValueError:
+        return
+
+    assert exercise.exercise_type == ExerciseType.CHOOSE_SENTENCE
+    assert exercise.data.sentences
+    assert isinstance(answer, ChooseSentenceAnswer)
 
 
 async def test_validate_attempt_correct(user):

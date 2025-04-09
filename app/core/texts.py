@@ -1,7 +1,8 @@
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, cast
 
 from app.core.consts import DEFAULT_BOT_MESSAGE_LANGUAGE
+from app.core.enums import ExerciseType
 
 
 class Messages(str, Enum):
@@ -11,7 +12,7 @@ class Messages(str, Enum):
     PRAISE_AND_NEXT_SET = 'praise_and_next_set'
 
 
-TRANSLATIONS: Dict[Messages, Dict[str, str]] = {
+MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, str]] = {
     Messages.ERROR_GETTING_NEW_EXERCISE: {
         'en': "🥺Sorry, I couldn't get a new exercise " 'for you right now.',
         'bg': '🥺Съжалявам, но в момента не мога да ви '
@@ -42,11 +43,38 @@ TRANSLATIONS: Dict[Messages, Dict[str, str]] = {
     },
 }
 
+EXERCISES_TASKS_TRANSLATIONS: Dict[ExerciseType, Dict[str, str]] = {
+    ExerciseType.FILL_IN_THE_BLANK: {
+        'ru': 'Заполни пробелы в предложении:',
+        'en': 'Fill in the blanks in the sentence:',
+        'bg': 'Попълнете празните места в изречението:',
+    },
+    ExerciseType.CHOOSE_SENTENCE: {
+        'ru': 'Выбери корректное предложение:',
+        'en': 'Choose the correct sentence:',
+        'bg': 'Изберете правилното изречение:',
+        'tr': 'Doğru cümleyi seçin:',
+    },
+}
 
-def get_text(key: Messages, language_code: str, **kwargs) -> Optional[str]:
-    if key not in TRANSLATIONS:
-        return None
-    translations = TRANSLATIONS[key]
+
+def get_text(
+    key: Messages | ExerciseType, language_code: str, **kwargs
+) -> str:
+    if not isinstance(key, Messages | ExerciseType):
+        raise ValueError(f'Unknown key type: {type(key)}')
+
+    dictionary = cast(
+        Dict[Messages | ExerciseType, Dict[str, str]],
+        MESSAGES_TRANSLATIONS
+        if isinstance(key, Messages)
+        else EXERCISES_TASKS_TRANSLATIONS,
+    )
+
+    if key not in dictionary:
+        raise ValueError(f'Unknown key for translation: {key}')
+
+    translations = dictionary[key]
     if language_code in translations:
         text = translations[language_code]
     else:

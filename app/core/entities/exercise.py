@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.value_objects.exercise import (
+    ChooseSentenceExerciseData,
     FillInTheBlankExerciseData,
     MultipleChoiceExerciseData,
     SentenceConstructionExerciseData,
@@ -21,9 +22,10 @@ class Exercise(BaseModel):
     exercise_text: str = Field(description='Exercise text')
 
     data: Union[
+        FillInTheBlankExerciseData,
+        ChooseSentenceExerciseData,
         SentenceConstructionExerciseData,
         MultipleChoiceExerciseData,
-        FillInTheBlankExerciseData,
         TranslationExerciseData,
     ] = Field(description='Exercise data')
 

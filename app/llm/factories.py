@@ -1,9 +1,14 @@
-# app/llm/factories.py
 from app.core.enums import ExerciseType
+from app.llm.generators.choose_sentence_generator import (
+    ChooseSentenceGenerator,
+)
 from app.llm.generators.fill_in_blank_generator import FillInTheBlankGenerator
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
 from app.llm.interfaces.exercise_validator import ExerciseValidator
 from app.llm.llm_base import BaseLLMService
+from app.llm.validators.choose_sentence_validator import (
+    ChooseSentenceValidator,
+)
 from app.llm.validators.fill_in_blank_validator import FillInTheBlankValidator
 
 
@@ -15,6 +20,7 @@ class ExerciseGeneratorFactory:
         """Create an appropriate exercise generator based on exercise type."""
         generators = {
             ExerciseType.FILL_IN_THE_BLANK: FillInTheBlankGenerator,
+            ExerciseType.CHOOSE_SENTENCE: ChooseSentenceGenerator,
             # Add new exercise types here
         }
 
@@ -35,6 +41,7 @@ class ExerciseValidatorFactory:
         """Create an appropriate exercise validator based on exercise type."""
         validators = {
             ExerciseType.FILL_IN_THE_BLANK: FillInTheBlankValidator,
+            ExerciseType.CHOOSE_SENTENCE: ChooseSentenceValidator,
             # Add new exercise types here
         }
 

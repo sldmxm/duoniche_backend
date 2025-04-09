@@ -1,3 +1,4 @@
+import re
 from typing import Tuple
 
 from langchain_core.output_parsers import PydanticOutputParser
@@ -5,11 +6,11 @@ from pydantic import BaseModel, Field
 
 from app.core.consts import (
     EXERCISE_FILL_IN_THE_BLANK_BLANKS,
-    EXERCISE_FILL_IN_THE_BLANK_TASK,
 )
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
+from app.core.texts import get_text
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
@@ -60,7 +61,6 @@ class FillInTheBlankGenerator(ExerciseGenerator):
         topic: ExerciseTopic,
     ) -> Tuple[Exercise, FillInTheBlankAnswer]:
         """Generate a fill-in-the-blank exercise."""
-        import re
 
         parser = PydanticOutputParser(
             pydantic_object=FillInTheBlankExerciseDataParsed
@@ -108,7 +108,9 @@ class FillInTheBlankGenerator(ExerciseGenerator):
             exercise_language=user.target_language,
             language_level=language_level,
             topic=topic,
-            exercise_text=EXERCISE_FILL_IN_THE_BLANK_TASK,
+            exercise_text=get_text(
+                ExerciseType.FILL_IN_THE_BLANK, user.user_language
+            ),
             data=FillInTheBlankExerciseData(
                 text_with_blanks=text_with_blanks,
                 words=parsed_data.right_words + parsed_data.wrong_words,

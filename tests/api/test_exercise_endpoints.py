@@ -14,7 +14,7 @@ async def test_get_new_exercise_success(
 ):
     """Test successful retrieval of a new exercise."""
     response = await client.post(
-        '/api/v1/exercises/next', json=sample_exercise_request_data
+        '/api/v1/exercises/next/', json=sample_exercise_request_data
     )
 
     assert response.status_code == 200
@@ -32,7 +32,7 @@ async def test_get_new_exercise_bad_request(
 ):
     """Test validation with invalid parameters."""
     response = await client.post(
-        '/api/v1/exercises/next', json={'user_id': 'test'}
+        '/api/v1/exercises/next/', json={'user_id': 'test'}
     )
     assert response.status_code == 422
     assert (
@@ -53,7 +53,7 @@ async def test_validate_exercise_success(
 ):
     """Test successful validation of an exercise attempt."""
     response = await client.post(
-        '/api/v1/exercises/validate',
+        '/api/v1/exercises/validate/',
         json=request_data_correct_answer_for_sample_exercise,
     )
 
@@ -74,7 +74,7 @@ async def test_validate_exercise_bad_request(
 ):
     """Test validation with invalid parameters."""
     response = await client.post(
-        '/api/v1/exercises/validate', json={**user_data}
+        '/api/v1/exercises/validate/', json={**user_data}
     )
 
     assert response.status_code == 422
@@ -82,14 +82,14 @@ async def test_validate_exercise_bad_request(
     assert response.json()['detail'][0]['loc'] == ['body', 'exercise_id']
 
     response = await client.post(
-        '/api/v1/exercises/validate', json={**user_data, 'exercise_id': 1}
+        '/api/v1/exercises/validate/', json={**user_data, 'exercise_id': 1}
     )
     assert response.status_code == 422
     assert response.json()['detail'][0]['msg'] == 'Field required'
     assert response.json()['detail'][0]['loc'] == ['body', 'answer']
 
     response = await client.post(
-        '/api/v1/exercises/validate',
+        '/api/v1/exercises/validate/',
         json={'exercise_id': 1, 'answer': {'words': ['test']}},
     )
     assert response.status_code == 422
@@ -112,13 +112,13 @@ async def test_validate_exercise_bad_request_answer_type(
 ):
     """Test validation with invalid parameters."""
     response_exercise = await client.post(
-        '/api/v1/exercises/next',
+        '/api/v1/exercises/next/',
         json=sample_exercise_request_data,
     )
 
     exercise_json = response_exercise.json()
     response = await client.post(
-        '/api/v1/exercises/validate',
+        '/api/v1/exercises/validate/',
         json={
             'exercise_id': exercise_json['exercise']['exercise_id'],
             'answer': {

@@ -35,9 +35,6 @@ class UserProgressService:
 
     async def get_next_action(self, user_id: int) -> NextAction:
         async def _get_next_exercise(user: User) -> Exercise:
-            # TODO:
-            #  - перенести из enum логику выбора уровня для пользователя
-            #  - написать логику выбора типа задания, пока заглушка
             language_level = LanguageLevel.get_next_exercise_level(
                 user.language_level
             )
@@ -88,8 +85,9 @@ class UserProgressService:
                 message=get_text(Messages.LIMIT_REACHED, user.user_language),
             )
         elif (
-            user.session_frozen_until is not None
-            or not user.session_started_at
+            user.session_frozen_until
+            is not None  # was frozen, but now unfrozen
+            or not user.session_started_at  # new user
         ):
             user.session_frozen_until = None
             user.session_started_at = now

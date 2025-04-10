@@ -26,7 +26,8 @@ class FillInTheBlankExerciseDataParsed(BaseModel):
     )
     right_words: list[str] = Field(
         description=(
-            'A list of *single* word or words to correct fill the blanks. '
+            'A list of *single* word '
+            'or UNIQUE words to correct fill the blanks. '
             'The number of words must be equal to the number of the blanks.'
         )
     )

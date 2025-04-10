@@ -44,6 +44,11 @@ class ExerciseGetter:
                     language_level,
                 )
             )
+            logger.debug(
+                f'New exercises count for user {user.user_id}: '
+                f'{exercises_count}'
+            )
+
             if exercises_count < MIN_EXERCISE_COUNT_TO_GENERATE_NEW:
                 self.background_exercise_generation_task = asyncio.create_task(
                     self.generate_and_save_new_exercise(

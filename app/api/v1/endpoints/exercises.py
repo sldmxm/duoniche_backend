@@ -37,7 +37,7 @@ router = APIRouter(route_class=APIRoute)
 
 
 @router.post(
-    '/next',
+    '/next/',
     response_model=NextActionSchema,
     response_model_exclude_none=True,
     summary='Get next action for user',
@@ -84,7 +84,7 @@ async def get_or_create_next_exercise(
 
 
 @router.post(
-    '/validate',
+    '/validate/',
     response_model=ValidationResultSchema,
     response_model_exclude_none=True,
     summary="Validate a user's exercise attempt",

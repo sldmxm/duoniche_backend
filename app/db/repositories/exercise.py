@@ -1,7 +1,7 @@
 import logging
 from typing import List, Optional, override
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, exists, func, literal, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.entities.exercise import Exercise
@@ -66,10 +66,11 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         exercise_type: ExerciseType,
         topic: ExerciseTopic,
     ) -> Optional[Exercise]:
-        answered_exercise_ids_subquery = (
-            select(ExerciseAttemptModel.exercise_id)
-            .where(ExerciseAttemptModel.user_id == user.user_id)
-            .scalar_subquery()
+        answered_exercise_exists_subquery = select(literal(1)).where(
+            and_(
+                ExerciseAttemptModel.user_id == user.user_id,
+                ExerciseAttemptModel.exercise_id == ExerciseModel.exercise_id,
+            )
         )
 
         stmt = (
@@ -80,9 +81,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
                     ExerciseModel.exercise_type == exercise_type.value,
                     ExerciseModel.exercise_language == user.target_language,
                     ExerciseModel.topic == topic.value,
-                    ExerciseModel.exercise_id.notin_(
-                        answered_exercise_ids_subquery
-                    ),
+                    not_(exists(answered_exercise_exists_subquery)),
                 )
             )
             .order_by(func.random())
@@ -92,6 +91,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         result = await self.session.execute(stmt)
         db_exercise = result.scalar_one_or_none()
         if db_exercise is None:
+            logger.debug(f'No new exercises found for user {user.user_id}')
             return None
         return await self._to_entity(db_exercise)
 
@@ -100,10 +100,11 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         self,
         user: User,
     ) -> Optional[Exercise]:
-        answered_exercise_ids_subquery = (
-            select(ExerciseAttemptModel.exercise_id)
-            .where(ExerciseAttemptModel.user_id == user.user_id)
-            .scalar_subquery()
+        answered_exercise_exists_subquery = select(literal(1)).where(
+            and_(
+                ExerciseAttemptModel.user_id == user.user_id,
+                ExerciseAttemptModel.exercise_id == ExerciseModel.exercise_id,
+            )
         )
 
         stmt = (
@@ -111,9 +112,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             .where(
                 and_(
                     ExerciseModel.exercise_language == user.target_language,
-                    ExerciseModel.exercise_id.in_(
-                        answered_exercise_ids_subquery
-                    ),
+                    exists(answered_exercise_exists_subquery),
                 )
             )
             .order_by(func.random())
@@ -131,13 +130,11 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         self,
         user: User,
     ) -> Optional[Exercise]:
-        answered_exercise_ids_subquery = (
-            select(ExerciseAttemptModel.exercise_id)
-            .where(
+        incorrect_answered_subquery = select(literal(1)).where(
+            and_(
                 ExerciseAttemptModel.user_id == user.user_id,
-                ~ExerciseAttemptModel.is_correct,
+                not_(ExerciseAttemptModel.is_correct),
             )
-            .scalar_subquery()
         )
 
         stmt = (
@@ -145,9 +142,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             .where(
                 and_(
                     ExerciseModel.exercise_language == user.target_language,
-                    ExerciseModel.exercise_id.in_(
-                        answered_exercise_ids_subquery
-                    ),
+                    exists(incorrect_answered_subquery),
                 )
             )
             .order_by(func.random())
@@ -166,10 +161,11 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         user: User,
         language_level: LanguageLevel,
     ) -> int:
-        answered_exercise_ids_subquery = (
-            select(ExerciseAttemptModel.exercise_id)
-            .where(ExerciseAttemptModel.user_id == user.user_id)
-            .scalar_subquery()
+        answered_exercise_exists_subquery = select(literal(1)).where(
+            and_(
+                ExerciseAttemptModel.user_id == user.user_id,
+                ExerciseAttemptModel.exercise_id == ExerciseModel.exercise_id,
+            )
         )
 
         stmt = (
@@ -177,9 +173,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
                 and_(
                     ExerciseModel.language_level == language_level.value,
                     ExerciseModel.exercise_language == user.target_language,
-                    ExerciseModel.exercise_id.notin_(
-                        answered_exercise_ids_subquery
-                    ),
+                    not_(exists(answered_exercise_exists_subquery)),
                 )
             )
         ).with_only_columns(func.count())

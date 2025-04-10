@@ -134,17 +134,17 @@ BACKEND_TRANSLATOR_METRICS = {
     'translations': Counter(
         'translations_total',
         'Total number of translations',
-        labelnames=backend_llm_metrics_label_names,
+        labelnames=backend_translator_metrics_label_names,
     ),
     'translations_chars': Counter(
         'translations_chars_total',
         'Total number of translations',
-        labelnames=backend_llm_metrics_label_names,
+        labelnames=backend_translator_metrics_label_names,
     ),
     'translation_time': Histogram(
         'translation_time_seconds',
         'Time for translation',
-        labelnames=backend_llm_metrics_label_names,
+        labelnames=backend_translator_metrics_label_names,
         buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
     ),
 }

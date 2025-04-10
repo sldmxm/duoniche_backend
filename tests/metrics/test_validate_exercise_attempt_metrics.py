@@ -81,7 +81,9 @@ def mock_backend_exercise_metrics():
         'validation_time': MagicMock(),
         'incorrect_attempts': MagicMock(),
     }
-    with patch('app.core.services.exercise.BACKEND_EXERCISE_METRICS', metrics):
+    with patch(
+        'app.core.services.attempt_validator.BACKEND_EXERCISE_METRICS', metrics
+    ):
         yield metrics
 
 

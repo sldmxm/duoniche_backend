@@ -352,9 +352,11 @@ async def test_get_new_exercise_background_task(
     assert response.status_code == 200
 
     user_progress_service_instance = app.state.user_progress_service
-    exercise_service_instance = user_progress_service_instance.exercise_service
-    if exercise_service_instance.background_exercise_generation_task:
-        await exercise_service_instance.background_exercise_generation_task
+    exercise_getter_instance = (
+        user_progress_service_instance.exercise_service.exercise_getter
+    )
+    if exercise_getter_instance.background_exercise_generation_task:
+        await exercise_getter_instance.background_exercise_generation_task
 
     stmt = text('SELECT COUNT(*) FROM exercises')
     result = await async_session.execute(stmt)

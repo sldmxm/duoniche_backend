@@ -39,7 +39,14 @@ class ExerciseRepository(AsyncRepository[Exercise]):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_exercise_for_repetition(
+    async def get_any_for_repetition(
+        self,
+        user: User,
+    ) -> Optional[Exercise]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_mistake_repetition(
         self,
         user: User,
     ) -> Optional[Exercise]:

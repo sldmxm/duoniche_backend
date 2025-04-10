@@ -76,7 +76,7 @@ class ExerciseService:
                     )
                 )
 
-        async def get_some_exercise() -> Exercise:
+        async def get_any_exercise() -> Exercise:
             if language_level != user.language_level:
                 user_level_general_exercise = (
                     await self.exercise_repository.get_new_exercise(
@@ -160,7 +160,7 @@ class ExerciseService:
             )
 
         if exercise is None:
-            exercise = await get_some_exercise()
+            exercise = await get_any_exercise()
 
         return exercise
 
@@ -193,7 +193,15 @@ class ExerciseService:
         self,
         user: User,
     ) -> Optional[Exercise]:
-        return await self.exercise_repository.get_exercise_for_repetition(
+        exercise_for_repetition_with_mistake = (
+            await self.exercise_repository.get_mistake_repetition(
+                user,
+            )
+        )
+        if exercise_for_repetition_with_mistake:
+            return exercise_for_repetition_with_mistake
+
+        return await self.exercise_repository.get_any_for_repetition(
             user,
         )
 

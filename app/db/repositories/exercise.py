@@ -96,13 +96,47 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         return await self._to_entity(db_exercise)
 
     @override
-    async def get_exercise_for_repetition(
+    async def get_any_for_repetition(
         self,
         user: User,
     ) -> Optional[Exercise]:
         answered_exercise_ids_subquery = (
             select(ExerciseAttemptModel.exercise_id)
             .where(ExerciseAttemptModel.user_id == user.user_id)
+            .scalar_subquery()
+        )
+
+        stmt = (
+            select(ExerciseModel)
+            .where(
+                and_(
+                    ExerciseModel.exercise_language == user.target_language,
+                    ExerciseModel.exercise_id.in_(
+                        answered_exercise_ids_subquery
+                    ),
+                )
+            )
+            .order_by(func.random())
+            .limit(1)
+        )
+
+        result = await self.session.execute(stmt)
+        db_exercise = result.scalar_one_or_none()
+        if db_exercise is None:
+            return None
+        return await self._to_entity(db_exercise)
+
+    @override
+    async def get_mistake_repetition(
+        self,
+        user: User,
+    ) -> Optional[Exercise]:
+        answered_exercise_ids_subquery = (
+            select(ExerciseAttemptModel.exercise_id)
+            .where(
+                ExerciseAttemptModel.user_id == user.user_id,
+                ~ExerciseAttemptModel.is_correct,
+            )
             .scalar_subquery()
         )
 

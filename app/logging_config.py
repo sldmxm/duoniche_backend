@@ -8,8 +8,7 @@ def configure_logging() -> None:
     """
     Configures the root logger for the application.
     """
-    debug = settings.debug.lower() == 'true'
-    log_level = logging.DEBUG if debug else logging.INFO
+    log_level = logging.DEBUG if settings.debug else logging.INFO
 
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)

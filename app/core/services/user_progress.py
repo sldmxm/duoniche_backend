@@ -72,6 +72,10 @@ class UserProgressService:
             user.session_frozen_until is not None
             and now < user.session_frozen_until
         ):
+            logger.debug(
+                f'User {user.user_id} is frozen until '
+                f'{user.session_frozen_until}, {now=}'
+            )
             BACKEND_USER_METRICS['frozen_attempts'].labels(
                 cohort=user.cohort,
                 plan=user.plan,
@@ -85,10 +89,17 @@ class UserProgressService:
                 message=get_text(Messages.LIMIT_REACHED, user.user_language),
             )
         elif (
-            user.session_frozen_until
-            is not None  # was frozen, but now unfrozen
-            or not user.session_started_at  # new user
+            # was frozen, but now unfrozen
+            user.session_frozen_until is not None
+            # new user
+            or not user.session_started_at
         ):
+            if user.session_frozen_until is not None:
+                logger.debug(
+                    f'User {user.user_id} WAS frozen '
+                    f'until {user.session_frozen_until}, {now=}'
+                )
+
             user.session_frozen_until = None
             user.session_started_at = now
             user.exercises_get_in_session = 0

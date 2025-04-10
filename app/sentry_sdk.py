@@ -1,3 +1,5 @@
+import logging
+
 import sentry_sdk
 from sentry_sdk.integrations.asyncio import AsyncioIntegration
 from sentry_sdk.integrations.fastapi import FastApiIntegration
@@ -7,11 +9,14 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 def sentry_init():
-    if settings.sentry_sdk:
+    if settings.sentry_dsn:
+        logger.info('Sentry is enabled')
         sentry_sdk.init(
-            dsn=settings.sentry_sdk,
+            dsn=settings.sentry_dsn,
             integrations=[
                 LoggingIntegration(),
                 FastApiIntegration(),
@@ -23,3 +28,5 @@ def sentry_init():
             environment='production',
             send_default_pii=True,
         )
+    else:
+        logger.info('Sentry is disabled')

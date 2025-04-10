@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+
+# Docker
+.dockerignore
+Dockerfile* # Если не нужен сам Dockerfile внутри образа
+
+# Python cache/virtual environments
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+venv
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.mypy_cache
+.pytest_cache
+.ruff_cache
+
+# Local environment settings
+.env*
+*.env
+
+# Testing
+tests/
+.pytest_cache/
+pytest*.xml
+coverage.xml
+*.cover
+
+# Infrastructure
+infra/
+
+# IDE files
+.idea/
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Other build artifacts
+dist/
+build/
+*.egg-info/

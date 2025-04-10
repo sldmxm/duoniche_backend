@@ -1,8 +1,8 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):  # type: ignore
-    debug: str = 'False'
+    debug: bool = False
 
     postgres_user: str = 'postgres'
     postgres_password: str = 'postgres'
@@ -36,12 +36,11 @@ class Settings(BaseSettings):  # type: ignore
     # нет смысла дольше, уже будет в БД и новые не будут начаты
     async_task_cache_ttl: int = 60 * 2
 
-    sentry_sdk: str = ''
+    sentry_dsn: str = ''
 
-    model_config = SettingsConfigDict(
-        env_file='.env',
-        env_file_encoding='utf-8',
-    )
+    class Config:
+        env_file = '.env'
+        env_file_encoding = 'utf-8'
 
 
 settings = Settings()

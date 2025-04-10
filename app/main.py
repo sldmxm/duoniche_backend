@@ -18,12 +18,11 @@ configure_logging()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     await init_db()
+    if not settings.debug:
+        sentry_init()
     asyncio.create_task(metrics_loop())
     yield
 
-
-if not settings.debug:
-    sentry_init()
 
 app = FastAPI(title='Learn BG API', lifespan=lifespan)
 

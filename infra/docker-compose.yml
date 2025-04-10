@@ -1,0 +1,88 @@
+x-json-loggin: &json_logging
+    driver: "json-file"
+    options:
+      max-size: "100M"
+      max-file: 3
+
+services:
+  db:
+    container_name: duo_db
+    image: postgres:16-alpine
+    restart: always
+    env_file: .env
+    logging: *json_logging
+    volumes:
+      - pg_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - duo_shared
+
+  redis:
+    container_name: duo_redis
+    image: redis:alpine
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - redis_data:/data
+    logging: *json_logging
+    networks:
+      - duo_shared
+
+  backend:
+    container_name: duo_back
+    build: ../.
+    env_file: .env
+    restart: always
+    logging: *json_logging
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - duo_shared
+
+  prometheus:
+    image: prom/prometheus
+    container_name: duo_prometheus
+    logging: *json_logging
+    command:
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+    volumes:
+      - ./prometheus.yml:/prometheus/prometheus.yml
+    networks:
+      - duo_shared
+    ports:
+      - "9090:9090"
+
+#  nginx:
+#    image: nginx:alpine
+#    container_name: duo_nginx
+#    restart: always
+#    logging: *json_logging
+#    volumes:
+#      - ./nginx.conf:/etc/nginx/nginx.conf
+#    ports:
+#      - "8443:443"
+#    depends_on:
+#      - backend
+#    networks:
+#      - duo_shared
+
+volumes:
+  pg_data:
+  redis_data:
+
+networks:
+  duo_shared:
+    external: true

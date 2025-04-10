@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'backend'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['backand:8000']
+
+  - job_name: 'bot'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['bot:8000']

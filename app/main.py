@@ -6,9 +6,11 @@ from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.api.v1.api import api_router
+from app.config import settings
 from app.db.db import init_db
 from app.logging_config import configure_logging
 from app.metrics import metrics_loop
+from app.sentry_sdk import sentry_init
 
 configure_logging()
 
@@ -19,6 +21,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     asyncio.create_task(metrics_loop())
     yield
 
+
+if not settings.debug:
+    sentry_init()
 
 app = FastAPI(title='Learn BG API', lifespan=lifespan)
 

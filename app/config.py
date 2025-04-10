@@ -32,8 +32,11 @@ class Settings(BaseSettings):  # type: ignore
 
     redis_url: str = 'redis://localhost:6379'
     redis_test_db: int = 1
+
     # нет смысла дольше, уже будет в БД и новые не будут начаты
     async_task_cache_ttl: int = 60 * 2
+
+    sentry_sdk: str = ''
 
     model_config = SettingsConfigDict(
         env_file='.env',

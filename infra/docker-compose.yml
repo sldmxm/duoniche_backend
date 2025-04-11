@@ -65,19 +65,22 @@ services:
     ports:
       - "9090:9090"
 
-#  nginx:
-#    image: nginx:alpine
-#    container_name: duo_nginx
-#    restart: always
-#    logging: *json_logging
-#    volumes:
-#      - ./nginx.conf:/etc/nginx/nginx.conf
-#    ports:
-#      - "8443:443"
-#    depends_on:
-#      - backend
-#    networks:
-#      - duo_shared
+  nginx:
+    image: nginx:alpine
+    container_name: duo_nginx
+    restart: always
+    logging: *json_logging
+    environment:
+      - WEBHOOK_PATH_BG=${WEBHOOK_PATH_BG}
+      - NGINX_HOST=${NGINX_HOST}
+    volumes:
+      - ./nginx/:/etc/nginx/templates
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - duo_shared
 
 volumes:
   pg_data:

@@ -1,3 +1,5 @@
+name: DuoNiche
+
 x-json-loggin: &json_logging
     driver: "json-file"
     options:
@@ -60,10 +62,9 @@ services:
       - '--storage.tsdb.retention.size=10GB'
     volumes:
       - ./prometheus.yml:/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
     networks:
       - duo_shared
-    ports:
-      - "9090:9090"
 
   nginx:
     image: nginx:alpine
@@ -72,11 +73,11 @@ services:
     logging: *json_logging
     environment:
       - WEBHOOK_PATH_BG=${WEBHOOK_PATH_BG}
-      - NGINX_HOST=${NGINX_HOST}
+      - HOST=${HOST}
     volumes:
       - ./nginx/:/etc/nginx/templates
     ports:
-      - "8080:80"
+      - "80:80" # 8080 for ngrok
     depends_on:
       - backend
     networks:
@@ -85,6 +86,7 @@ services:
 volumes:
   pg_data:
   redis_data:
+  prometheus_data:
 
 networks:
   duo_shared:

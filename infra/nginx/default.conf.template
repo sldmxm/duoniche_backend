@@ -32,7 +32,7 @@ server {
     listen 80;
     listen [::]:80;
 
-    server_name $NGINX_HOST;
+    server_name $HOST;
 
     location $WEBHOOK_PATH_BG {
         proxy_pass http://bot_bg:3000;
@@ -41,22 +41,23 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-    # TODO: прописать доступ к метрикам
     location / {
-        proxy_pass http://backend:9090;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/templates/.htpasswd;
+        proxy_pass http://prometheus:9090;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
     }
-
 }
 
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
 
-    server_name _;  # Обрабатывает запросы без имени хоста (по IP)
+    server_name _;  # if somebody try raw ip
 
     return 444;
 }

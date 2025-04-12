@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
+#  workflow_dispatch:
 
 jobs:
   deploy:
@@ -40,15 +40,13 @@ jobs:
           REDIS_HOST=redis
           SENTRY_DSN=${{ secrets.SENTRY_DSN }}
           WEBHOOK_PATH_BG=${{ secrets.WEBHOOK_PATH_BG }}
-          HOST_IP=${{ secrets.HOST_IP }}
+          HOST=${{ secrets.HOST }}
           BACKEND_IMAGE_TAG=ghcr.io/${{ github.repository }}:${{ github.sha }}
           EOF
 
       - name: Create .htpasswd file
         run: |
-          cat <<EOF > ./infra/nginx/.htpasswd
-          ${{ secrets.HTPASSWD }}
-          EOF
+          echo "${{ secrets.HTPASSWD }}" > ./infra/nginx/.htpasswd
 
       - name: Check if image exists locally
         run: |

@@ -98,5 +98,4 @@ jobs:
           script: |
             cd /home/${{ secrets.USER }}/app/infra
             sudo docker compose stop
-            sudo docker compose rm backend -f
             sudo docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up --force-recreate --build -d

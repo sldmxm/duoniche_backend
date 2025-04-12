@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     yield
 
 
-app = FastAPI(title='Learn BG API', lifespan=lifespan)
+app = FastAPI(title='DuoNiche API', lifespan=lifespan)
 
 Instrumentator().instrument(app).expose(app)
 

@@ -1,0 +1,91 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.actor == ${{ secrets.GITHUB_USER }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker info
+
+      - name: Set image tag
+        id: vars
+        run: echo "tag=ghcr.io/${{ github.repository }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Create .env file
+        run: |
+          cat <<EOF > ./infra/.env
+          ENV=prod
+          DEBUG=False
+          DATABASE_URL=postgresql+asyncpg://duo:duo@db:5432/duo
+          POSTGRES_DB=duo
+          POSTGRES_USER=duo
+          POSTGRES_PASSWORD=duo
+          POSTGRES_HOST=db
+          POSTGRES_PORT=5432
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL_NAME=${{ secrets.OPENAI_MODEL_NAME }}
+          GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
+          REDIS_URL="redis://redis:6379"
+          REDIS_HOST=redis
+          SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+          WEBHOOK_PATH_BG=${{ secrets.WEBHOOK_PATH_BG }}
+          HOST=${{ secrets.HOST }}
+          EOF
+
+      - name: Create .htpasswd file
+        run: |
+          cat <<EOF > ./infra/nginx/.htpasswd
+          ${{ secrets.HTPASSWD }}
+          EOF
+
+      - name: Check if image exists locally
+        run: |
+          if ! docker image inspect ${{ steps.vars.outputs.tag }} > /dev/null 2>&1; then
+            cp ./infra/.env ./.env
+            docker build -t ${{ steps.vars.outputs.tag }} .
+            docker push ${{ steps.vars.outputs.tag }}
+          else
+            echo "Image already exists, skipping build"
+          fi
+
+      - name: Remove old version on remote server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo rm -rf /home/${{ secrets.USER }}/app
+
+      - name: Uploading project files to remote server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: ./infra
+          target: /home/${{ secrets.USER }}/app
+
+      - name: Building Docker image on remote server and deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/${{ secrets.USER }}/app/infra
+            sudo docker compose stop
+            sudo docker compose rm backend -f
+            sudo docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up --force-recreate --build -d

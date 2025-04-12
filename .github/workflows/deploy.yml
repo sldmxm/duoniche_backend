@@ -78,45 +78,6 @@ jobs:
           source: ./infra
           target: /home/${{ secrets.USER }}/app
 
-      - name: Check files on remote server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            echo "--- Contents of /home/${{ secrets.USER }}/app after scp ---"
-            ls -gla /home/${{ secrets.USER }}/app
-            echo "--- Contents of /home/${{ secrets.USER }}/app/infra after scp ---"
-            ls -gla /home/${{ secrets.USER }}/app/infra
-
-#      - name: Debugging Docker commands on remote server
-#        uses: appleboy/ssh-action@master
-#        with:
-#          host: ${{ secrets.HOST }}
-#          username: ${{ secrets.USER }}
-#          key: ${{ secrets.SSH_PRIVATE_KEY }}
-#          script: |
-#            echo "--- Before commands ---"
-#            ls -la /home/${{ secrets.USER }}/app/infra
-#            cd /home/${{ secrets.USER }}/app/infra
-#
-#            echo "--- Running docker compose stop ---"
-#            sudo docker compose stop
-#            echo "--- After stop ---"
-#            ls -la /home/${{ secrets.USER }}/app/infra
-#
-#            echo "--- Running docker compose rm backend -f ---"
-#            sudo docker compose rm backend -f
-#            echo "--- After rm backend ---"
-#            ls -la /home/${{ secrets.USER }}/app/infra
-#
-#            # Исправьте эту команду перед тестом!
-#            # echo "--- Running docker compose up ---"
-#            # sudo docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up --force-recreate --build -d
-#            # echo "--- After up attempt ---"
-#            # ls -la /home/${{ secrets.USER }}/app/infra
-
       - name: Building Docker image on remote server and deploy
         uses: appleboy/ssh-action@master
         with:
@@ -129,5 +90,4 @@ jobs:
             echo "Logging in to GHCR on remote server..."
             echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
             echo "Login completed."
-            sudo docker compose stop
             sudo docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up --force-recreate --build -d

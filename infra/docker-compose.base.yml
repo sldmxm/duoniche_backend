@@ -41,7 +41,6 @@ services:
 
   backend:
     container_name: duo_back
-    build: ../.
     env_file: .env
     restart: always
     logging: *json_logging
@@ -76,8 +75,6 @@ services:
       - HOST=${HOST}
     volumes:
       - ./nginx/:/etc/nginx/templates
-    ports:
-      - "80:80" # 8080 for ngrok
     depends_on:
       - backend
     networks:

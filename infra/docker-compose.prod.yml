@@ -1,0 +1,6 @@
+services:
+  backend:
+    image: ghcr.io/${GITHUB_USER}/duoniche_backend:latest
+  nginx:
+    ports:
+      - "80:80"

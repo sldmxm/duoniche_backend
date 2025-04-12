@@ -1,0 +1,6 @@
+services:
+  backend:
+    build: ../.
+  nginx:
+    ports:
+      - "8080:80" # ngrok

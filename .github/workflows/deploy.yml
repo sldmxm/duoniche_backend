@@ -9,9 +9,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-#    env:
-#      GITHUB_USER: ${{ secrets.GITHUB_USER }}
-#    if: github.actor == env.GITHUB_USER
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4

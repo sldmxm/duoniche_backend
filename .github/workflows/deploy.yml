@@ -124,6 +124,7 @@ jobs:
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            sudo docker network create duo_shared
             cd /home/${{ secrets.USER }}/app/infra
             sudo docker compose stop
             sudo docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up --force-recreate --build -d

@@ -35,6 +35,7 @@ coverage.xml
 
 # Infrastructure
 infra/
+.github/
 
 # IDE files
 .idea/

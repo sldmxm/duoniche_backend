@@ -126,5 +126,8 @@ jobs:
           script: |
             sudo docker network create duo_shared
             cd /home/${{ secrets.USER }}/app/infra
+            echo "Logging in to GHCR on remote server..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "Login completed."
             sudo docker compose stop
             sudo docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up --force-recreate --build -d

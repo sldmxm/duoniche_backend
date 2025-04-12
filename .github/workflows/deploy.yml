@@ -76,6 +76,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: ./infra
           target: /home/${{ secrets.USER }}/app
+          script: |
+            ls -gla /home/${{ secrets.USER }}/app/infra
 
       - name: Building Docker image on remote server and deploy
         uses: appleboy/ssh-action@master

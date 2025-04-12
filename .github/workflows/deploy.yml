@@ -40,7 +40,7 @@ jobs:
           REDIS_HOST=redis
           SENTRY_DSN=${{ secrets.SENTRY_DSN }}
           WEBHOOK_PATH_BG=${{ secrets.WEBHOOK_PATH_BG }}
-          HOST=${{ secrets.HOST }}
+          HOST_IP=${{ secrets.HOST_IP }}
           BACKEND_IMAGE_TAG=ghcr.io/${{ github.repository }}:${{ github.sha }}
           EOF
 
@@ -63,7 +63,7 @@ jobs:
       - name: Remove old version on remote server
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.HOST }}
+          host: ${{ secrets.HOST_IP }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
@@ -72,7 +72,7 @@ jobs:
       - name: Uploading project files to remote server
         uses: appleboy/scp-action@master
         with:
-          host: ${{ secrets.HOST }}
+          host: ${{ secrets.HOST_IP }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: ./infra
@@ -81,7 +81,7 @@ jobs:
       - name: Building Docker image on remote server and deploy
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.HOST }}
+          host: ${{ secrets.HOST_IP }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |

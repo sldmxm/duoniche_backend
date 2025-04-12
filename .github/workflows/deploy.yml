@@ -46,7 +46,9 @@ jobs:
 
       - name: Create .htpasswd file
         run: |
-          echo "${{ secrets.HTPASSWD }}" > ./infra/nginx/.htpasswd
+          cat << 'EOF' > ./infra/nginx/.htpasswd
+          ${{ secrets.HTPASSWD }}
+          EOF
 
       - name: Check if image exists locally
         run: |

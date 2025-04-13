@@ -57,8 +57,6 @@ async def test_validate_exercise_success(
         json=request_data_correct_answer_for_sample_exercise,
     )
 
-    logger.debug(response.json())
-
     assert response.status_code == 200
     assert response.json() == {
         'is_correct': True,

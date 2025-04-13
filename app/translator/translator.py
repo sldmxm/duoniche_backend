@@ -46,7 +46,7 @@ class Translator(TranslateProvider):
                         headers=headers,
                     )
                     response.raise_for_status()
-                    logger.debug(f'Response: {response.json()}')
+                    logger.info(f'Response: {response.json()}')
                     data = response.json()
 
                     BACKEND_TRANSLATOR_METRICS['translations'].labels(

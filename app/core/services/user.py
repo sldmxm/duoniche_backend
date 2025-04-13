@@ -27,9 +27,9 @@ class UserService:
             user.telegram_id
         )
         if existing_user:
-            logger.debug('User already exists')
+            logger.info(f'User tg_id={user.telegram_id} already exists')
             return existing_user
-        logger.debug('User does not exist.')
+        logger.info(f'User tg_id={user.telegram_id} does not exist.')
         new_user = await self.user_repository.save(user)
 
         BACKEND_USER_METRICS['new'].labels(
@@ -40,5 +40,5 @@ class UserService:
             language_level=new_user.language_level.value,
         ).inc()
 
-        logger.debug(f'Created new user {new_user}')
+        logger.info(f'Created new user {new_user}')
         return new_user

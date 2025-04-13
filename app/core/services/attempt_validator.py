@@ -282,7 +282,7 @@ class AttemptValidator:
             )
             return saved_answer
 
-        logger.debug(
+        logger.info(
             f'Begin translation process for {db_answer} '
             f'to {target_language}'
         )
@@ -298,5 +298,5 @@ class AttemptValidator:
         )
         if translated.answer_id is None:
             raise ValueError('Exercise answer answer_id must not be None')
-        logger.debug(f'Translated answer retrieved/generated: {translated}')
+        logger.info(f'Translated answer retrieved/generated: {translated}')
         return translated

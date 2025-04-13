@@ -91,7 +91,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         result = await self.session.execute(stmt)
         db_exercise = result.scalar_one_or_none()
         if db_exercise is None:
-            logger.debug(f'No new exercises found for user {user.user_id}')
+            logger.info(f'No new exercises found for user {user.user_id}')
             return None
         return await self._to_entity(db_exercise)
 

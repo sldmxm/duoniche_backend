@@ -44,7 +44,7 @@ class ExerciseGetter:
                     language_level,
                 )
             )
-            logger.debug(
+            logger.info(
                 f'New exercises count for user {user.user_id}: '
                 f'{exercises_count}'
             )
@@ -74,7 +74,7 @@ class ExerciseGetter:
                         user_level_general_exercise.exercise_type,
                         user.user_language,
                     )
-                    logger.debug(
+                    logger.info(
                         f'New exercise from db but standard level and topic'
                         f'({exercise_type.value}, {topic.value}, '
                         f'{language_level.value}): '
@@ -89,7 +89,7 @@ class ExerciseGetter:
                 exercise_for_repetition.exercise_text = get_text(
                     exercise_for_repetition.exercise_type, user.user_language
                 )
-                logger.debug(
+                logger.info(
                     f'Exercise for repetition from db only'
                     f'({exercise_type.value}, {topic.value}, '
                     f'{language_level.value}): {exercise_for_repetition}'
@@ -98,7 +98,7 @@ class ExerciseGetter:
 
             if self.background_exercise_generation_task:
                 generated_task = await self.background_exercise_generation_task
-                logger.debug(
+                logger.info(
                     f'New generated exercise from background task'
                     f'({exercise_type.value}, {topic.value}, '
                     f'{language_level.value}): {generated_task}'
@@ -117,7 +117,7 @@ class ExerciseGetter:
             generated_task.exercise_text = get_text(
                 generated_task.exercise_type, user.user_language
             )
-            logger.debug(
+            logger.info(
                 f'Slow New generated exercise'
                 f'({exercise_type.value}, {topic.value}, '
                 f'{language_level.value}): {generated_task}'

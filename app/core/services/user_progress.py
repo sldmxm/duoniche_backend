@@ -72,7 +72,7 @@ class UserProgressService:
             user.session_frozen_until is not None
             and now < user.session_frozen_until
         ):
-            logger.debug(
+            logger.info(
                 f'User {user.user_id} is frozen until '
                 f'{user.session_frozen_until}, {now=}'
             )
@@ -95,7 +95,7 @@ class UserProgressService:
             or not user.session_started_at
         ):
             if user.session_frozen_until is not None:
-                logger.debug(
+                logger.info(
                     f'User {user.user_id} WAS frozen '
                     f'until {user.session_frozen_until}, {now=}'
                 )

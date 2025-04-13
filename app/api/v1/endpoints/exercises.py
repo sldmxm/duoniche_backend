@@ -71,7 +71,6 @@ async def get_or_create_next_exercise(
             message=next_action.message,
             pause=next_action.pause,
         )
-        logger.debug(f'Result: {output}')
         return output
 
     except ValueError as e:

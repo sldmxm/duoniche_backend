@@ -7,7 +7,7 @@ from typing import Set
 from asyncpg.pgproto.pgproto import timedelta
 from prometheus_client import Counter, Gauge, Histogram
 
-from app.db.db import get_async_session
+from app.db.db import async_session_maker
 from app.db.repositories.user import SQLAlchemyUserRepository
 
 logger = logging.getLogger(__name__)
@@ -156,7 +156,7 @@ async def update_user_sessions_metrics():
     now = datetime.now(timezone.utc)
     active_users_label_counts = collections.Counter()
 
-    async for session in get_async_session():
+    async with async_session_maker() as session:
         user_repository = SQLAlchemyUserRepository(session)
         period_seconds = int(
             SESSION_TTL_SINCE_LAST_EXERCISE.total_seconds()

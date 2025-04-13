@@ -61,24 +61,23 @@ class ExerciseGetter:
                 )
 
         async def get_any_exercise() -> Exercise:
-            if language_level != user.language_level:
-                any_new_exercise = (
-                    await self.exercise_repository.get_any_new_exercise(
-                        user=user,
-                    )
+            any_new_exercise = (
+                await self.exercise_repository.get_any_new_exercise(
+                    user=user,
                 )
-                if any_new_exercise:
-                    any_new_exercise.exercise_text = get_text(
-                        any_new_exercise.exercise_type,
-                        user.user_language,
-                    )
-                    logger.info(
-                        f'New exercise from db but random level and topic'
-                        f'({exercise_type.value}, {topic.value}, '
-                        f'{language_level.value}): '
-                        f'{any_new_exercise}'
-                    )
-                    return any_new_exercise
+            )
+            if any_new_exercise:
+                any_new_exercise.exercise_text = get_text(
+                    any_new_exercise.exercise_type,
+                    user.user_language,
+                )
+                logger.info(
+                    f'New exercise from db but random level and topic'
+                    f'({exercise_type.value}, {topic.value}, '
+                    f'{language_level.value}): '
+                    f'{any_new_exercise}'
+                )
+                return any_new_exercise
 
             exercise_for_repetition = await self.get_exercise_for_repetition(
                 user
@@ -139,7 +138,7 @@ class ExerciseGetter:
             exercise.exercise_text = get_text(
                 exercise.exercise_type, user.user_language
             )
-            logger.debug(
+            logger.info(
                 f'New exercise from db ({exercise_type.value}, {topic.value}, '
                 f'{language_level.value}): {exercise}'
             )

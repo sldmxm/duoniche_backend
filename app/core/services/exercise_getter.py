@@ -61,26 +61,23 @@ class ExerciseGetter:
 
         async def get_any_exercise() -> Exercise:
             if language_level != user.language_level:
-                user_level_general_exercise = (
-                    await self.exercise_repository.get_new_exercise(
+                any_new_exercise = (
+                    await self.exercise_repository.get_any_new_exercise(
                         user=user,
-                        language_level=user.language_level,
-                        exercise_type=exercise_type,
-                        topic=ExerciseTopic.GENERAL,
                     )
                 )
-                if user_level_general_exercise:
-                    user_level_general_exercise.exercise_text = get_text(
-                        user_level_general_exercise.exercise_type,
+                if any_new_exercise:
+                    any_new_exercise.exercise_text = get_text(
+                        any_new_exercise.exercise_type,
                         user.user_language,
                     )
                     logger.info(
-                        f'New exercise from db but standard level and topic'
+                        f'New exercise from db but random level and topic'
                         f'({exercise_type.value}, {topic.value}, '
                         f'{language_level.value}): '
-                        f'{user_level_general_exercise}'
+                        f'{any_new_exercise}'
                     )
-                    return user_level_general_exercise
+                    return any_new_exercise
 
             exercise_for_repetition = await self.get_exercise_for_repetition(
                 user

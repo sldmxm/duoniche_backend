@@ -96,6 +96,37 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         return await self._to_entity(db_exercise)
 
     @override
+    async def get_any_new_exercise(
+        self,
+        user: User,
+    ) -> Optional[Exercise]:
+        answered_exercise_exists_subquery = select(literal(1)).where(
+            and_(
+                ExerciseAttemptModel.user_id == user.user_id,
+                ExerciseAttemptModel.exercise_id == ExerciseModel.exercise_id,
+            )
+        )
+
+        stmt = (
+            select(ExerciseModel)
+            .where(
+                and_(
+                    ExerciseModel.exercise_language == user.target_language,
+                    not_(exists(answered_exercise_exists_subquery)),
+                )
+            )
+            .order_by(func.random())
+            .limit(1)
+        )
+
+        result = await self.session.execute(stmt)
+        db_exercise = result.scalar_one_or_none()
+        if db_exercise is None:
+            logger.info(f'No any new exercises found for user {user.user_id}')
+            return None
+        return await self._to_entity(db_exercise)
+
+    @override
     async def get_any_for_repetition(
         self,
         user: User,

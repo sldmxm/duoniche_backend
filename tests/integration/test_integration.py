@@ -24,7 +24,7 @@ async def test_get_new_exercise(
 ):
     """Test getting a new exercise from the API."""
     response = await client.post(
-        '/api/v1/exercises/next', json=sample_exercise_request_data
+        '/api/v1/exercises/next/', json=sample_exercise_request_data
     )
 
     assert response.status_code == 200
@@ -53,7 +53,7 @@ async def test_validate_exercise_correct_with_db(
     """Test validating an exercise with correct answer
     with adding correct answer into db via fixture."""
     response = await client.post(
-        '/api/v1/exercises/validate',
+        '/api/v1/exercises/validate/',
         json=request_data_correct_answer_for_sample_exercise,
     )
 
@@ -74,7 +74,7 @@ async def test_validate_exercise_incorrect(
 ):
     """Test validating an exercise with incorrect answer."""
     response = await client.post(
-        '/api/v1/exercises/validate',
+        '/api/v1/exercises/validate/',
         json=request_data_incorrect_answer_for_sample_exercise,
     )
 
@@ -93,7 +93,7 @@ async def test_exercise_not_found(
     request_data_correct_answer_for_sample_exercise['exercise_id'] = 99999
 
     response = await client.post(
-        '/api/v1/exercises/validate',
+        '/api/v1/exercises/validate/',
         json=request_data_correct_answer_for_sample_exercise,
     )
 
@@ -124,13 +124,13 @@ async def test_multiple_requests_same_user(
     new_exercise_request = user_data.get('user_id')
 
     response = await client.post(
-        '/api/v1/exercises/next', json=new_exercise_request
+        '/api/v1/exercises/next/', json=new_exercise_request
     )
     assert response.status_code == 200
 
     # 2. Attempt to solve it incorrectly
     response = await client.post(
-        '/api/v1/exercises/validate',
+        '/api/v1/exercises/validate/',
         json=request_data_incorrect_answer_for_sample_exercise,
     )
     assert response.status_code == 200
@@ -140,7 +140,7 @@ async def test_multiple_requests_same_user(
 
     # 3. Attempt to solve it correctly
     response = await client.post(
-        '/api/v1/exercises/validate',
+        '/api/v1/exercises/validate/',
         json=request_data_correct_answer_for_sample_exercise,
     )
     assert response.status_code == 200
@@ -152,7 +152,7 @@ async def test_multiple_requests_same_user(
     second_exercise = db_sample_exercise
 
     response = await client.post(
-        '/api/v1/exercises/next', json=new_exercise_request
+        '/api/v1/exercises/next/', json=new_exercise_request
     )
 
     assert response.status_code == 200
@@ -207,7 +207,7 @@ async def test_concurrent_requests(
 
         try:
             response = await client.post(
-                '/api/v1/exercises/next',
+                '/api/v1/exercises/next/',
                 json=db_user.user_id,
             )
 
@@ -217,7 +217,7 @@ async def test_concurrent_requests(
             await asyncio.sleep(0.05)
 
             validation_response = await client.post(
-                '/api/v1/exercises/validate',
+                '/api/v1/exercises/validate/',
                 json={
                     **request_data_correct_answer_for_sample_exercise,
                     'exercise_id': exercise_data['exercise']['exercise_id'],
@@ -291,7 +291,7 @@ async def test_validation_cache_multiple_requests(
     new_exercise_request = add_db_user.user_id
 
     response = await client.post(
-        '/api/v1/exercises/next', json=new_exercise_request
+        '/api/v1/exercises/next/', json=new_exercise_request
     )
     assert response.status_code == 200
     exercise_data = response.json()
@@ -302,7 +302,7 @@ async def test_validation_cache_multiple_requests(
         exercise_id
     )
     response1 = await client.post(
-        '/api/v1/exercises/validate',
+        '/api/v1/exercises/validate/',
         json=request_data_correct_answer_for_sample_exercise,
     )
     assert response1.status_code == 200
@@ -312,7 +312,7 @@ async def test_validation_cache_multiple_requests(
 
     # Second validation request (same answer)
     response2 = await client.post(
-        '/api/v1/exercises/validate',
+        '/api/v1/exercises/validate/',
         json=request_data_correct_answer_for_sample_exercise,
     )
     assert response2.status_code == 200
@@ -347,7 +347,7 @@ async def test_get_new_exercise_background_task(
     assert count == 1
 
     response = await client.post(
-        '/api/v1/exercises/next', json=new_exercise_request
+        '/api/v1/exercises/next/', json=new_exercise_request
     )
     assert response.status_code == 200
 

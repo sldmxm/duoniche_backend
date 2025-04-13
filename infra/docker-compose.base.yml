@@ -21,6 +21,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+    ports: # for ssh tunel
+      - "127.0.0.1:5432:5432"
     networks:
       - duo_shared
 

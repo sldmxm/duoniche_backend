@@ -25,6 +25,11 @@ BACKEND_EXERCISE_METRICS = {
         'Total number of exercises sent to users',
         labelnames=backend_exercise_metrics_label_names,
     ),
+    'sent_repetition': Counter(
+        'exercise_sent_repetition_total',
+        'Total number of repetition exercises sent to users',
+        labelnames=backend_exercise_metrics_label_names,
+    ),
     'attempts': Counter(
         'exercise_attempt_total',
         'Total number of user attempts to solve exercises',

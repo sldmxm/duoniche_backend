@@ -14,6 +14,7 @@ from app.core.interfaces.llm_provider import LLMProvider
 from app.core.repositories.exercise import ExerciseRepository
 from app.core.repositories.exercise_answer import ExerciseAnswerRepository
 from app.core.texts import get_text
+from app.metrics import BACKEND_EXERCISE_METRICS
 
 logger = logging.getLogger(__name__)
 
@@ -87,10 +88,14 @@ class ExerciseGetter:
                     exercise_for_repetition.exercise_type, user.user_language
                 )
                 logger.info(
-                    f'Exercise for repetition from db only'
+                    f'Exercise for repetition'
                     f'({exercise_type.value}, {topic.value}, '
                     f'{language_level.value}): {exercise_for_repetition}'
                 )
+                BACKEND_EXERCISE_METRICS['sent_repetition'].labels(
+                    exercise_type=exercise_for_repetition.exercise_type.value,
+                    level=exercise_for_repetition.language_level.value,
+                ).inc()
                 return exercise_for_repetition
 
             if self.background_exercise_generation_task:

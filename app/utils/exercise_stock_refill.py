@@ -11,12 +11,12 @@ from app.db.repositories.exercise_answers import (
     SQLAlchemyExerciseAnswerRepository,
 )
 from app.llm.llm_service import LLMService
+from app.metrics import BACKEND_EXERCISE_METRICS
 
 logger = logging.getLogger(__name__)
 
 MIN_EXERCISE_COUNT_TO_GENERATE_NEW = 10
 EXERCISE_REFILL_INTERVAL = 60
-ERROR_PAUSE_INTERVAL = 10
 
 exercise_generation_semaphore = asyncio.Semaphore(5)
 
@@ -25,16 +25,16 @@ async def generate_and_save_exercise(
     user_language: str,
     target_language: str,
 ) -> None:
-    async with exercise_generation_semaphore:
-        llm_service = LLMService()
+    try:
+        async with exercise_generation_semaphore:
+            llm_service = LLMService()
 
-        language_level = LanguageLevel.get_next_exercise_level(
-            DEFAULT_LANGUAGE_LEVEL
-        )
-        exercise_type = ExerciseType.get_next_type()
-        topic = ExerciseTopic.get_next_topic()
+            language_level = LanguageLevel.get_next_exercise_level(
+                DEFAULT_LANGUAGE_LEVEL
+            )
+            exercise_type = ExerciseType.get_next_type()
+            topic = ExerciseTopic.get_next_topic()
 
-        try:
             exercise, answer = await llm_service.generate_exercise(
                 user_language=user_language,
                 target_language=target_language,
@@ -64,35 +64,49 @@ async def generate_and_save_exercise(
 
                 await session.commit()
 
-        except Exception as e:
-            logger.error(f'Error during exercise generation: {e}')
+    except Exception as e:
+        logger.error(f'Error during exercise generation: {e}')
 
 
-async def exercise_refill():
+async def exercise_stock_refill():
     try:
+        tasks = []
         async with async_session_maker() as session:
             exercise_repo = SQLAlchemyExerciseRepository(session)
             available_count = (
                 await exercise_repo.count_untouched_exercises_by_language()
             )
             for exercise_language, count in available_count.items():
+                logger.info(
+                    f'Untouched exercises: Language: {exercise_language}, '
+                    f'Count: {count}'
+                )
+                BACKEND_EXERCISE_METRICS['untouched_exercises'].labels(
+                    exercise_language=exercise_language
+                ).set(count)
+
                 if count < MIN_EXERCISE_COUNT_TO_GENERATE_NEW:
                     to_generate = MIN_EXERCISE_COUNT_TO_GENERATE_NEW - count
                     for _ in range(to_generate):
-                        asyncio.create_task(
+                        tasks.append(
                             generate_and_save_exercise(
                                 user_language=DEFAULT_USER_LANGUAGE,
                                 target_language=exercise_language,
                             )
                         )
 
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    logger.error(f'Task {i} failed: {result}')
+
     except Exception as e:
         logger.error(f'Error in exercise refill loop: {e}')
-        await asyncio.sleep(ERROR_PAUSE_INTERVAL)
 
 
-async def exercise_refill_loop():
+async def exercise_stock_refill_loop():
     while True:
         logger.info('Starting exercise refill loop...')
-        await exercise_refill()
+        await exercise_stock_refill()
         await asyncio.sleep(EXERCISE_REFILL_INTERVAL)

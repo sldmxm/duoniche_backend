@@ -51,6 +51,11 @@ BACKEND_EXERCISE_METRICS = {
         'Total number of incorrect attempts made by users in exercises',
         labelnames=backend_exercise_metrics_label_names,
     ),
+    'untouched_exercises': Gauge(
+        'untouched_exercises_total',
+        'Total number of active users',
+        labelnames=['exercise_language'],
+    ),
 }
 
 backend_user_metrics_label_names = [
@@ -159,69 +164,75 @@ all_possible_active_user_labels: Set[tuple] = set()
 async def update_user_sessions_metrics():
     now = datetime.now(timezone.utc)
     active_users_label_counts = collections.Counter()
-
-    async with async_session_maker() as session:
-        user_repository = SQLAlchemyUserRepository(session)
-        period_seconds = int(
-            SESSION_TTL_SINCE_LAST_EXERCISE.total_seconds()
-            + UPDATE_USER_METRICS_INTERVAL
-        )
-        users = await user_repository.get_users_with_exercise_lately(
-            period_seconds
-        )
-
-        for user in users:
-            label_tuple = (
-                user.cohort,
-                user.plan,
-                user.target_language,
-                user.user_language,
-                user.language_level.value,
+    try:
+        async with async_session_maker() as session:
+            user_repository = SQLAlchemyUserRepository(session)
+            period_seconds = int(
+                SESSION_TTL_SINCE_LAST_EXERCISE.total_seconds()
+                + UPDATE_USER_METRICS_INTERVAL
             )
-            label_dict = dict(
-                zip(
-                    backend_user_metrics_label_names, label_tuple, strict=False
-                )
+            users = await user_repository.get_users_with_exercise_lately(
+                period_seconds
             )
-            all_possible_active_user_labels.add(label_tuple)
 
-            if (
-                user.session_frozen_until is not None
-                or now - user.last_exercise_at
-                > SESSION_TTL_SINCE_LAST_EXERCISE
-            ):
-                session_duration = (
-                    user.last_exercise_at - user.session_started_at
-                ).total_seconds()
-                BACKEND_USER_METRICS['session_length'].labels(
-                    **label_dict
-                ).observe(session_duration)
-                BACKEND_USER_METRICS['exercises_per_session'].labels(
-                    **label_dict
-                ).inc(user.exercises_get_in_session)
-                logger.debug(
-                    f'Session ended for user {user.user_id}: '
-                    f'{session_duration}'
+            for user in users:
+                label_tuple = (
+                    user.cohort,
+                    user.plan,
+                    user.target_language,
+                    user.user_language,
+                    user.language_level.value,
                 )
-            else:
-                session_duration = (
-                    now - user.session_started_at
-                ).total_seconds()
-                logger.debug(
-                    f'Session duration for user {user.user_id}: '
-                    f'{session_duration}'
+                label_dict = dict(
+                    zip(
+                        backend_user_metrics_label_names,
+                        label_tuple,
+                        strict=False,
+                    )
                 )
-                active_users_label_counts[label_tuple] += 1
+                all_possible_active_user_labels.add(label_tuple)
 
-        for label_tuple in all_possible_active_user_labels:
-            label_dict = dict(
-                zip(
-                    backend_user_metrics_label_names, label_tuple, strict=False
+                if (
+                    user.session_frozen_until is not None
+                    or now - user.last_exercise_at
+                    > SESSION_TTL_SINCE_LAST_EXERCISE
+                ):
+                    session_duration = (
+                        user.last_exercise_at - user.session_started_at
+                    ).total_seconds()
+                    BACKEND_USER_METRICS['session_length'].labels(
+                        **label_dict
+                    ).observe(session_duration)
+                    BACKEND_USER_METRICS['exercises_per_session'].labels(
+                        **label_dict
+                    ).inc(user.exercises_get_in_session)
+                    logger.debug(
+                        f'Session ended for user {user.user_id}: '
+                        f'{session_duration}'
+                    )
+                else:
+                    session_duration = (
+                        now - user.session_started_at
+                    ).total_seconds()
+                    logger.debug(
+                        f'Session duration for user {user.user_id}: '
+                        f'{session_duration}'
+                    )
+                    active_users_label_counts[label_tuple] += 1
+
+            for label_tuple in all_possible_active_user_labels:
+                label_dict = dict(
+                    zip(
+                        backend_user_metrics_label_names,
+                        label_tuple,
+                        strict=False,
+                    )
                 )
-            )
-            count = active_users_label_counts.get(label_tuple, 0)
-            BACKEND_USER_METRICS['active'].labels(**label_dict).set(count)
-        logger.info('Users metrics updated.')
+                count = active_users_label_counts.get(label_tuple, 0)
+                BACKEND_USER_METRICS['active'].labels(**label_dict).set(count)
+            logger.info('Users metrics updated.')
+    except Exception as e:
+        logger.error(f'Error in metrics update loop: {e}')
 
 
 async def metrics_loop():

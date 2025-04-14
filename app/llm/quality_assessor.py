@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.core.enums import ExerciseType, LanguageLevel
 from app.llm.llm_base import BaseLLMService
+from app.metrics import BACKEND_LLM_METRICS
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,13 @@ class ExerciseQualityAssessor(BaseLLMService):
             exercise, user_language, target_language
         )
         if not review.is_valid:
+            BACKEND_LLM_METRICS['exercises_rejected'].labels(
+                exercise_type=exercise.exercise_type.value,
+                level=exercise.language_level.value,
+                user_language=user_language,
+                target_language=target_language,
+                llm_model=self.model.model_name,
+            ).inc()
             message = (
                 f'Exercise rejected by LLM: {review.issues}. '
                 f'Exercise: {exercise}'

@@ -107,6 +107,11 @@ BACKEND_LLM_METRICS = {
         'Total number of exercises created by LLM',
         labelnames=backend_llm_metrics_label_names,
     ),
+    'exercises_rejected': Counter(
+        'exercise_rejected_total',
+        'Total number of exercises created and then rejected by LLM',
+        labelnames=backend_llm_metrics_label_names,
+    ),
     'exercises_creation_time': Histogram(
         'exercise_creation_time_seconds',
         'Time spent for creation an exercise by LLM',

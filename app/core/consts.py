@@ -4,11 +4,9 @@ from app.core.enums import LanguageLevel
 
 EXERCISE_FILL_IN_THE_BLANK_BLANKS = '___'
 
-MIN_EXERCISE_COUNT_TO_GENERATE_NEW = 15
-
 DEFAULT_LANGUAGE_LEVEL = LanguageLevel.A2
 DEFAULT_USER_LANGUAGE = 'ru'
-DEFAULT_TARGET_LANGUAGE = 'bg'
+DEFAULT_TARGET_LANGUAGE = 'Bulgarian'
 
 DEFAULT_BOT_MESSAGE_LANGUAGE = 'bg'
 EXERCISES_IN_SET = 5
@@ -18,3 +16,7 @@ DELTA_BETWEEN_SESSIONS = timedelta(seconds=3 * 60 * 60)
 RENEWING_SET_PERIOD = timedelta(
     seconds=int(DELTA_BETWEEN_SESSIONS.total_seconds() // SETS_IN_SESSION)
 )
+
+# there is no point longer, it will already be in the db
+# and no new ones will be started.
+ASYNC_TASK_CACHE_TTL: int = 60 * 2

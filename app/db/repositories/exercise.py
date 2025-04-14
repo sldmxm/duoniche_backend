@@ -187,6 +187,14 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         return await self._to_entity(db_exercise)
 
     @override
+    async def save(self, exercise: Exercise) -> Exercise:
+        db_exercise = await self._to_db_model(exercise)
+        self.session.add(db_exercise)
+        await self.session.commit()
+        await self.session.refresh(db_exercise)
+        return await self._to_entity(db_exercise)
+
+    @override
     async def count_new_exercises(
         self,
         user: User,
@@ -213,10 +221,23 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         count = result.scalar_one_or_none() or 0
         return count
 
-    @override
-    async def save(self, exercise: Exercise) -> Exercise:
-        db_exercise = await self._to_db_model(exercise)
-        self.session.add(db_exercise)
-        await self.session.commit()
-        await self.session.refresh(db_exercise)
-        return await self._to_entity(db_exercise)
+    async def count_untouched_exercises_by_language(self) -> dict[str, int]:
+        attempts_exist = select(literal(1)).where(
+            ExerciseAttemptModel.exercise_id == ExerciseModel.exercise_id
+        )
+
+        stmt = (
+            select(
+                ExerciseModel.exercise_language, func.count().label('count')
+            )
+            .where(not_(exists(attempts_exist)))
+            .group_by(ExerciseModel.exercise_language)
+        )
+
+        result = await self.session.execute(stmt)
+
+        counts_by_language = {
+            row.exercise_language: row.count for row in result
+        }
+
+        return counts_by_language

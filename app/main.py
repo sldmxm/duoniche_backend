@@ -11,6 +11,7 @@ from app.db.db import init_db
 from app.logging_config import configure_logging
 from app.metrics import metrics_loop
 from app.sentry_sdk import sentry_init
+from app.utils.exercise_refill import exercise_refill_loop
 
 configure_logging()
 
@@ -21,6 +22,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     if not settings.debug:
         sentry_init()
     asyncio.create_task(metrics_loop())
+    asyncio.create_task(exercise_refill_loop())
     yield
 
 

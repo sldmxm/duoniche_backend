@@ -1,13 +1,8 @@
 import asyncio
 import logging
-from datetime import datetime
 from typing import Optional
 
-from app.core.consts import (
-    MIN_EXERCISE_COUNT_TO_GENERATE_NEW,
-)
 from app.core.entities.exercise import Exercise
-from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.user import User
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.interfaces.llm_provider import LLMProvider
@@ -31,104 +26,13 @@ class ExerciseGetter:
         self.llm_service = llm_service
         self.background_exercise_generation_task: Optional[asyncio.Task] = None
 
-    async def get_or_create_next_exercise(
+    async def get_next_exercise(
         self,
         user: User,
         exercise_type: ExerciseType,
         topic: ExerciseTopic,
         language_level: LanguageLevel,
     ) -> Optional[Exercise]:
-        async def generate_new_exercise_if_needed() -> None:
-            exercises_count = (
-                await self.exercise_repository.count_new_exercises(
-                    user,
-                    language_level,
-                )
-            )
-            logger.info(
-                f'New exercises count for user {user.user_id}: '
-                f'{exercises_count}'
-            )
-
-            if exercises_count < MIN_EXERCISE_COUNT_TO_GENERATE_NEW:
-                self.background_exercise_generation_task = asyncio.create_task(
-                    self.generate_and_save_new_exercise(
-                        user_language=user.user_language,
-                        target_language=user.target_language,
-                        exercise_type=exercise_type,
-                        topic=topic,
-                        language_level=language_level,
-                    )
-                )
-
-        async def get_any_exercise() -> Exercise:
-            any_new_exercise = (
-                await self.exercise_repository.get_any_new_exercise(
-                    user=user,
-                )
-            )
-            if any_new_exercise:
-                any_new_exercise.exercise_text = get_text(
-                    any_new_exercise.exercise_type,
-                    user.user_language,
-                )
-                logger.info(
-                    f'New exercise from db but random level and topic'
-                    f'({exercise_type.value}, {topic.value}, '
-                    f'{language_level.value}): '
-                    f'{any_new_exercise}'
-                )
-                return any_new_exercise
-
-            exercise_for_repetition = await self.get_exercise_for_repetition(
-                user
-            )
-            if exercise_for_repetition:
-                exercise_for_repetition.exercise_text = get_text(
-                    exercise_for_repetition.exercise_type, user.user_language
-                )
-                logger.info(
-                    f'Exercise for repetition'
-                    f'({exercise_type.value}, {topic.value}, '
-                    f'{language_level.value}): {exercise_for_repetition}'
-                )
-                BACKEND_EXERCISE_METRICS['sent_repetition'].labels(
-                    exercise_type=exercise_for_repetition.exercise_type.value,
-                    level=exercise_for_repetition.language_level.value,
-                ).inc()
-                return exercise_for_repetition
-
-            if self.background_exercise_generation_task:
-                generated_task = await self.background_exercise_generation_task
-                logger.info(
-                    f'New generated exercise from background task'
-                    f'({exercise_type.value}, {topic.value}, '
-                    f'{language_level.value}): {generated_task}'
-                )
-                generated_task.exercise_text = get_text(
-                    generated_task.exercise_type, user.user_language
-                )
-                return generated_task
-
-            generated_task = await self.generate_and_save_new_exercise(
-                user_language=user.user_language,
-                target_language=user.target_language,
-                exercise_type=exercise_type,
-                topic=topic,
-                language_level=language_level,
-            )
-            generated_task.exercise_text = get_text(
-                generated_task.exercise_type, user.user_language
-            )
-            logger.info(
-                f'Slow New generated exercise'
-                f'({exercise_type.value}, {topic.value}, '
-                f'{language_level.value}): {generated_task}'
-            )
-            return generated_task
-
-        await generate_new_exercise_if_needed()
-
         exercise = await self.exercise_repository.get_new_exercise(
             user=user,
             language_level=language_level,
@@ -144,45 +48,41 @@ class ExerciseGetter:
                 f'New exercise from db ({exercise_type.value}, {topic.value}, '
                 f'{language_level.value}): {exercise}'
             )
-
-        if exercise is None:
-            exercise = await get_any_exercise()
-
-        return exercise
-
-    async def generate_and_save_new_exercise(
-        self,
-        user_language: str,
-        target_language: str,
-        language_level: LanguageLevel,
-        exercise_type: ExerciseType,
-        topic: ExerciseTopic,
-    ) -> Optional[Exercise]:
-        try:
-            exercise, answer = await self.llm_service.generate_exercise(
-                user_language=user_language,
-                target_language=target_language,
-                language_level=language_level,
-                exercise_type=exercise_type,
-                topic=topic,
-            )
-            exercise = await self.exercise_repository.save(exercise)
-            if exercise.exercise_id:
-                right_answer = ExerciseAnswer(
-                    answer_id=None,
-                    exercise_id=exercise.exercise_id,
-                    answer=answer,
-                    is_correct=True,
-                    created_by='LLM',
-                    feedback='',
-                    feedback_language='',
-                    created_at=datetime.now(),
-                )
-                await self.exercise_answer_repository.save(right_answer)
             return exercise
-        except Exception as e:
-            logger.error(f'Error during exercise generation: {e}')
-            return None
+
+        any_new_exercise = await self.exercise_repository.get_any_new_exercise(
+            user=user,
+        )
+        if any_new_exercise:
+            any_new_exercise.exercise_text = get_text(
+                any_new_exercise.exercise_type,
+                user.user_language,
+            )
+            logger.info(
+                f'New exercise from db but random level and topic'
+                f'({exercise_type.value}, {topic.value}, '
+                f'{language_level.value}): '
+                f'{any_new_exercise}'
+            )
+            return any_new_exercise
+
+        exercise_for_repetition = await self.get_exercise_for_repetition(user)
+        if exercise_for_repetition:
+            exercise_for_repetition.exercise_text = get_text(
+                exercise_for_repetition.exercise_type, user.user_language
+            )
+            logger.info(
+                f'Exercise for repetition'
+                f'({exercise_type.value}, {topic.value}, '
+                f'{language_level.value}): {exercise_for_repetition}'
+            )
+            BACKEND_EXERCISE_METRICS['sent_repetition'].labels(
+                exercise_type=exercise_for_repetition.exercise_type.value,
+                level=exercise_for_repetition.language_level.value,
+            ).inc()
+            return exercise_for_repetition
+
+        return None
 
     async def get_exercise_for_repetition(
         self,

@@ -1,7 +1,6 @@
 import asyncio
 
 import pytest
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL
@@ -10,7 +9,6 @@ from app.db.models.user import User as UserModel
 from app.db.repositories.exercise_attempt import (
     SQLAlchemyExerciseAttemptRepository,
 )
-from app.main import app
 
 pytestmark = pytest.mark.asyncio(scope='function')
 
@@ -322,43 +320,3 @@ async def test_validation_cache_multiple_requests(
 
     # Check that the results are the same (cached)
     assert result1 == result2
-
-
-@pytest.mark.asyncio
-async def test_get_new_exercise_background_task(
-    client,
-    user_data,
-    db_sample_exercise,
-    add_db_correct_exercise_answer,
-    add_db_incorrect_exercise_answer,
-    request_data_correct_answer_for_sample_exercise,
-    request_data_incorrect_answer_for_sample_exercise,
-    add_db_user,
-    async_session,
-):
-    """
-    Test that a new exercise is generated in the background
-    when the count is below the threshold.
-    """
-    new_exercise_request = add_db_user.user_id
-    stmt = text('SELECT COUNT(*) FROM exercises')
-    result = await async_session.execute(stmt)
-    count = result.scalar_one()
-    assert count == 1
-
-    response = await client.post(
-        '/api/v1/exercises/next/', json=new_exercise_request
-    )
-    assert response.status_code == 200
-
-    user_progress_service_instance = app.state.user_progress_service
-    exercise_getter_instance = (
-        user_progress_service_instance.exercise_service.exercise_getter
-    )
-    if exercise_getter_instance.background_exercise_generation_task:
-        await exercise_getter_instance.background_exercise_generation_task
-
-    stmt = text('SELECT COUNT(*) FROM exercises')
-    result = await async_session.execute(stmt)
-    count = result.scalar_one()
-    assert count > 1

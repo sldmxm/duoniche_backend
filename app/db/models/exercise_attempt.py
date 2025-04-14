@@ -24,6 +24,7 @@ class ExerciseAttempt(Base):
     )
     exercise_id: Mapped[int] = mapped_column(
         ForeignKey('exercises.exercise_id', ondelete='CASCADE'),
+        index=True,
         nullable=False,
     )
     answer: Mapped[dict] = mapped_column(JSONB, nullable=False)

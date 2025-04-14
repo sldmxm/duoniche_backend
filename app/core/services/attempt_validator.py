@@ -233,7 +233,7 @@ class AttemptValidator:
                 is_correct=is_correct,
                 feedback=feedback,
                 feedback_language=user.user_language,
-                created_at=datetime.now(),
+                created_at=datetime.now(timezone.utc),
                 created_by=f'LLM:user:{user.user_id}',
             )
             saved_answer = await self.exercise_answer_repository.save(
@@ -277,7 +277,7 @@ class AttemptValidator:
                 text=answer.feedback, target_language=target_language
             )
             new_answer.feedback_language = target_language
-            new_answer.created_at = datetime.now()
+            new_answer.created_at = datetime.now(timezone.utc)
             new_answer.created_by = f'translated_answer:{answer.answer_id}'
 
             saved_answer = await self.exercise_answer_repository.save(

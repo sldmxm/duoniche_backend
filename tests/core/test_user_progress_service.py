@@ -99,7 +99,7 @@ async def test_get_next_action_returns_new_exercise(
     user.exercises_get_in_set = 0
     user.session_started_at = datetime.now(timezone.utc)
     mock_user_service.get_by_id.return_value = user
-    mock_exercise_service.get_or_create_next_exercise.return_value = (
+    mock_exercise_service.get_next_exercise.return_value = (
         fill_in_the_blank_exercise
     )
 
@@ -110,7 +110,7 @@ async def test_get_next_action_returns_new_exercise(
 
     # Assert
     mock_user_service.get_by_id.assert_awaited_once_with(user.user_id)
-    mock_exercise_service.get_or_create_next_exercise.assert_awaited_once_with(
+    mock_exercise_service.get_next_exercise.assert_awaited_once_with(
         user=user,
         exercise_type=fill_in_the_blank_exercise.exercise_type,
         topic=fill_in_the_blank_exercise.topic,
@@ -229,7 +229,7 @@ async def test_get_next_action_returns_error_when_no_exercise(
     user.exercises_get_in_set = 0
     user.session_started_at = datetime.now(timezone.utc)
     mock_user_service.get_by_id.return_value = user
-    mock_exercise_service.get_or_create_next_exercise.return_value = None
+    mock_exercise_service.get_next_exercise.return_value = None
 
     # Act & Assert
     assert await user_progress_service.get_next_action(

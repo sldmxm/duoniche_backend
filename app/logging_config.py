@@ -28,6 +28,3 @@ def configure_logging() -> None:
         console_handler.setFormatter(formatter)
 
         root_logger.addHandler(console_handler)
-
-
-# configure_logging()

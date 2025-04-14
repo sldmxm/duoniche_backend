@@ -49,14 +49,14 @@ class ExerciseService:
             async_task_cache=async_task_cache,
         )
 
-    async def get_or_create_next_exercise(
+    async def get_next_exercise(
         self,
         user: User,
         exercise_type: ExerciseType = ExerciseType.FILL_IN_THE_BLANK,
         topic: ExerciseTopic = ExerciseTopic.GENERAL,
         language_level: LanguageLevel = DEFAULT_LANGUAGE_LEVEL,
     ) -> Optional[Exercise]:
-        return await self.exercise_getter.get_or_create_next_exercise(
+        return await self.exercise_getter.get_next_exercise(
             user, exercise_type, topic, language_level
         )
 

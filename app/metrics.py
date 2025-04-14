@@ -1,10 +1,9 @@
 import asyncio
 import collections
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Set
 
-from asyncpg.pgproto.pgproto import timedelta
 from prometheus_client import Counter, Gauge, Histogram
 
 from app.db.db import async_session_maker

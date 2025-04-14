@@ -14,7 +14,7 @@ class Settings(BaseSettings):  # type: ignore
         f'{postgres_user}:{postgres_password}'
         f'@{postgres_host}:{postgres_port}/{postgres_db}'
     )
-    test_postgres_db: str = 'learnbg_test'
+    test_postgres_db: str = 'postgres_test'
     test_database_url: str = (
         f'postgresql+asyncpg://'
         f'{postgres_user}:{postgres_password}'
@@ -32,9 +32,6 @@ class Settings(BaseSettings):  # type: ignore
 
     redis_url: str = 'redis://localhost:6379'
     redis_test_db: int = 1
-
-    # нет смысла дольше, уже будет в БД и новые не будут начаты
-    async_task_cache_ttl: int = 60 * 2
 
     sentry_dsn: str = ''
 

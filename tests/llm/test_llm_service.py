@@ -34,10 +34,11 @@ def user():
 async def test_generate_fill_in_the_blank_exercise(user):
     try:
         exercise, answer = await llm_service.generate_exercise(
-            user,
-            LanguageLevel.B1,
-            ExerciseType.FILL_IN_THE_BLANK,
-            ExerciseTopic.GENERAL,
+            user_language=user.user_language,
+            target_language=user.target_language,
+            language_level=LanguageLevel.B1,
+            exercise_type=ExerciseType.FILL_IN_THE_BLANK,
+            topic=ExerciseTopic.GENERAL,
         )
     except ValueError:
         return
@@ -51,10 +52,11 @@ async def test_generate_fill_in_the_blank_exercise(user):
 async def test_generate_choose_sentence_exercise(user):
     try:
         exercise, answer = await llm_service.generate_exercise(
-            user,
-            LanguageLevel.B1,
-            ExerciseType.CHOOSE_SENTENCE,
-            ExerciseTopic.GENERAL,
+            user_language=user.user_language,
+            target_language=user.target_language,
+            language_level=LanguageLevel.B1,
+            exercise_type=ExerciseType.CHOOSE_SENTENCE,
+            topic=ExerciseTopic.GENERAL,
         )
     except ValueError:
         return
@@ -80,7 +82,7 @@ async def test_validate_attempt_correct(user):
 
     answer = FillInTheBlankAnswer(words=['sat'])
     is_correct, feedback = await llm_service.validate_attempt(
-        user, exercise, answer
+        user.user_language, user.target_language, exercise, answer
     )
 
     assert is_correct is True
@@ -103,7 +105,8 @@ async def test_validate_attempt_incorrect(user):
 
     answer = FillInTheBlankAnswer(words=['гледам'])
     is_correct, feedback = await llm_service.validate_attempt(
-        user,
+        user.user_language,
+        user.target_language,
         exercise,
         answer,
     )

@@ -221,7 +221,10 @@ class AttemptValidator:
             if exercise.exercise_id is None:
                 raise ValueError('Cannot validate an exercise without an ID')
             is_correct, feedback = await self.llm_service.validate_attempt(
-                user, exercise, answer
+                user.user_language,
+                user.target_language,
+                exercise,
+                answer,
             )
             exercise_answer = ExerciseAnswer(
                 answer_id=None,

@@ -12,6 +12,10 @@ from app.llm.generators.fill_in_blank_generator import (
 )
 from app.llm.llm_base import BaseLLMService
 from app.llm.llm_service import LLMService
+from app.llm.quality_assessor import (
+    ExerciseForAssessor,
+    ExerciseQualityAssessor,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -81,12 +85,21 @@ def mock_exercise_and_answer():
         ),
     )
     answer = FillInTheBlankAnswer(words=['word'])
-    return exercise, answer
+    exercise_for_assessor = ExerciseForAssessor(
+        text=exercise.exercise_text,
+        options=exercise.data.words,
+        correct_answer=answer.words[0],
+        exercise_type=exercise.exercise_type,
+        language_level=exercise.language_level,
+    )
+    return exercise, answer, exercise_for_assessor
 
 
+@patch.object(ExerciseQualityAssessor, 'assess')
 @patch.object(FillInTheBlankGenerator, 'generate')
 async def test_generate_exercise_metrics(
     mock_generate,
+    mock_assess,
     llm_service: LLMService,
     user: User,
     mock_llm_model,
@@ -101,16 +114,24 @@ async def test_generate_exercise_metrics(
 
     # Устанавливаем мок для метода generate генератора упражнений
     mock_generate.return_value = mock_exercise_and_answer
+    mock_assess.return_value = None
 
     # Act
     await llm_service.generate_exercise(
-        user, language_level, exercise_type, topic
+        user_language=user.user_language,
+        target_language=user.target_language,
+        language_level=language_level,
+        exercise_type=exercise_type,
+        topic=topic,
     )
 
     # Assert
     # Проверяем, что был создан правильный генератор упражнений
     mock_generate.assert_called_once_with(
-        user=user, language_level=language_level, topic=topic
+        user_language=user.user_language,
+        target_language=user.target_language,
+        language_level=language_level,
+        topic=topic,
     )
 
     # Check exercises_created

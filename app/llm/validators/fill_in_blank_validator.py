@@ -4,7 +4,6 @@ from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 
 from app.core.entities.exercise import Exercise
-from app.core.entities.user import User
 from app.core.value_objects.answer import Answer, FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.interfaces.exercise_validator import ExerciseValidator
@@ -33,7 +32,8 @@ class FillInTheBlankValidator(ExerciseValidator):
 
     async def validate(
         self,
-        user: User,
+        user_language,
+        target_language,
         exercise: Exercise,
         answer: Answer,
     ) -> Tuple[bool, str]:
@@ -71,8 +71,8 @@ class FillInTheBlankValidator(ExerciseValidator):
         )
 
         request_data = {
-            'user_language': user.user_language,
-            'exercise_language': user.target_language,
+            'user_language': user_language,
+            'exercise_language': target_language,
             'topic': exercise.topic.value,
             'task': exercise.exercise_text,
             'exercise': exercise.data.text_with_blanks,
@@ -83,11 +83,12 @@ class FillInTheBlankValidator(ExerciseValidator):
         }
 
         validation_result = await self.llm_service.run_llm_chain(
-            chain,
-            request_data,
-            user,
-            exercise.exercise_type,
-            exercise.language_level,
+            chain=chain,
+            input_data=request_data,
+            user_language=user_language,
+            target_language=target_language,
+            exercise_type=exercise.exercise_type,
+            language_level=exercise.language_level,
         )
 
         return validation_result.is_correct, validation_result.feedback

@@ -23,21 +23,15 @@ class ExerciseTopic(Enum):
     GENERAL = 'general'
     SHOPPING = 'shopping'
     TRAVEL = 'travel'
+    FOOD = 'food'
+    SPORTS = 'sports'
+    WEATHER = 'weather'
     # Add more topics here...
 
     @classmethod
     def get_next_topic(cls) -> 'ExerciseTopic':
-        """
-        Get a new exercise topic based on the current topic.
-        35% of the time, it will return GENERAL.
-        65% of the time, it will return a random topic
-            (including the current one).
-        """
         topics: List[ExerciseTopic] = list(ExerciseTopic)
-        if random.random() < 0.35:
-            return ExerciseTopic.GENERAL
-        else:
-            return random.choice(topics)
+        return random.choice(topics)
 
 
 class LanguageLevel(Enum):

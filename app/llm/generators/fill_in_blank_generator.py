@@ -8,13 +8,13 @@ from app.core.consts import (
     EXERCISE_FILL_IN_THE_BLANK_BLANKS,
 )
 from app.core.entities.exercise import Exercise
-from app.core.entities.user import User
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.texts import get_text
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
 from app.llm.llm_base import BaseLLMService
+from app.llm.quality_assessor import ExerciseForAssessor
 
 
 class FillInTheBlankExerciseDataParsed(BaseModel):
@@ -57,10 +57,11 @@ class FillInTheBlankGenerator(ExerciseGenerator):
 
     async def generate(
         self,
-        user: User,
+        user_language: str,
+        target_language: str,
         language_level: LanguageLevel,
         topic: ExerciseTopic,
-    ) -> Tuple[Exercise, FillInTheBlankAnswer]:
+    ) -> Tuple[Exercise, FillInTheBlankAnswer, ExerciseForAssessor]:
         """Generate a fill-in-the-blank exercise."""
 
         parser = PydanticOutputParser(
@@ -82,19 +83,20 @@ class FillInTheBlankGenerator(ExerciseGenerator):
             prompt_template, parser, is_chat_prompt=False
         )
 
-        request_data = {
-            'user_language': user.user_language,
-            'exercise_language': user.target_language,
+        input_data = {
+            'user_language': user_language,
+            'exercise_language': target_language,
             'language_level': language_level.value,
             'topic': topic.value,
         }
 
         parsed_data = await self.llm_service.run_llm_chain(
-            chain,
-            request_data,
-            user,
-            ExerciseType.FILL_IN_THE_BLANK,
-            language_level,
+            chain=chain,
+            input_data=input_data,
+            user_language=user_language,
+            target_language=target_language,
+            exercise_type=ExerciseType.FILL_IN_THE_BLANK,
+            language_level=language_level,
         )
 
         text_with_blanks = re.sub(
@@ -102,18 +104,32 @@ class FillInTheBlankGenerator(ExerciseGenerator):
             EXERCISE_FILL_IN_THE_BLANK_BLANKS,
             parsed_data.text_with_blanks,
         )
+        words = parsed_data.right_words + parsed_data.wrong_words
 
-        return Exercise(
+        exercise = Exercise(
             exercise_id=None,
             exercise_type=ExerciseType.FILL_IN_THE_BLANK,
-            exercise_language=user.target_language,
+            exercise_language=target_language,
             language_level=language_level,
             topic=topic,
             exercise_text=get_text(
-                ExerciseType.FILL_IN_THE_BLANK, user.user_language
+                ExerciseType.FILL_IN_THE_BLANK, user_language
             ),
             data=FillInTheBlankExerciseData(
                 text_with_blanks=text_with_blanks,
-                words=parsed_data.right_words + parsed_data.wrong_words,
+                words=words,
             ),
-        ), FillInTheBlankAnswer(words=parsed_data.right_words)
+        )
+        correct_answer = FillInTheBlankAnswer(words=parsed_data.right_words)
+
+        exercise_for_quality_assessor = ExerciseForAssessor(
+            text=exercise.exercise_text + '\n' + text_with_blanks,
+            options=words,
+            correct_answer=exercise.data.get_answered_by_user_exercise_text(
+                correct_answer
+            ),
+            exercise_type=ExerciseType.FILL_IN_THE_BLANK,
+            language_level=language_level,
+        )
+
+        return (exercise, correct_answer, exercise_for_quality_assessor)

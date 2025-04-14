@@ -53,7 +53,8 @@ class ExerciseGetter:
             if exercises_count < MIN_EXERCISE_COUNT_TO_GENERATE_NEW:
                 self.background_exercise_generation_task = asyncio.create_task(
                     self.generate_and_save_new_exercise(
-                        user=user,
+                        user_language=user.user_language,
+                        target_language=user.target_language,
                         exercise_type=exercise_type,
                         topic=topic,
                         language_level=language_level,
@@ -110,7 +111,8 @@ class ExerciseGetter:
                 return generated_task
 
             generated_task = await self.generate_and_save_new_exercise(
-                user=user,
+                user_language=user.user_language,
+                target_language=user.target_language,
                 exercise_type=exercise_type,
                 topic=topic,
                 language_level=language_level,
@@ -150,28 +152,37 @@ class ExerciseGetter:
 
     async def generate_and_save_new_exercise(
         self,
-        user: User,
+        user_language: str,
+        target_language: str,
         language_level: LanguageLevel,
         exercise_type: ExerciseType,
         topic: ExerciseTopic,
-    ) -> Exercise:
-        exercise, answer = await self.llm_service.generate_exercise(
-            user, language_level, exercise_type, topic
-        )
-        exercise = await self.exercise_repository.save(exercise)
-        if exercise.exercise_id:
-            right_answer = ExerciseAnswer(
-                answer_id=None,
-                exercise_id=exercise.exercise_id,
-                answer=answer,
-                is_correct=True,
-                created_by='LLM',
-                feedback='',
-                feedback_language='',
-                created_at=datetime.now(),
+    ) -> Optional[Exercise]:
+        try:
+            exercise, answer = await self.llm_service.generate_exercise(
+                user_language=user_language,
+                target_language=target_language,
+                language_level=language_level,
+                exercise_type=exercise_type,
+                topic=topic,
             )
-            await self.exercise_answer_repository.save(right_answer)
-        return exercise
+            exercise = await self.exercise_repository.save(exercise)
+            if exercise.exercise_id:
+                right_answer = ExerciseAnswer(
+                    answer_id=None,
+                    exercise_id=exercise.exercise_id,
+                    answer=answer,
+                    is_correct=True,
+                    created_by='LLM',
+                    feedback='',
+                    feedback_language='',
+                    created_at=datetime.now(),
+                )
+                await self.exercise_answer_repository.save(right_answer)
+            return exercise
+        except Exception as e:
+            logger.error(f'Error during exercise generation: {e}')
+            return None
 
     async def get_exercise_for_repetition(
         self,

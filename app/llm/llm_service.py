@@ -1,7 +1,6 @@
 from typing import Tuple
 
 from app.core.entities.exercise import Exercise
-from app.core.entities.user import User
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.value_objects.answer import Answer
@@ -10,13 +9,21 @@ from app.llm.factories import (
     ExerciseValidatorFactory,
 )
 from app.llm.llm_base import BaseLLMService
+from app.llm.quality_assessor import ExerciseQualityAssessor
 from app.metrics import BACKEND_LLM_METRICS
 
 
 class LLMService(BaseLLMService, LLMProvider):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.exercise_quality_assessor = ExerciseQualityAssessor(
+            *args, **kwargs
+        )
+
     async def generate_exercise(
         self,
-        user: User,
+        user_language: str,
+        target_language: str,
         language_level: LanguageLevel,
         exercise_type: ExerciseType,
         topic: ExerciseTopic,
@@ -31,21 +38,31 @@ class LLMService(BaseLLMService, LLMProvider):
             .labels(
                 exercise_type=exercise_type.value,
                 level=language_level.value,
-                user_language=user.user_language,
-                target_language=user.target_language,
+                user_language=user_language,
+                target_language=target_language,
                 llm_model=self.model.model_name,
             )
             .time()
         ):
-            new_exercise, new_answer = await generator.generate(
-                user=user, language_level=language_level, topic=topic
+            (
+                new_exercise,
+                new_answer,
+                exercise_for_quality_assessor,
+            ) = await generator.generate(
+                user_language=user_language,
+                target_language=target_language,
+                language_level=language_level,
+                topic=topic,
+            )
+            await self.exercise_quality_assessor.assess(
+                exercise_for_quality_assessor, user_language, target_language
             )
 
         BACKEND_LLM_METRICS['exercises_created'].labels(
             exercise_type=exercise_type.value,
             level=language_level.value,
-            user_language=user.user_language,
-            target_language=user.target_language,
+            user_language=user_language,
+            target_language=target_language,
             llm_model=self.model.model_name,
         ).inc()
 
@@ -53,7 +70,8 @@ class LLMService(BaseLLMService, LLMProvider):
 
     async def validate_attempt(
         self,
-        user: User,
+        user_language: str,
+        target_language: str,
         exercise: Exercise,
         answer: Answer,
     ) -> Tuple[bool, str]:
@@ -67,21 +85,21 @@ class LLMService(BaseLLMService, LLMProvider):
             .labels(
                 exercise_type=exercise.exercise_type.value,
                 level=exercise.language_level.value,
-                user_language=user.user_language,
-                target_language=user.target_language,
+                user_language=user_language,
+                target_language=target_language,
                 llm_model=self.model.model_name,
             )
             .time()
         ):
             is_correct, feedback = await validator.validate(
-                user, exercise, answer
+                user_language, target_language, exercise, answer
             )
 
         BACKEND_LLM_METRICS['exercises_verified'].labels(
             exercise_type=exercise.exercise_type.value,
             level=exercise.language_level.value,
-            user_language=user.user_language,
-            target_language=user.target_language,
+            user_language=user_language,
+            target_language=target_language,
             llm_model=self.model.model_name,
         ).inc()
 

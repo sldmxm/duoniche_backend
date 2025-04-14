@@ -4,13 +4,13 @@ from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 
 from app.core.entities.exercise import Exercise
-from app.core.entities.user import User
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.texts import get_text
 from app.core.value_objects.answer import ChooseSentenceAnswer
 from app.core.value_objects.exercise import ChooseSentenceExerciseData
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
 from app.llm.llm_base import BaseLLMService
+from app.llm.quality_assessor import ExerciseForAssessor
 
 
 class ChooseSentenceExerciseDataParsed(BaseModel):
@@ -36,10 +36,11 @@ class ChooseSentenceGenerator(ExerciseGenerator):
 
     async def generate(
         self,
-        user: User,
+        user_language: str,
+        target_language: str,
         language_level: LanguageLevel,
         topic: ExerciseTopic,
-    ) -> Tuple[Exercise, ChooseSentenceAnswer]:
+    ) -> Tuple[Exercise, ChooseSentenceAnswer, ExerciseForAssessor]:
         """Generate a choose-the-sentence exercise."""
 
         parser = PydanticOutputParser(
@@ -61,34 +62,49 @@ class ChooseSentenceGenerator(ExerciseGenerator):
             prompt_template, parser, is_chat_prompt=False
         )
 
-        request_data = {
-            'user_language': user.user_language,
-            'exercise_language': user.target_language,
+        input_data = {
+            'user_language': user_language,
+            'exercise_language': target_language,
             'language_level': language_level.value,
             'topic': topic.value,
         }
 
         parsed_data = await self.llm_service.run_llm_chain(
-            chain,
-            request_data,
-            user,
-            ExerciseType.CHOOSE_SENTENCE,
-            language_level,
+            chain=chain,
+            input_data=input_data,
+            user_language=user_language,
+            target_language=target_language,
+            exercise_type=ExerciseType.CHOOSE_SENTENCE,
+            language_level=language_level,
         )
 
         sentences = [
             parsed_data.correct_sentence
         ] + parsed_data.incorrect_sentences
-        return Exercise(
+
+        exercise = Exercise(
             exercise_id=None,
             exercise_type=ExerciseType.CHOOSE_SENTENCE,
-            exercise_language=user.target_language,
+            exercise_language=target_language,
             language_level=language_level,
             topic=topic,
             exercise_text=get_text(
-                ExerciseType.CHOOSE_SENTENCE, user.user_language
+                ExerciseType.CHOOSE_SENTENCE, user_language
             ),
             data=ChooseSentenceExerciseData(
                 sentences=sentences,
             ),
-        ), ChooseSentenceAnswer(sentence=parsed_data.correct_sentence)
+        )
+        correct_answer = ChooseSentenceAnswer(
+            sentence=parsed_data.correct_sentence
+        )
+
+        exercise_for_quality_assessor = ExerciseForAssessor(
+            text=exercise.exercise_text,
+            options=sentences,
+            correct_answer=parsed_data.correct_sentence,
+            exercise_type=ExerciseType.CHOOSE_SENTENCE,
+            language_level=language_level,
+        )
+
+        return exercise, correct_answer, exercise_for_quality_assessor

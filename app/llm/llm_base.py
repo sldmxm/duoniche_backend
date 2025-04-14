@@ -12,7 +12,6 @@ from langchain_openai import ChatOpenAI
 from pydantic import ValidationError
 
 from app.config import settings
-from app.core.entities.user import User
 from app.core.enums import ExerciseType, LanguageLevel
 from app.metrics import BACKEND_LLM_METRICS
 
@@ -71,11 +70,14 @@ class BaseLLMService:
         self,
         chain: RunnableSerializable,
         input_data: Dict[str, Any],
-        user: User,
+        target_language: str,
+        user_language: str,
         exercise_type: ExerciseType,
         language_level: LanguageLevel,
     ) -> Any:
         try:
+            # TODO: токены считаются криво,
+            #  надо не input_data, а полный запрос
             logger.debug(f'LLM request data: {input_data}')
             input_text = str(input_data)
             input_tokens = self._count_tokens(input_text)
@@ -87,16 +89,16 @@ class BaseLLMService:
             BACKEND_LLM_METRICS['input_tokens'].labels(
                 exercise_type=exercise_type.value,
                 level=language_level.value,
-                user_language=user.user_language,
-                target_language=user.target_language,
+                user_language=user_language,
+                target_language=target_language,
                 llm_model=self.model.model_name,
             ).inc(input_tokens)
 
             BACKEND_LLM_METRICS['output_tokens'].labels(
                 exercise_type=exercise_type.value,
                 level=language_level.value,
-                user_language=user.user_language,
-                target_language=user.target_language,
+                user_language=user_language,
+                target_language=target_language,
                 llm_model=self.model.model_name,
             ).inc(output_tokens)
 

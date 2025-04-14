@@ -1,0 +1,105 @@
+import logging
+
+from langchain_core.output_parsers import PydanticOutputParser
+from pydantic import BaseModel, Field
+
+from app.core.enums import ExerciseType, LanguageLevel
+from app.llm.llm_base import BaseLLMService
+
+logger = logging.getLogger(__name__)
+
+
+class ExerciseForAssessor(BaseModel):
+    text: str
+    options: list[str]
+    correct_answer: str
+    exercise_type: ExerciseType
+    language_level: LanguageLevel
+
+
+class LLMExerciseReview(BaseModel):
+    is_valid: bool = Field(
+        ..., description='True if the exercise is correct and useful'
+    )
+    issues: list[str] = Field(
+        ...,
+        description='Empty if is valid. '
+        'Description of the problems found in English',
+    )
+
+
+class ExerciseQualityAssessor(BaseLLMService):
+    async def assess(
+        self, exercise: ExerciseForAssessor, user_language, target_language
+    ) -> None:
+        if self._has_duplicate_options(exercise):
+            message = (
+                f'Exercise rejected: duplicate options in answers. '
+                f'Exercise: {exercise}'
+            )
+            raise ValueError(message)
+
+        review = await self._run_llm_check(
+            exercise, user_language, target_language
+        )
+        if not review.is_valid:
+            message = (
+                f'Exercise rejected by LLM: {review.issues}. '
+                f'Exercise: {exercise}'
+            )
+            raise ValueError(message)
+
+        logger.info(
+            f'Exercise reviewed and accepted by LLM. ' f'Exercise: {exercise}'
+        )
+
+    @staticmethod
+    def _has_duplicate_options(exercise: ExerciseForAssessor) -> bool:
+        return len(set(exercise.options)) < len(exercise.options)
+
+    async def _run_llm_check(
+        self, exercise: ExerciseForAssessor, user_language, target_language
+    ) -> LLMExerciseReview:
+        parser = PydanticOutputParser(pydantic_object=LLMExerciseReview)
+        prompt_template = (
+            'Analyze the following exercise and answer '
+            'for {user_language}-speaking learner '
+            'of {target_language} language.\n'
+            'Task of the exercise must be in {user_language}.\n'
+            '`is_valid` should be true only if the exercise is correct, '
+            'educational, free of grammatical or logical errors, '
+            'sounds natural and common in {target_language} '
+            'and if the incorrect options are truly incorrect.\n\n'
+            'Exercise: {text}\n'
+            'Options: {options}\n'
+            'Correct answer: {correct_answer}\n'
+            '{format_instructions}'
+        )
+
+        chain = await self.create_llm_chain(
+            prompt_template, parser, is_chat_prompt=False
+        )
+
+        request_data = {
+            'user_language': user_language,
+            'target_language': target_language,
+            'text': exercise.text,
+            'options': exercise.options,
+            'correct_answer': exercise.correct_answer,
+        }
+
+        review = await self.run_llm_chain(
+            chain=chain,
+            input_data=request_data,
+            target_language=target_language,
+            user_language=user_language,
+            exercise_type=exercise.exercise_type,
+            language_level=exercise.language_level,
+        )
+
+        return review
+
+
+class ValidateAttemptQualityAssessor(BaseLLMService):
+    # TODO: проверим качество ответа
+    ...

@@ -68,7 +68,12 @@ async def test_run_llm_chain_token_counting(
 
     # Act
     await llm_service.run_llm_chain(
-        mock_chain, input_data, user, exercise_type, language_level
+        chain=mock_chain,
+        input_data=input_data,
+        target_language=user.target_language,
+        user_language=user.user_language,
+        exercise_type=exercise_type,
+        language_level=language_level,
     )
 
     # Assert

@@ -456,7 +456,7 @@ class TestExerciseServiceValidation:
 
         # 3. LLM service call (inside the task_func simulated by cache mock)
         mock_llm_service.validate_attempt.assert_awaited_once_with(
-            user, exercise, answer_vo
+            user.user_language, user.target_language, exercise, answer_vo
         )
 
         # 4. Save call for the *new* validated answer
@@ -542,7 +542,8 @@ class TestExerciseServiceValidation:
         # Assertions
         assert mock_answer_repo.get_all_by_user_answer.assert_awaited_once
         mock_llm_service.validate_attempt.assert_awaited_once_with(
-            user,
+            user.user_language,
+            user.target_language,
             fill_in_the_blank_exercise,
             fill_in_the_blank_answer,
         )

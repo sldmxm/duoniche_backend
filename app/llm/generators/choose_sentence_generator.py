@@ -96,7 +96,7 @@ class ChooseSentenceGenerator(ExerciseGenerator):
         )
 
         exercise_for_quality_assessor = ExerciseForAssessor(
-            text='',  # exercise.exercise_text,
+            text=exercise.exercise_text,
             options=sentences,
             correct_answer=parsed_data.correct_sentence,
             exercise_type=ExerciseType.CHOOSE_SENTENCE,

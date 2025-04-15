@@ -34,7 +34,8 @@ jobs:
           POSTGRES_HOST=db
           POSTGRES_PORT=5432
           OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL_NAME=${{ secrets.OPENAI_MODEL_NAME }}
+          OPENAI_MAIN_MODEL_NAME=${{ secrets.OPENAI_MAIN_MODEL_NAME }}
+          OPENAI_ASSESSOR_MODEL_NAME=${{ secrets.OPENAI_ASSESSOR_MODEL_NAME }}
           GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
           REDIS_URL="redis://redis:6379"
           REDIS_HOST=redis

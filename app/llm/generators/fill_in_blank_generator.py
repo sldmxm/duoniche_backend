@@ -119,7 +119,7 @@ class FillInTheBlankGenerator(ExerciseGenerator):
         correct_answer = FillInTheBlankAnswer(words=parsed_data.right_words)
 
         exercise_for_quality_assessor = ExerciseForAssessor(
-            text=text_with_blanks,
+            text=exercise.exercise_text + '\n' + text_with_blanks,
             options=words,
             correct_answer=exercise.data.get_answered_by_user_exercise_text(
                 correct_answer

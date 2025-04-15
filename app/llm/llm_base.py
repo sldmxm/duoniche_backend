@@ -1,7 +1,6 @@
 import logging
 from typing import Any, Dict, TypeVar, Union
 
-import tiktoken
 from langchain_core.output_parsers import (
     JsonOutputParser,
     PydanticOutputParser,
@@ -12,8 +11,6 @@ from langchain_openai import ChatOpenAI
 from pydantic import ValidationError
 
 from app.config import settings
-from app.core.enums import ExerciseType, LanguageLevel
-from app.metrics import BACKEND_LLM_METRICS
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +21,7 @@ class BaseLLMService:
     def __init__(
         self,
         openai_api_key: str = settings.openai_api_key,
-        model_name: str = settings.openai_model_name,
+        model_name: str = settings.openai_main_model_name,
     ):
         if not openai_api_key:
             raise ValueError('OPENAI_API_KEY environment variable is not set')
@@ -32,15 +29,7 @@ class BaseLLMService:
         self.model = ChatOpenAI(
             api_key=openai_api_key,
             model=model_name,
-            # temperature=settings.openai_temperature,
-            # max_retries=settings.openai_max_retries,
-            # timeout=settings.openai_request_timeout,
         )
-        self.encoding = tiktoken.encoding_for_model(model_name)
-
-    def _count_tokens(self, text: str) -> int:
-        """Count tokens in a text string."""
-        return len(self.encoding.encode(text))
 
     async def create_llm_chain(
         self,
@@ -70,38 +59,9 @@ class BaseLLMService:
         self,
         chain: RunnableSerializable,
         input_data: Dict[str, Any],
-        target_language: str,
-        user_language: str,
-        exercise_type: ExerciseType,
-        language_level: LanguageLevel,
     ) -> Any:
         try:
-            # TODO: токены считаются криво,
-            #  надо не input_data, а полный запрос
-            logger.debug(f'LLM request data: {input_data}')
-            input_text = str(input_data)
-            input_tokens = self._count_tokens(input_text)
             response = await chain.ainvoke(input_data)
-            response_text = str(response)
-            output_tokens = self._count_tokens(response_text)
-            logger.debug(f'LLM response: {response}')
-
-            BACKEND_LLM_METRICS['input_tokens'].labels(
-                exercise_type=exercise_type.value,
-                level=language_level.value,
-                user_language=user_language,
-                target_language=target_language,
-                llm_model=self.model.model_name,
-            ).inc(input_tokens)
-
-            BACKEND_LLM_METRICS['output_tokens'].labels(
-                exercise_type=exercise_type.value,
-                level=language_level.value,
-                user_language=user_language,
-                target_language=target_language,
-                llm_model=self.model.model_name,
-            ).inc(output_tokens)
-
             return response
         except ValidationError as e:
             logger.error(f'Validation error in LLM response: {e}')

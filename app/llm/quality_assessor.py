@@ -3,6 +3,7 @@ import logging
 from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 
+from app.config import settings
 from app.core.enums import ExerciseType, LanguageLevel
 from app.llm.llm_base import BaseLLMService
 from app.metrics import BACKEND_LLM_METRICS
@@ -30,9 +31,21 @@ class LLMExerciseReview(BaseModel):
 
 
 class ExerciseQualityAssessor(BaseLLMService):
+    def __init__(
+        self,
+        openai_api_key: str = settings.openai_api_key,
+        model_name: str = settings.openai_assessor_model_name,
+    ):
+        super().__init__(
+            openai_api_key=openai_api_key,
+            model_name=model_name,
+        )
+
     async def assess(
         self, exercise: ExerciseForAssessor, user_language, target_language
     ) -> None:
+        # TODO: Если может исправить, исправлять и присылать новый вариант,
+        #  если не может, откидывать
         if self._has_duplicate_options(exercise):
             message = (
                 f'Exercise rejected: duplicate options in answers. '
@@ -78,6 +91,7 @@ class ExerciseQualityAssessor(BaseLLMService):
             'educational, free of grammatical or logical errors, '
             'sounds natural and common in {target_language} '
             'and if the incorrect options are truly incorrect.\n\n'
+            'Exercise type: {exercise_type}\n'
             'Exercise: {text}\n'
             'Options: {options}\n'
             'Correct answer: {correct_answer}\n'
@@ -92,6 +106,7 @@ class ExerciseQualityAssessor(BaseLLMService):
             'user_language': user_language,
             'target_language': target_language,
             'text': exercise.text,
+            'exercise_type': exercise.exercise_type,
             'options': exercise.options,
             'correct_answer': exercise.correct_answer,
         }
@@ -99,15 +114,12 @@ class ExerciseQualityAssessor(BaseLLMService):
         review = await self.run_llm_chain(
             chain=chain,
             input_data=request_data,
-            target_language=target_language,
-            user_language=user_language,
-            exercise_type=exercise.exercise_type,
-            language_level=exercise.language_level,
         )
 
         return review
 
 
 class ValidateAttemptQualityAssessor(BaseLLMService):
-    # TODO: проверим качество ответа
+    # TODO: проверять качество ответа,
+    #  если не очень, менять на вариант ассессора
     ...

@@ -72,10 +72,6 @@ class ChooseSentenceGenerator(ExerciseGenerator):
         parsed_data = await self.llm_service.run_llm_chain(
             chain=chain,
             input_data=input_data,
-            user_language=user_language,
-            target_language=target_language,
-            exercise_type=ExerciseType.CHOOSE_SENTENCE,
-            language_level=language_level,
         )
 
         sentences = [
@@ -100,7 +96,7 @@ class ChooseSentenceGenerator(ExerciseGenerator):
         )
 
         exercise_for_quality_assessor = ExerciseForAssessor(
-            text=exercise.exercise_text,
+            text='',  # exercise.exercise_text,
             options=sentences,
             correct_answer=parsed_data.correct_sentence,
             exercise_type=ExerciseType.CHOOSE_SENTENCE,

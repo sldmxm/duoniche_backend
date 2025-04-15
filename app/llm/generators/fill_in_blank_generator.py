@@ -93,10 +93,6 @@ class FillInTheBlankGenerator(ExerciseGenerator):
         parsed_data = await self.llm_service.run_llm_chain(
             chain=chain,
             input_data=input_data,
-            user_language=user_language,
-            target_language=target_language,
-            exercise_type=ExerciseType.FILL_IN_THE_BLANK,
-            language_level=language_level,
         )
 
         text_with_blanks = re.sub(
@@ -123,7 +119,7 @@ class FillInTheBlankGenerator(ExerciseGenerator):
         correct_answer = FillInTheBlankAnswer(words=parsed_data.right_words)
 
         exercise_for_quality_assessor = ExerciseForAssessor(
-            text=exercise.exercise_text + '\n' + text_with_blanks,
+            text=text_with_blanks,
             options=words,
             correct_answer=exercise.data.get_answered_by_user_exercise_text(
                 correct_answer
@@ -132,4 +128,4 @@ class FillInTheBlankGenerator(ExerciseGenerator):
             language_level=language_level,
         )
 
-        return (exercise, correct_answer, exercise_for_quality_assessor)
+        return exercise, correct_answer, exercise_for_quality_assessor

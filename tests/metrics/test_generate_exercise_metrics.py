@@ -10,7 +10,6 @@ from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.generators.fill_in_blank_generator import (
     FillInTheBlankGenerator,
 )
-from app.llm.llm_base import BaseLLMService
 from app.llm.llm_service import LLMService
 from app.llm.quality_assessor import (
     ExerciseForAssessor,
@@ -29,15 +28,10 @@ def mock_llm_model():
 
 @pytest.fixture
 @patch('tiktoken.encoding_for_model')
-@patch.object(BaseLLMService, '_count_tokens')
-def llm_service(mock_count_tokens, mock_encoding_for_model, mock_llm_model):
+def llm_service(mock_encoding_for_model, mock_llm_model):
     mock_encoding = MagicMock()
     mock_encoding.encode.return_value = [1, 2, 3, 4, 5]
     mock_encoding_for_model.return_value = mock_encoding
-
-    mock_count_tokens.side_effect = (
-        lambda text: 2 if isinstance(text, dict) else 5
-    )
 
     service = LLMService(openai_api_key='test-key', model_name='test-model')
     service.model = mock_llm_model

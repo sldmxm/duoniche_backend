@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):  # type: ignore
@@ -22,7 +22,8 @@ class Settings(BaseSettings):  # type: ignore
     )
 
     openai_api_key: str = ''
-    openai_model_name: str = ''
+    openai_main_model_name: str = ''
+    openai_assessor_model_name: str = ''
     openai_test_model_name: str = ''
     openai_temperature: float = 0.3
     openai_max_retries: int = 6
@@ -35,9 +36,10 @@ class Settings(BaseSettings):  # type: ignore
 
     sentry_dsn: str = ''
 
-    class Config:
-        env_file = '.env'
-        env_file_encoding = 'utf-8'
+    model_config = SettingsConfigDict(
+        env_file='.env',
+        env_file_encoding='utf-8',
+    )
 
 
 settings = Settings()

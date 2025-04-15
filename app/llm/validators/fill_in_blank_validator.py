@@ -85,10 +85,6 @@ class FillInTheBlankValidator(ExerciseValidator):
         validation_result = await self.llm_service.run_llm_chain(
             chain=chain,
             input_data=request_data,
-            user_language=user_language,
-            target_language=target_language,
-            exercise_type=exercise.exercise_type,
-            language_level=exercise.language_level,
         )
 
         return validation_result.is_correct, validation_result.feedback

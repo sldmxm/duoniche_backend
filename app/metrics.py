@@ -53,7 +53,7 @@ BACKEND_EXERCISE_METRICS = {
     ),
     'untouched_exercises': Gauge(
         'untouched_exercises_total',
-        'Total number of active users',
+        'Total number of untouched exercises',
         labelnames=['exercise_language'],
     ),
 }

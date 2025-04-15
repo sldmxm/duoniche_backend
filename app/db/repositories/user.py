@@ -1,8 +1,8 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, override
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.entities.user import User
@@ -83,12 +83,12 @@ class SQLAlchemyUserRepository(UserRepository):
         self, period_seconds: int
     ) -> List[User]:
         now = datetime.now(timezone.utc)
-        # period_seconds = period_seconds.total_seconds()
         stmt = select(UserModel).where(
             UserModel.last_exercise_at.isnot(None),
-            func.extract('epoch', now - UserModel.last_exercise_at)
-            <= period_seconds,
-            # UserModel.session_frozen_until == None,
+            (
+                UserModel.last_exercise_at
+                >= now - timedelta(seconds=period_seconds)
+            ),
         )
         result = await self.session.execute(stmt)
         db_users = result.scalars().all()

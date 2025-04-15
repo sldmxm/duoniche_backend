@@ -2,7 +2,11 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from app.core.consts import DEFAULT_LANGUAGE_LEVEL, DEFAULT_USER_LANGUAGE
+from app.core.consts import (
+    DEFAULT_LANGUAGE_LEVEL,
+    DEFAULT_TARGET_LANGUAGE,
+    DEFAULT_USER_LANGUAGE,
+)
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.db.db import async_session_maker
@@ -76,6 +80,8 @@ async def exercise_stock_refill():
             available_count = (
                 await exercise_repo.count_untouched_exercises_by_language()
             )
+            if not available_count:
+                available_count = {DEFAULT_TARGET_LANGUAGE: 0}
             for exercise_language, count in available_count.items():
                 logger.info(
                     f'Untouched exercises: Language: {exercise_language}, '

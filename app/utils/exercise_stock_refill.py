@@ -69,7 +69,7 @@ async def generate_and_save_exercise(
                 await session.commit()
 
     except Exception as e:
-        logger.error(f'Error during exercise generation: {e}')
+        logger.warning(f'Error during exercise generation: {e}')
 
 
 async def exercise_stock_refill():

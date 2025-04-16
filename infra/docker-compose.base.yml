@@ -58,9 +58,13 @@ services:
     image: prom/prometheus
     container_name: duo_prometheus
     logging: *json_logging
+    restart: unless-stopped
     command:
       - '--storage.tsdb.retention.time=30d'
       - '--storage.tsdb.retention.size=10GB'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
     volumes:
       - ./prometheus.yml:/prometheus/prometheus.yml
       - prometheus_data:/prometheus

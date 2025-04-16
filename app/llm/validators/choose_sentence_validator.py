@@ -21,8 +21,9 @@ class AttemptValidationResponse(BaseModel):
         'using the argument "because that\'s how you should have answered"'
         'Warning! Don\'t write "Wrong answer", "Try again" '
         'or other phrases that provide '
-        'no practical benefit to the user.'
-        "Warning! Feedback for the user must be in user's language."
+        'no practical benefit to the user.\n'
+        "Warning! Feedback for the user must be in user's language.\n"
+        'Be concise.'
     )
 
 

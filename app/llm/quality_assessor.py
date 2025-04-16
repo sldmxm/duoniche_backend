@@ -20,13 +20,13 @@ class ExerciseForAssessor(BaseModel):
 
 
 class LLMExerciseReview(BaseModel):
-    is_valid: bool = Field(
-        ..., description='True if the exercise is correct and useful'
-    )
     issues: list[str] = Field(
         ...,
         description='Empty if is valid. '
-        'Description of the problems found in English',
+        'Description of the problems found in English. Be concise.',
+    )
+    is_valid: bool = Field(
+        ..., description='True if the exercise is correct and useful'
     )
 
 

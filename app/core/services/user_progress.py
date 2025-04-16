@@ -124,6 +124,14 @@ class UserProgressService:
             user.session_frozen_until = now + DELTA_BETWEEN_SESSIONS
             await self.user_service.update(user)
 
+            BACKEND_USER_METRICS['full_sessions'].labels(
+                cohort=user.cohort,
+                plan=user.plan,
+                target_language=user.target_language,
+                user_language=user.user_language,
+                language_level=user.language_level.value,
+            ).inc()
+
             return NextAction(
                 action=UserAction.congratulations_and_wait,
                 message=get_text(

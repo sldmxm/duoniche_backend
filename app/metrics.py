@@ -87,6 +87,11 @@ BACKEND_USER_METRICS = {
         'Number of exercises per session',
         labelnames=backend_user_metrics_label_names,
     ),
+    'full_sessions': Counter(
+        'full_sessions_total',
+        'Total number of session ended freeze.',
+        labelnames=backend_user_metrics_label_names,
+    ),
     'frozen_attempts': Counter(
         'frozen_attempts_total',
         'Total number of attempts to start exercises when frozen',

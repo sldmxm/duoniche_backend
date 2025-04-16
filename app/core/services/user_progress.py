@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.core.consts import (
     DELTA_BETWEEN_SESSIONS,
@@ -56,6 +56,17 @@ class UserProgressService:
                 )
             return exercise
 
+        async def _start_new_session() -> None:
+            if not user:
+                raise ValueError(
+                    'User with provided ID not found in the database'
+                )
+            user.session_frozen_until = None
+            user.session_started_at = now
+            user.exercises_get_in_session = 0
+            user.exercises_get_in_set = 0
+            await self.user_service.update(user)
+
         # TODO: разобраться, как собирать количество ошибок,
         #  возможно, просто в верификации брать и писать в бд пользователя
         #  ИЛИ !!! вообще убрать эти дополнительные поля у пользователя
@@ -68,45 +79,40 @@ class UserProgressService:
 
         now = datetime.now(timezone.utc)
 
-        if (
-            user.session_frozen_until is not None
-            and now < user.session_frozen_until
-        ):
-            logger.info(
-                f'User {user.user_id} is frozen until '
-                f'{user.session_frozen_until}, {now=}'
-            )
-            BACKEND_USER_METRICS['frozen_attempts'].labels(
-                cohort=user.cohort,
-                plan=user.plan,
-                target_language=user.target_language,
-                user_language=user.user_language,
-                language_level=user.language_level.value,
-            ).inc()
+        if user.session_frozen_until is not None:
+            if now < user.session_frozen_until:
+                logger.info(
+                    f'User {user.user_id} is frozen until '
+                    f'{user.session_frozen_until}, {now=}'
+                )
+                BACKEND_USER_METRICS['frozen_attempts'].labels(
+                    cohort=user.cohort,
+                    plan=user.plan,
+                    target_language=user.target_language,
+                    user_language=user.user_language,
+                    language_level=user.language_level.value,
+                ).inc()
 
-            return NextAction(
-                action=UserAction.limit_reached,
-                message=get_text(Messages.LIMIT_REACHED, user.user_language),
-            )
-        elif (
-            # was frozen, but now unfrozen
-            user.session_frozen_until is not None
-            # new user
-            or not user.session_started_at
-        ):
-            if user.session_frozen_until is not None:
+                return NextAction(
+                    action=UserAction.limit_reached,
+                    message=get_text(
+                        Messages.LIMIT_REACHED, user.user_language
+                    ),
+                )
+            else:
                 logger.info(
                     f'User {user.user_id} WAS frozen '
                     f'until {user.session_frozen_until}, {now=}'
                 )
+                await _start_new_session()
 
-            user.session_frozen_until = None
-            user.session_started_at = now
-            user.exercises_get_in_session = 0
-            user.exercises_get_in_set = 0
-            await self.user_service.update(user)
+        if user.session_started_at is None:
+            logger.info(f'New user {user.user_id} first session started')
+            await _start_new_session()
+            current_session_time = timedelta(0)
+        else:
+            current_session_time = now - user.session_started_at
 
-        current_session_time = now - user.session_started_at
         renewed_sets = int(
             current_session_time.total_seconds()
             // RENEWING_SET_PERIOD.total_seconds()

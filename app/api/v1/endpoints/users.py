@@ -66,7 +66,12 @@ async def update_user_by_user_id(
     user = User(**user_data.model_dump())
     user.user_id = user_id
     try:
-        updated_user = await user_service.update(user)
+        updated_user = await user_service.update(
+            user_id=user_id,
+            username=user.username,
+            name=user.name,
+            user_language=user.user_language,
+        )
     except ValueError as e:
         raise NotFoundError(detail=str(e)) from e
     return updated_user

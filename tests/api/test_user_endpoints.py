@@ -120,7 +120,7 @@ async def test_update_user_by_telegram_id_success(
     assert response_data['username'] == user_data['username']
     assert response_data['name'] == user_data['name']
     assert response_data['user_language'] == user_data['user_language']
-    assert response_data['target_language'] == user_data['target_language']
+    assert response_data['target_language'] == user.target_language
 
     # Check if the user was updated in the database
     db_user = await async_session.get(UserModel, response_data['user_id'])
@@ -129,7 +129,7 @@ async def test_update_user_by_telegram_id_success(
     assert db_user.username == user_data['username']
     assert db_user.name == user_data['name']
     assert db_user.user_language == user_data['user_language']
-    assert db_user.target_language == user_data['target_language']
+    assert db_user.target_language == user.target_language
 
 
 @pytest.mark.asyncio
@@ -146,4 +146,4 @@ async def test_update_user_by_telegram_id_not_found(client: AsyncClient):
     }
     response = await client.put('/api/v1/users/157', json=user_data)
     assert response.status_code == 404
-    assert response.json()['detail'] == 'User does not exist'
+    assert response.json()['detail'] == 'User 157 does not exist'

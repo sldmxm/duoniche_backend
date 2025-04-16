@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock
+from unittest.mock import ANY, AsyncMock
 
 import pytest
 
@@ -116,7 +116,12 @@ async def test_get_next_action_returns_new_exercise(
         topic=fill_in_the_blank_exercise.topic,
         language_level=fill_in_the_blank_exercise.language_level,
     )
-    mock_user_service.update.assert_awaited_once_with(user)
+    mock_user_service.update.assert_awaited_once_with(
+        exercises_get_in_session=1,
+        exercises_get_in_set=1,
+        last_exercise_at=ANY,
+        user_id=12345,
+    )
     assert result.action == UserAction.new_exercise
     assert result.exercise is not None
     assert user.exercises_get_in_session == 1
@@ -140,6 +145,7 @@ async def test_get_next_action_returns_praise_and_next_set_when_set_completed(
     user.errors_count_in_set = 1
     user.session_started_at = datetime.now(timezone.utc)
     mock_user_service.get_by_id.return_value = user
+    mock_user_service.update.return_value = user
 
     # Act
     result: NextAction = await user_progress_service.get_next_action(
@@ -148,7 +154,11 @@ async def test_get_next_action_returns_praise_and_next_set_when_set_completed(
 
     # Assert
     mock_user_service.get_by_id.assert_awaited_once_with(user.user_id)
-    mock_user_service.update.assert_awaited_once_with(user)
+    mock_user_service.update.assert_awaited_once_with(
+        user_id=user.user_id,
+        exercises_get_in_set=0,
+        errors_count_in_set=0,
+    )
     assert result.action == UserAction.praise_and_next_set
     assert result.message == get_text(
         Messages.PRAISE_AND_NEXT_SET, user.user_language
@@ -176,6 +186,7 @@ async def test_get_next_action_returns_congratulations_and_wait(
         timezone.utc
     ) - RENEWING_SET_PERIOD * (SETS_IN_SESSION - 1)
     mock_user_service.get_by_id.return_value = user
+    mock_user_service.update.return_value = user
 
     # Act
     result: NextAction = await user_progress_service.get_next_action(
@@ -184,7 +195,10 @@ async def test_get_next_action_returns_congratulations_and_wait(
 
     # Assert
     mock_user_service.get_by_id.assert_awaited_once_with(user.user_id)
-    mock_user_service.update.assert_awaited_once_with(user)
+    mock_user_service.update.assert_awaited_once_with(
+        user_id=user.user_id,
+        session_frozen_until=ANY,
+    )
     assert result.action == UserAction.congratulations_and_wait
     assert result.message == get_text(
         Messages.CONGRATULATIONS_AND_WAIT,

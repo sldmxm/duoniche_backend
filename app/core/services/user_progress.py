@@ -56,16 +56,19 @@ class UserProgressService:
                 )
             return exercise
 
-        async def _start_new_session() -> None:
-            if not user:
+        async def _start_new_session() -> User:
+            if not user or not user.user_id:
                 raise ValueError(
                     'User with provided ID not found in the database'
                 )
-            user.session_frozen_until = None
-            user.session_started_at = now
-            user.exercises_get_in_session = 0
-            user.exercises_get_in_set = 0
-            await self.user_service.update(user)
+
+            return await self.user_service.update(
+                user_id=user.user_id,
+                session_frozen_until=None,
+                session_started_at=now,
+                exercises_get_in_session=0,
+                exercises_get_in_set=0,
+            )
 
         # TODO: разобраться, как собирать количество ошибок,
         #  возможно, просто в верификации брать и писать в бд пользователя
@@ -74,7 +77,7 @@ class UserProgressService:
         #  id первого упражнения в сессии
 
         user = await self.user_service.get_by_id(user_id)
-        if not user:
+        if not user or not user.user_id:
             raise ValueError('User with provided ID not found in the database')
 
         now = datetime.now(timezone.utc)
@@ -104,11 +107,11 @@ class UserProgressService:
                     f'User {user.user_id} WAS frozen '
                     f'until {user.session_frozen_until}, {now=}'
                 )
-                await _start_new_session()
+                user = await _start_new_session()
 
         if user.session_started_at is None:
             logger.info(f'New user {user.user_id} first session started')
-            await _start_new_session()
+            user = await _start_new_session()
             current_session_time = timedelta(0)
         else:
             current_session_time = now - user.session_started_at
@@ -121,8 +124,14 @@ class UserProgressService:
         current_exercises_limit = current_set_limit * EXERCISES_IN_SET
 
         if current_exercises_limit - user.exercises_get_in_session <= 0:
-            user.session_frozen_until = now + DELTA_BETWEEN_SESSIONS
-            await self.user_service.update(user)
+            if not user or not user.user_id:
+                raise ValueError(
+                    'User with provided ID not found in the database'
+                )
+            user = await self.user_service.update(
+                user_id=user.user_id,
+                session_frozen_until=now + DELTA_BETWEEN_SESSIONS,
+            )
 
             BACKEND_USER_METRICS['full_sessions'].labels(
                 cohort=user.cohort,
@@ -145,11 +154,18 @@ class UserProgressService:
         if user.exercises_get_in_set < EXERCISES_IN_SET:
             try:
                 next_exercise = await _get_next_exercise(user)
-
                 user.exercises_get_in_session += 1
                 user.exercises_get_in_set += 1
-                user.last_exercise_at = now
-                await self.user_service.update(user)
+                if not user or not user.user_id:
+                    raise ValueError(
+                        'User with provided ID not found in the database'
+                    )
+                user = await self.user_service.update(
+                    user_id=user.user_id,
+                    exercises_get_in_session=user.exercises_get_in_session,
+                    exercises_get_in_set=user.exercises_get_in_set,
+                    last_exercise_at=now,
+                )
 
                 BACKEND_EXERCISE_METRICS['sent'].labels(
                     exercise_type=next_exercise.exercise_type.value,
@@ -170,7 +186,15 @@ class UserProgressService:
         else:
             user.exercises_get_in_set = 0
             user.errors_count_in_set = 0
-            await self.user_service.update(user)
+            if not user or not user.user_id:
+                raise ValueError(
+                    'User with provided ID not found in the database'
+                )
+            user = await self.user_service.update(
+                user_id=user.user_id,
+                exercises_get_in_set=0,
+                errors_count_in_set=0,
+            )
 
             return NextAction(
                 action=UserAction.praise_and_next_set,

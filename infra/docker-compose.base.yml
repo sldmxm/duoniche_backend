@@ -62,7 +62,6 @@ services:
     command:
       - '--storage.tsdb.retention.time=30d'
       - '--storage.tsdb.retention.size=10GB'
-      - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
     volumes:
@@ -70,6 +69,8 @@ services:
       - prometheus_data:/prometheus
     networks:
       - duo_shared
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   nginx:
     image: nginx:alpine

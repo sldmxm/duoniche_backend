@@ -15,7 +15,12 @@ scrape_configs:
   - job_name: 'node_exporter_host'
     static_configs:
       - targets: [ 'host.docker.internal:9100' ]
+    params:
+      collect[]:
+        - cpu
+        - meminfo
+        - filesystem
 
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
+#  - job_name: 'prometheus'
+#    static_configs:
+#      - targets: ['localhost:9090']

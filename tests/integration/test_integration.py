@@ -17,12 +17,13 @@ pytestmark = pytest.mark.asyncio(scope='function')
 async def test_get_new_exercise(
     client,
     db_sample_exercise,
-    sample_exercise_request_data,
+    user_id_for_sample_request,
     add_db_user,
 ):
     """Test getting a new exercise from the API."""
-    response = await client.post(
-        '/api/v1/exercises/next/', json=sample_exercise_request_data
+
+    response = await client.get(
+        f'/api/v1/users/{user_id_for_sample_request}/next_action/',
     )
 
     assert response.status_code == 200
@@ -119,10 +120,10 @@ async def test_multiple_requests_same_user(
     4. Get a new exercise.
     """
     # 1. Get a new exercise
-    new_exercise_request = user_data.get('user_id')
+    user_id = user_data.get('user_id')
 
-    response = await client.post(
-        '/api/v1/exercises/next/', json=new_exercise_request
+    response = await client.get(
+        f'/api/v1/users/{user_id}/next_action/',
     )
     assert response.status_code == 200
 
@@ -149,8 +150,8 @@ async def test_multiple_requests_same_user(
     # 3.5 New exercise
     second_exercise = db_sample_exercise
 
-    response = await client.post(
-        '/api/v1/exercises/next/', json=new_exercise_request
+    response = await client.get(
+        f'/api/v1/users/{user_id}/next_action/',
     )
 
     assert response.status_code == 200
@@ -168,7 +169,7 @@ async def test_concurrent_requests(
     client,
     user_data,
     db_sample_exercise,
-    sample_exercise_request_data,
+    user_id_for_sample_request,
     request_data_correct_answer_for_sample_exercise,
     add_db_correct_exercise_answer,
     async_engine,
@@ -196,6 +197,7 @@ async def test_concurrent_requests(
             async_session.add(db_user)
             await async_session.commit()
             await async_session.refresh(db_user)
+            user_id = db_user.user_id
             await asyncio.sleep(0.1)
         except Exception as e:
             print(f'Error in user_task for user {telegram_id}: {str(e)}')
@@ -204,9 +206,8 @@ async def test_concurrent_requests(
             await async_session.close()
 
         try:
-            response = await client.post(
-                '/api/v1/exercises/next/',
-                json=db_user.user_id,
+            response = await client.get(
+                f'/api/v1/users/{user_id}/next_action/',
             )
 
             assert response.status_code == 200
@@ -286,10 +287,9 @@ async def test_validation_cache_multiple_requests(
     called once.
     """
     # Get a new exercise
-    new_exercise_request = add_db_user.user_id
-
-    response = await client.post(
-        '/api/v1/exercises/next/', json=new_exercise_request
+    user_id = add_db_user.user_id
+    response = await client.get(
+        f'/api/v1/users/{user_id}/next_action/',
     )
     assert response.status_code == 200
     exercise_data = response.json()

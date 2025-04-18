@@ -12,7 +12,6 @@ from fastapi.routing import APIRoute
 
 from app.api.dependencies import (
     get_exercise_service,
-    get_user_progress_service,
     get_user_service,
 )
 from app.api.errors import NotFoundError
@@ -20,66 +19,16 @@ from app.api.schemas.answer import (
     ChooseSentenceAnswerSchema,
     FillInTheBlankAnswerSchema,
 )
-from app.api.schemas.exercise import ExerciseSchema
-from app.api.schemas.next_action_result import NextActionSchema
 from app.api.schemas.validation_result import ValidationResultSchema
 from app.core.entities.exercise import Exercise
-from app.core.entities.next_action_result import NextAction
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
-from app.core.services.user_progress import UserProgressService
 from app.core.value_objects.answer import (
     create_answer_model_validate,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(route_class=APIRoute)
-
-
-@router.post(
-    '/next/',
-    response_model=NextActionSchema,
-    response_model_exclude_none=True,
-    summary='Get next action for user',
-    description='Usually get or create a next exercise for the user',
-)
-async def get_or_create_next_exercise(
-    user_progress_service: Annotated[
-        UserProgressService, Depends(get_user_progress_service)
-    ],
-    user_id: Annotated[int, Body(description='User ID')],
-) -> NextActionSchema:
-    """
-    Get next action for user.
-    Usually get or create a next exercise for the user.
-
-    Returns a 404 error if no suitable exercise is found.
-    """
-    try:
-        next_action: NextAction = await user_progress_service.get_next_action(
-            user_id=user_id,
-        )
-        output = NextActionSchema(
-            exercise=(
-                ExerciseSchema.model_validate(
-                    next_action.exercise.model_dump()
-                )
-                if next_action.exercise
-                else None
-            ),
-            action=next_action.action,
-            message=next_action.message,
-            pause=next_action.pause,
-        )
-        return output
-
-    except ValueError as e:
-        logger.error(f'Invalid parameter value: {str(e)}')
-
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f'Invalid parameter value: {str(e)}',
-        ) from e
 
 
 @router.post(

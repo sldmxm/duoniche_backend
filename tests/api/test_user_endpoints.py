@@ -77,7 +77,9 @@ async def test_get_user_by_telegram_id_success(
     add_db_user,
 ):
     """Test getting a user by telegram_id."""
-    response = await client.get(f'/api/v1/users/{user.telegram_id}')
+    response = await client.get(
+        f'/api/v1/users/by-telegram-id/{user.telegram_id}'
+    )
     assert response.status_code == 200
     response_data = response.json()
     assert response_data['user_id'] == add_db_user.user_id
@@ -91,7 +93,7 @@ async def test_get_user_by_telegram_id_success(
 @pytest.mark.asyncio
 async def test_get_user_by_telegram_id_not_found(client: AsyncClient):
     """Test getting a non-existent user by telegram_id."""
-    response = await client.get('/api/v1/users/99999')
+    response = await client.get('/api/v1/users/by-telegram-id/99999')
     assert response.status_code == 404
     assert response.json()['detail'] == 'User not found'
 
@@ -147,3 +149,45 @@ async def test_update_user_by_telegram_id_not_found(client: AsyncClient):
     response = await client.put('/api/v1/users/157', json=user_data)
     assert response.status_code == 404
     assert response.json()['detail'] == 'User 157 does not exist'
+
+
+@pytest.mark.asyncio
+async def test_get_new_exercise_success(
+    client,
+    user_id_for_sample_request,
+    db_sample_exercise,
+    add_db_user,
+):
+    """Test successful retrieval of a new exercise."""
+    user_id = user_id_for_sample_request
+    response = await client.get(
+        f'/api/v1/users/{user_id}/next_action/',
+    )
+
+    assert response.status_code == 200
+    assert (
+        response.json()['exercise']['exercise_id']
+        == db_sample_exercise.exercise_id
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_new_exercise_bad_request(
+    client,
+    user_data,
+    add_db_user,
+):
+    """Test validation with invalid parameters."""
+    response = await client.get(
+        '/api/v1/users/TEST/next_action/',
+    )
+    assert response.status_code == 422
+    assert (
+        response.json()['detail'][0]['msg']
+        == 'Input should be a valid integer, '
+        'unable to parse string as an integer'
+    )
+    assert response.json()['detail'][0]['loc'] == [
+        'path',
+        'user_id',
+    ]

@@ -6,45 +6,6 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio
-async def test_get_new_exercise_success(
-    client,
-    sample_exercise_request_data,
-    db_sample_exercise,
-    add_db_user,
-):
-    """Test successful retrieval of a new exercise."""
-    response = await client.post(
-        '/api/v1/exercises/next/', json=sample_exercise_request_data
-    )
-
-    assert response.status_code == 200
-    assert (
-        response.json()['exercise']['exercise_id']
-        == db_sample_exercise.exercise_id
-    )
-
-
-@pytest.mark.asyncio
-async def test_get_new_exercise_bad_request(
-    client,
-    user_data,
-    add_db_user,
-):
-    """Test validation with invalid parameters."""
-    response = await client.post(
-        '/api/v1/exercises/next/', json={'user_id': 'test'}
-    )
-    assert response.status_code == 422
-    assert (
-        response.json()['detail'][0]['msg']
-        == 'Input should be a valid integer'
-    )
-    assert response.json()['detail'][0]['loc'] == [
-        'body',
-    ]
-
-
-@pytest.mark.asyncio
 async def test_validate_exercise_success(
     client,
     request_data_correct_answer_for_sample_exercise,
@@ -104,14 +65,13 @@ async def test_validate_exercise_bad_request(
 async def test_validate_exercise_bad_request_answer_type(
     client,
     user_data,
-    sample_exercise_request_data,
+    user_id_for_sample_request,
     db_sample_exercise,
     add_db_user,
 ):
     """Test validation with invalid parameters."""
-    response_exercise = await client.post(
-        '/api/v1/exercises/next/',
-        json=sample_exercise_request_data,
+    response_exercise = await client.get(
+        f"/api/v1/users/{user_data['user_id']}/next_action/",
     )
 
     exercise_json = response_exercise.json()

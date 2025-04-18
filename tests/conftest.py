@@ -247,7 +247,7 @@ async def db_sample_exercise(db_session: AsyncSession, user):
 
 
 @pytest.fixture
-def sample_exercise_request_data(user_data, db_sample_exercise):
+def user_id_for_sample_request(user_data, db_sample_exercise):
     return user_data['user_id']
 
 

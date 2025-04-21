@@ -26,6 +26,17 @@ class ExerciseTopic(Enum):
     FOOD = 'food'
     SPORTS = 'sports'
     WEATHER = 'weather'
+    WORK = 'work'
+    HEALTH = 'health'
+    EMERGENCIES = 'emergencies'
+    RELATIONSHIPS = 'relationships'
+    TECH = 'tech'
+    EDUCATION = 'education'
+    ENTERTAINMENT = 'entertainment'
+    MONEY = 'money'
+    HOME = 'home'
+    TRANSPORT = 'transport'
+    RESTAURANT = 'restaurant'
     # Add more topics here...
 
     @classmethod

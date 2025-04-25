@@ -16,7 +16,7 @@ from app.api.dependencies import (
 )
 from app.api.errors import NotFoundError
 from app.api.schemas.answer import (
-    ChooseSentenceAnswerSchema,
+    ChooseAnswerSchema,
     FillInTheBlankAnswerSchema,
 )
 from app.api.schemas.validation_result import ValidationResultSchema
@@ -49,7 +49,7 @@ async def validate_exercise_attempt(
     answer: Annotated[
         Union[
             FillInTheBlankAnswerSchema,
-            ChooseSentenceAnswerSchema,
+            ChooseAnswerSchema,
         ],
         Body(description="User's answer"),
     ],

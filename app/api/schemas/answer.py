@@ -11,5 +11,5 @@ class FillInTheBlankAnswerSchema(AnswerSchema):
     words: List[str] = Field(description='List of words')
 
 
-class ChooseSentenceAnswerSchema(AnswerSchema):
-    sentence: str = Field(description='Sentence')
+class ChooseAnswerSchema(AnswerSchema):
+    answer: str = Field(description='Sentence')

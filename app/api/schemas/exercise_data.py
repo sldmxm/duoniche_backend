@@ -12,6 +12,10 @@ class ChooseSentenceExerciseDataSchema(BaseModel):
     sentences: List[str] = Field(description='List of sentences')
 
 
+class ChooseAccentExerciseDataSchema(BaseModel):
+    accents: List[str] = Field(description='List of accents')
+
+
 class MultipleChoiceExerciseDataSchema(BaseModel):
     question: str = Field(description='Question')
     options: List[str] = Field(description='Options')

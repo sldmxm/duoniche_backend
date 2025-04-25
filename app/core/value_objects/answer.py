@@ -27,20 +27,6 @@ class Answer(BaseModel):
         return self.model_dump_json()
 
 
-class SentenceConstructionAnswer(Answer):
-    sentences: List[str] = Field(description='Constructed sentences')
-
-    def get_answer_text(self) -> str:
-        return '; '.join(self.sentences)
-
-
-class MultipleChoiceAnswer(Answer):
-    option_index: Set[int] = Field(description='Selected choice')
-
-    def get_answer_text(self) -> str:
-        return ';'.join(sorted(list(map(str, self.option_index))))
-
-
 class FillInTheBlankAnswer(Answer):
     words: List[str] = Field(description='Words to fill in the blanks')
 
@@ -53,6 +39,27 @@ class ChooseSentenceAnswer(Answer):
 
     def get_answer_text(self) -> str:
         return self.sentence
+
+
+class ChooseAccentAnswer(Answer):
+    accent: str = Field(description='Chosen accent')
+
+    def get_answer_text(self) -> str:
+        return self.accent
+
+
+class SentenceConstructionAnswer(Answer):
+    sentences: List[str] = Field(description='Constructed sentences')
+
+    def get_answer_text(self) -> str:
+        return '; '.join(self.sentences)
+
+
+class MultipleChoiceAnswer(Answer):
+    option_index: Set[int] = Field(description='Selected choice')
+
+    def get_answer_text(self) -> str:
+        return ';'.join(sorted(list(map(str, self.option_index))))
 
 
 class TranslationAnswer(Answer):
@@ -70,6 +77,7 @@ def create_answer_model_validate(data: Dict[str, Any]) -> Answer:
     answer_types: Dict[str, Type[Answer]] = {
         'FillInTheBlankAnswer': FillInTheBlankAnswer,
         'ChooseSentenceAnswer': ChooseSentenceAnswer,
+        'ChooseAccentAnswer': ChooseAccentAnswer,
         'SentenceConstructionAnswer': SentenceConstructionAnswer,
         'MultipleChoiceAnswer': MultipleChoiceAnswer,
         'TranslationAnswer': TranslationAnswer,

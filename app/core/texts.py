@@ -53,12 +53,22 @@ EXERCISES_TASKS_TRANSLATIONS: Dict[ExerciseType, Dict[str, str]] = {
         'ru': 'Заполни пробелы в предложении',
         'en': 'Fill in the blanks in the sentence',
         'bg': 'Попълнете празните места в изречението',
+        'tr': 'Cümledeki boşlukları doldurun',
+        'uk': 'Заповніть пропуски у реченні',
     },
     ExerciseType.CHOOSE_SENTENCE: {
         'ru': 'Выбери корректное предложение',
         'en': 'Choose the correct sentence',
         'bg': 'Изберете правилното изречение',
         'tr': 'Doğru cümleyi seçin',
+        'uk': 'Виберіть правильне речення',
+    },
+    ExerciseType.CHOOSE_ACCENT: {
+        'ru': 'Выбери правильное ударение',
+        'en': 'Choose the correct accent',
+        'bg': 'Изберете правилния акцент',
+        'tr': 'Doğru aksanı seçin',
+        'uk': 'Виберіть правильний акцент',
     },
 }
 

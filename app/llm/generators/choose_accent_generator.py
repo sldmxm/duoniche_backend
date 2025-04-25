@@ -36,12 +36,23 @@ class ChooseAccentGenerator(ExerciseGenerator):
         )
 
         prompt_template = (
-            'You are helping {user_language}-speaking learner '
-            'of {exercise_language} language.\n'
-            'Generate the exercise: '
-            '1 correct {exercise_language} word with common '
-            'misspellings in accent and '
-            'two common misspellings accents in this word.\n'
+            'You are helping a {user_language}-speaking learner '
+            'of the {exercise_language} language.\n'
+            "Generate an exercise 'Choose the correct stress':\n"
+            '- Select *only* a commonly mispronounced {exercise_language} '
+            'word with incorrect stress placement.\n'
+            '- Provide exactly one correct variant with stress marked '
+            '*only* on the stressed **vowel** using UPPER vowel letter.\n'
+            '- Provide two incorrect but plausible stress variants \n'
+            '- Use real common mistakes made by non-native speakers.\n'
+            'Do not place stress on consonants.\n'
+            # "Example 1 for learning Russian:\n"
+            # "correct_accent: \"молокО\"\n"
+            # "incorrect_accents: [\"мОлоко\", \"молОко\"]\n"
+            # "\n"
+            # "Example 2 for learning Bulgarian:\n"
+            # "correct_accent: \"автобУс\"\n"
+            # "incorrect_accents: [\"Автобус\", \"автОбус\"]\n"
             'Language level: {language_level}\n'
             'Topic: {topic}\n'
             '{format_instructions}'
@@ -73,10 +84,10 @@ class ChooseAccentGenerator(ExerciseGenerator):
             topic=topic,
             exercise_text=get_text(ExerciseType.CHOOSE_ACCENT, user_language),
             data=ChooseAccentExerciseData(
-                accents=accents,
+                options=accents,
             ),
         )
-        correct_answer = ChooseAccentAnswer(accent=parsed_data.correct_accent)
+        correct_answer = ChooseAccentAnswer(answer=parsed_data.correct_accent)
 
         exercise_for_quality_assessor = ExerciseForAssessor(
             text=exercise.exercise_text,

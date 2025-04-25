@@ -57,7 +57,7 @@ async def test_validate_exercise_bad_request(
         'body',
         'answer',
         'FillInTheBlankAnswerSchema',
-        'type',
+        'exercise_type',
     ]
 
 
@@ -93,5 +93,5 @@ async def test_validate_exercise_bad_request_answer_type(
         'body',
         'answer',
         'FillInTheBlankAnswerSchema',
-        'type',
+        'exercise_type',
     ]

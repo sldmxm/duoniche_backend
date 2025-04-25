@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class AnswerSchema(BaseModel):
-    type: str = Field(description='Type of answer')
+    exercise_type: str = Field(description='Type of answer')
 
 
 class FillInTheBlankAnswerSchema(AnswerSchema):

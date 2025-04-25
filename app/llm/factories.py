@@ -33,7 +33,7 @@ class ExerciseGeneratorFactory:
                 f"Exercise type '{exercise_type}' is not implemented"
             )
 
-        return generator_class(llm_service)  # type: ignore
+        return generator_class(llm_service)  # type: ignore[abstract]
 
 
 class ExerciseValidatorFactory:
@@ -56,4 +56,4 @@ class ExerciseValidatorFactory:
                 f'is not implemented'
             )
 
-        return validator_class(llm_service)  # type: ignore
+        return validator_class(llm_service)  # type: ignore[abstract]

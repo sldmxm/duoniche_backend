@@ -59,21 +59,21 @@ class FillInTheBlankExerciseData(ExerciseData):
 
 
 class ChooseSentenceExerciseData(ExerciseData):
-    sentences: List[str] = Field(description='List of sentences')
+    options: List[str] = Field(description='List of sentences')
 
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         if not isinstance(answer, ChooseSentenceAnswer):
             raise ValueError('Answer must be ChooseSentenceAnswer')
-        return answer.sentence
+        return answer.answer
 
 
 class ChooseAccentExerciseData(ExerciseData):
-    accents: List[str] = Field(description='List of accents')
+    options: List[str] = Field(description='List of accents')
 
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         if not isinstance(answer, ChooseAccentAnswer):
             raise ValueError('Answer must be ChooseAccentAnswer')
-        return answer.accent
+        return answer.answer
 
 
 class SentenceConstructionExerciseData(ExerciseData):

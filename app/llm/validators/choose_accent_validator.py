@@ -55,7 +55,7 @@ class ChooseAccentValidator(ExerciseValidator):
             'user_language': user_language,
             'exercise_language': target_language,
             'topic': exercise.topic.value,
-            'options': exercise.data.accents,
+            'options': exercise.data.options,
             'user_answer': exercise.data.get_answered_by_user_exercise_text(
                 answer
             ),

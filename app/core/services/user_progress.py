@@ -39,11 +39,17 @@ class UserProgressService:
                 user.language_level
             )
             logger.debug(
-                f'Next exercise level: {language_level} for user {user}'
+                f'Next exercise level: {language_level} '
+                f'for user {user.user_id}'
             )
             exercise_type = ExerciseType.get_next_type()
+            logger.debug(
+                f'Next exercise type: {exercise_type} for user {user.user_id}'
+            )
             topic = ExerciseTopic.get_next_topic()
-            logger.debug(f'Next exercise topic: {topic} for user {user}')
+            logger.debug(
+                f'Next exercise topic: {topic} for user {user.user_id}'
+            )
             exercise = await self.exercise_service.get_next_exercise(
                 user=user,
                 exercise_type=exercise_type,
@@ -51,6 +57,9 @@ class UserProgressService:
                 language_level=language_level,
             )
             if not exercise:
+                logger.warning(
+                    f'No suitable exercise found for user {user_id}'
+                )
                 raise ValueError(
                     'No suitable exercise found for the provided criteria'
                 )

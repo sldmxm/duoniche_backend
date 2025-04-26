@@ -20,17 +20,11 @@ class ExerciseType(Enum):
                 1,
                 2,
             ],
-            # weights=[0.60, 0.30, 0.10,],
             weights=[
-                0.0,
-                0.5,
-                0.5,
+                0.60,
+                0.30,
+                0.10,
             ],
-            # weights=[
-            #     0.60,
-            #     0.40,
-            #     0,
-            # ],
         )[0]
         return types[choice]
 

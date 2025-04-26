@@ -185,7 +185,8 @@ class UserProgressService:
                     exercise=next_exercise,
                     action=UserAction.new_exercise,
                 )
-            except ValueError:
+            except ValueError as e:
+                logger.error(f'Error getting new exercise: {e}')
                 return NextAction(
                     action=UserAction.error,
                     message=get_text(

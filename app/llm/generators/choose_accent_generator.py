@@ -46,13 +46,6 @@ class ChooseAccentGenerator(ExerciseGenerator):
             '- Provide two incorrect but plausible stress variants \n'
             '- Use real common mistakes made by non-native speakers.\n'
             'Do not place stress on consonants.\n'
-            # "Example 1 for learning Russian:\n"
-            # "correct_accent: \"молокО\"\n"
-            # "incorrect_accents: [\"мОлоко\", \"молОко\"]\n"
-            # "\n"
-            # "Example 2 for learning Bulgarian:\n"
-            # "correct_accent: \"автобУс\"\n"
-            # "incorrect_accents: [\"Автобус\", \"автОбус\"]\n"
             'Language level: {language_level}\n'
             'Topic: {topic}\n'
             '{format_instructions}'

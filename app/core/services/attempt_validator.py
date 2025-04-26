@@ -6,6 +6,7 @@ from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
+from app.core.enums import ExerciseType
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.repositories.exercise_answer import ExerciseAnswerRepository
@@ -133,19 +134,46 @@ class AttemptValidator:
             )
             logger.debug(f'Pre saved user attempt {pre_saved_attempt}')
 
-            if db_answer and db_answer.feedback_language != user.user_language:
-                new_answer = await self.copy_answer_translate_feedback(
-                    db_answer, user.user_language
+            if exercise.exercise_type == ExerciseType.CHOOSE_ACCENT:
+                repo = self.exercise_answer_repository
+                correct_answers = (
+                    await repo.get_correct_answers_by_exercise_id(
+                        exercise.exercise_id
+                    )
+                )
+                feedback = ', '.join(
+                    [a.answer.get_answer_text() for a in correct_answers]
+                )
+                incorrect_answer = ExerciseAnswer(
+                    answer_id=None,
+                    exercise_id=exercise.exercise_id,
+                    answer=answer,
+                    is_correct=False,
+                    feedback=feedback,
+                    feedback_language=user.user_language,
+                    created_at=datetime.now(timezone.utc),
+                    created_by=f'auto:{user.user_id}',
+                )
+                new_answer = await self.exercise_answer_repository.save(
+                    incorrect_answer
                 )
             else:
-                new_answer = await self.llm_validate_and_save_new_answer(
-                    user, exercise, answer
-                )
-
-                if new_answer.feedback_language != user.user_language:
+                if (
+                    db_answer
+                    and db_answer.feedback_language != user.user_language
+                ):
                     new_answer = await self.copy_answer_translate_feedback(
-                        new_answer, user.user_language
+                        db_answer, user.user_language
                     )
+                else:
+                    new_answer = await self.llm_validate_and_save_new_answer(
+                        user, exercise, answer
+                    )
+
+                    if new_answer.feedback_language != user.user_language:
+                        new_answer = await self.copy_answer_translate_feedback(
+                            new_answer, user.user_language
+                        )
 
             if pre_saved_attempt.attempt_id is None:
                 raise ValueError(

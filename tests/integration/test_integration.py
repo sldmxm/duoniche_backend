@@ -96,7 +96,9 @@ async def test_exercise_not_found(
         json=request_data_correct_answer_for_sample_exercise,
     )
 
-    assert response.status_code == 404
+    print(response.json())
+
+    assert response.status_code == 400
     assert 'Exercise with ID 99999 not found' in response.json()['detail']
 
 

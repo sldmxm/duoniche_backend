@@ -6,17 +6,32 @@ from typing import List
 class ExerciseType(Enum):
     FILL_IN_THE_BLANK = 'fill_in_the_blank'
     CHOOSE_SENTENCE = 'choose_sentence'
+    CHOOSE_ACCENT = 'choose_accent'
     SENTENCE_CONSTRUCTION = 'sentence_construction'
     MULTIPLE_CHOICE = 'multiple_choice'
     TRANSLATION = 'translation'
 
     @classmethod
     def get_next_type(cls) -> 'ExerciseType':
-        # TODO: Переписать логику после появления типов
-        if random.random() < 0.75:
-            return ExerciseType.FILL_IN_THE_BLANK
-        else:
-            return ExerciseType.CHOOSE_SENTENCE
+        types: List[ExerciseType] = list(ExerciseType)
+        choice = random.choices(
+            population=[
+                0,
+                1,
+                2,
+            ],
+            weights=[
+                0.60,
+                0.30,
+                0.10,
+            ],
+        )[0]
+        return types[choice]
+
+
+class ExerciseUiTemplates(Enum):
+    FILL_IN_THE_BLANK = 'fill_in_the_blank'
+    CHOOSE = 'choose'
 
 
 class ExerciseTopic(Enum):

@@ -21,6 +21,7 @@ dependencies = [
     "prometheus-client>=0.21.1",
     "sentry-sdk>=2.25.1",
     "uvicorn>=0.34.0",
+    "lxml>=5.4.0",
 ]
 
 [dependency-groups]

@@ -27,6 +27,27 @@ class Answer(BaseModel):
         return self.model_dump_json()
 
 
+class FillInTheBlankAnswer(Answer):
+    words: List[str] = Field(description='Words to fill in the blanks')
+
+    def get_answer_text(self) -> str:
+        return ';'.join(self.words)
+
+
+class ChooseSentenceAnswer(Answer):
+    answer: str = Field(description='Chosen sentence')
+
+    def get_answer_text(self) -> str:
+        return self.answer
+
+
+class ChooseAccentAnswer(Answer):
+    answer: str = Field(description='Chosen accent')
+
+    def get_answer_text(self) -> str:
+        return self.answer
+
+
 class SentenceConstructionAnswer(Answer):
     sentences: List[str] = Field(description='Constructed sentences')
 
@@ -41,20 +62,6 @@ class MultipleChoiceAnswer(Answer):
         return ';'.join(sorted(list(map(str, self.option_index))))
 
 
-class FillInTheBlankAnswer(Answer):
-    words: List[str] = Field(description='Words to fill in the blanks')
-
-    def get_answer_text(self) -> str:
-        return ';'.join(self.words)
-
-
-class ChooseSentenceAnswer(Answer):
-    sentence: str = Field(description='Chosen sentence')
-
-    def get_answer_text(self) -> str:
-        return self.sentence
-
-
 class TranslationAnswer(Answer):
     translation: str = Field(description='Translated text')
 
@@ -63,13 +70,29 @@ class TranslationAnswer(Answer):
 
 
 def create_answer_model_validate(data: Dict[str, Any]) -> Answer:
-    answer_type = data.get('type')
-    if not isinstance(answer_type, str):
-        raise ValueError('Missing or invalid "type" key in Answer data')
+    if 'type' in data:
+        answer_type = data.get('type')
+    else:
+        answer_type_by_exercise: Dict[str, str] = {
+            'fill_in_the_blank': 'FillInTheBlankAnswer',
+            'choose_sentence': 'ChooseSentenceAnswer',
+            'choose_accent': 'ChooseAccentAnswer',
+        }
+        exercise_type = data.get('exercise_type')
+        if exercise_type is not None:
+            answer_type = answer_type_by_exercise.get(exercise_type)
+        else:
+            answer_type = None
+
+    if not answer_type or not isinstance(answer_type, str):
+        raise ValueError(
+            'Missing or invalid "type"/"exercise_type" key in Answer data'
+        )
 
     answer_types: Dict[str, Type[Answer]] = {
         'FillInTheBlankAnswer': FillInTheBlankAnswer,
         'ChooseSentenceAnswer': ChooseSentenceAnswer,
+        'ChooseAccentAnswer': ChooseAccentAnswer,
         'SentenceConstructionAnswer': SentenceConstructionAnswer,
         'MultipleChoiceAnswer': MultipleChoiceAnswer,
         'TranslationAnswer': TranslationAnswer,

@@ -258,7 +258,10 @@ def request_data_correct_answer_for_sample_exercise(
     return {
         'user_id': user_data['user_id'],
         'exercise_id': db_sample_exercise.exercise_id,
-        'answer': {'type': 'FillInTheBlankAnswer', 'words': ['exercise']},
+        'answer': {
+            'exercise_type': 'fill_in_the_blank',
+            'words': ['exercise'],
+        },
     }
 
 
@@ -269,7 +272,7 @@ def request_data_incorrect_answer_for_sample_exercise(
     return {
         'user_id': user_data['user_id'],
         'exercise_id': db_sample_exercise.exercise_id,
-        'answer': {'type': 'FillInTheBlankAnswer', 'words': ['wrong']},
+        'answer': {'exercise_type': 'fill_in_the_blank', 'words': ['wrong']},
     }
 
 

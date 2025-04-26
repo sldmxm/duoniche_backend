@@ -1,9 +1,16 @@
 from typing import Any, Dict, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
-from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
+from app.core.enums import (
+    ExerciseTopic,
+    ExerciseType,
+    ExerciseUiTemplates,
+    LanguageLevel,
+)
+from app.core.exercise_templates import EXERCISE_UI_TEMPLATE_MAP
 from app.core.value_objects.exercise import (
+    ChooseAccentExerciseData,
     ChooseSentenceExerciseData,
     FillInTheBlankExerciseData,
     MultipleChoiceExerciseData,
@@ -20,14 +27,21 @@ class Exercise(BaseModel):
     language_level: LanguageLevel = Field(description='Language level')
     topic: ExerciseTopic = Field(description='Topic')
     exercise_text: str = Field(description='Exercise text')
+    ui_template: Optional[ExerciseUiTemplates] = None
 
     data: Union[
         FillInTheBlankExerciseData,
         ChooseSentenceExerciseData,
+        ChooseAccentExerciseData,
         SentenceConstructionExerciseData,
         MultipleChoiceExerciseData,
         TranslationExerciseData,
     ] = Field(description='Exercise data')
+
+    @model_validator(mode='after')
+    def assign_ui_template(self) -> 'Exercise':
+        self.ui_template = EXERCISE_UI_TEMPLATE_MAP[self.exercise_type]
+        return self
 
     # TODO: Сделать такое же в Answer и поменять в модулях
     @classmethod

@@ -4,30 +4,17 @@ from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 
 from app.core.entities.exercise import Exercise
-from app.core.value_objects.answer import Answer, ChooseSentenceAnswer
-from app.core.value_objects.exercise import ChooseSentenceExerciseData
+from app.core.value_objects.answer import Answer, ChooseAccentAnswer
+from app.core.value_objects.exercise import ChooseAccentExerciseData
 from app.llm.interfaces.exercise_validator import ExerciseValidator
 from app.llm.llm_base import BaseLLMService
 
 
 class AttemptValidationResponse(BaseModel):
     is_correct: bool = Field(description='Whether the answer is correct')
-    feedback: str = Field(
-        description='If answer is correct, empty string. '
-        'Else answer the question "What\'s wrong with this user answer?" '
-        '- clearly shortly explain grammatical, spelling, '
-        'syntactic, semantic or other errors.\n '
-        'Explain to the user exactly what he did wrong, never '
-        'using the argument "because that\'s how you should have answered"'
-        'Warning! Don\'t write "Wrong answer", "Try again" '
-        'or other phrases that provide '
-        'no practical benefit to the user.\n'
-        "Warning! Feedback for the user must be in user's language.\n"
-        'Be concise.'
-    )
 
 
-class ChooseSentenceValidator(ExerciseValidator):
+class ChooseAccentValidator(ExerciseValidator):
     def __init__(self, llm_service: BaseLLMService):
         self.llm_service = llm_service
 
@@ -38,15 +25,12 @@ class ChooseSentenceValidator(ExerciseValidator):
         exercise: Exercise,
         answer: Answer,
     ) -> Tuple[bool, str]:
-        """Validate user's answer to the choose-the-sentence exercise."""
-        if not isinstance(answer, ChooseSentenceAnswer):
-            raise NotImplementedError(
-                'Only ChooseSentenceAnswer is implemented'
-            )
+        if not isinstance(answer, ChooseAccentAnswer):
+            raise NotImplementedError('Only ChooseAccentAnswer is implemented')
 
-        if not isinstance(exercise.data, ChooseSentenceExerciseData):
+        if not isinstance(exercise.data, ChooseAccentExerciseData):
             raise NotImplementedError(
-                'Only ChooseSentenceExerciseData is implemented'
+                'Only ChooseAccentExerciseData is implemented'
             )
 
         parser = PydanticOutputParser(
@@ -57,11 +41,9 @@ class ChooseSentenceValidator(ExerciseValidator):
             'You are helping {user_language}-speaking learner '
             'of {exercise_language} language.\n'
             'You need to check if the user has selected '
-            'the correct {exercise_language}-sentence from the list.\n'
+            'the correct accent from the list.\n'
             'Options: {options}\n'
             'User answer: {user_answer}\n'
-            'If answer is incorrect, feedback must be '
-            'in {user_language} language.\n'
             '{format_instructions}'
         )
 
@@ -84,4 +66,4 @@ class ChooseSentenceValidator(ExerciseValidator):
             input_data=request_data,
         )
 
-        return validation_result.is_correct, validation_result.feedback
+        return validation_result.is_correct, ''

@@ -1,4 +1,5 @@
 from app.core.enums import ExerciseType
+from app.llm.generators.choose_accent_generator import ChooseAccentGenerator
 from app.llm.generators.choose_sentence_generator import (
     ChooseSentenceGenerator,
 )
@@ -6,6 +7,7 @@ from app.llm.generators.fill_in_blank_generator import FillInTheBlankGenerator
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
 from app.llm.interfaces.exercise_validator import ExerciseValidator
 from app.llm.llm_base import BaseLLMService
+from app.llm.validators.choose_accent_validator import ChooseAccentValidator
 from app.llm.validators.choose_sentence_validator import (
     ChooseSentenceValidator,
 )
@@ -21,6 +23,7 @@ class ExerciseGeneratorFactory:
         generators = {
             ExerciseType.FILL_IN_THE_BLANK: FillInTheBlankGenerator,
             ExerciseType.CHOOSE_SENTENCE: ChooseSentenceGenerator,
+            ExerciseType.CHOOSE_ACCENT: ChooseAccentGenerator,
             # Add new exercise types here
         }
 
@@ -30,7 +33,7 @@ class ExerciseGeneratorFactory:
                 f"Exercise type '{exercise_type}' is not implemented"
             )
 
-        return generator_class(llm_service)
+        return generator_class(llm_service)  # type: ignore[abstract]
 
 
 class ExerciseValidatorFactory:
@@ -42,6 +45,7 @@ class ExerciseValidatorFactory:
         validators = {
             ExerciseType.FILL_IN_THE_BLANK: FillInTheBlankValidator,
             ExerciseType.CHOOSE_SENTENCE: ChooseSentenceValidator,
+            ExerciseType.CHOOSE_ACCENT: ChooseAccentValidator,
             # Add new exercise types here
         }
 
@@ -52,4 +56,4 @@ class ExerciseValidatorFactory:
                 f'is not implemented'
             )
 
-        return validator_class(llm_service)
+        return validator_class(llm_service)  # type: ignore[abstract]

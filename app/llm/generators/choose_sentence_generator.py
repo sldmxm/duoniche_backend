@@ -88,11 +88,11 @@ class ChooseSentenceGenerator(ExerciseGenerator):
                 ExerciseType.CHOOSE_SENTENCE, user_language
             ),
             data=ChooseSentenceExerciseData(
-                sentences=sentences,
+                options=sentences,
             ),
         )
         correct_answer = ChooseSentenceAnswer(
-            sentence=parsed_data.correct_sentence
+            answer=parsed_data.correct_sentence
         )
 
         exercise_for_quality_assessor = ExerciseForAssessor(

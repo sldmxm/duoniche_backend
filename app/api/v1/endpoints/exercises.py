@@ -16,7 +16,7 @@ from app.api.dependencies import (
 )
 from app.api.errors import NotFoundError
 from app.api.schemas.answer import (
-    ChooseSentenceAnswerSchema,
+    ChooseAnswerSchema,
     FillInTheBlankAnswerSchema,
 )
 from app.api.schemas.validation_result import ValidationResultSchema
@@ -49,7 +49,7 @@ async def validate_exercise_attempt(
     answer: Annotated[
         Union[
             FillInTheBlankAnswerSchema,
-            ChooseSentenceAnswerSchema,
+            ChooseAnswerSchema,
         ],
         Body(description="User's answer"),
     ],
@@ -73,6 +73,12 @@ async def validate_exercise_attempt(
         if not exercise:
             raise NotFoundError(f'Exercise with ID {exercise_id} not found')
 
+        if exercise.exercise_type.value != answer.exercise_type:
+            raise ValueError(
+                f'Answer type does not for exercise: {answer=}, '
+                f'{exercise.exercise_type=}'
+            )
+
         user_answer = create_answer_model_validate(answer.model_dump())
 
         exercise_attempt = await exercise_service.validate_exercise_attempt(
@@ -91,7 +97,7 @@ async def validate_exercise_attempt(
             feedback=exercise_attempt.feedback,
         )
 
-    except ValueError as e:
+    except (ValueError, NotFoundError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f'Invalid parameter value: {str(e)}',

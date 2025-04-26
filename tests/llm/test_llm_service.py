@@ -62,7 +62,7 @@ async def test_generate_choose_sentence_exercise(user):
         return
 
     assert exercise.exercise_type == ExerciseType.CHOOSE_SENTENCE
-    assert exercise.data.sentences
+    assert exercise.data.options
     assert isinstance(answer, ChooseSentenceAnswer)
 
 

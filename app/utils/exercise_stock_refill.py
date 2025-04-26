@@ -16,6 +16,7 @@ from app.db.repositories.exercise_answers import (
 )
 from app.llm.llm_service import LLMService
 from app.metrics import BACKEND_EXERCISE_METRICS
+from app.utils.choose_accent_generator import ChooseAccentGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -31,21 +32,27 @@ async def generate_and_save_exercise(
 ) -> None:
     try:
         async with exercise_generation_semaphore:
-            llm_service = LLMService()
-
             language_level = LanguageLevel.get_next_exercise_level(
                 DEFAULT_LANGUAGE_LEVEL
             )
             exercise_type = ExerciseType.get_next_type()
             topic = ExerciseTopic.get_next_topic()
-
-            exercise, answer = await llm_service.generate_exercise(
-                user_language=user_language,
-                target_language=target_language,
-                language_level=language_level,
-                exercise_type=exercise_type,
-                topic=topic,
-            )
+            if exercise_type == ExerciseType.CHOOSE_ACCENT:
+                if target_language == 'Bulgarian':
+                    res = await ChooseAccentGenerator.generate(
+                        user_language='ru'
+                    )
+                    if res:
+                        exercise, answer = res
+            else:
+                llm_service = LLMService()
+                exercise, answer = await llm_service.generate_exercise(
+                    user_language=user_language,
+                    target_language=target_language,
+                    language_level=language_level,
+                    exercise_type=exercise_type,
+                    topic=topic,
+                )
             async with async_session_maker() as session:
                 exercise_repository = SQLAlchemyExerciseRepository(session)
                 exercise_answer_repository = (
@@ -65,7 +72,6 @@ async def generate_and_save_exercise(
                         created_at=datetime.now(timezone.utc),
                     )
                     await exercise_answer_repository.save(right_answer)
-
                 await session.commit()
 
     except Exception as e:

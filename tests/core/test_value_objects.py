@@ -113,7 +113,8 @@ def test_answer_model_validate_invalid_type():
 
 def test_answer_model_validate_missing_type():
     with pytest.raises(
-        ValueError, match='Missing or invalid "type" key in Answer data'
+        ValueError,
+        match='Missing or invalid "type"/"exercise_type" key in Answer data',
     ):
         create_answer_model_validate({})
 

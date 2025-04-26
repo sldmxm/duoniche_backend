@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.core.consts import EXERCISE_FILL_IN_THE_BLANK_BLANKS
 from app.core.value_objects.answer import (
     Answer,
+    ChooseAccentAnswer,
     ChooseSentenceAnswer,
     FillInTheBlankAnswer,
 )
@@ -58,12 +59,21 @@ class FillInTheBlankExerciseData(ExerciseData):
 
 
 class ChooseSentenceExerciseData(ExerciseData):
-    sentences: List[str] = Field(description='List of sentences')
+    options: List[str] = Field(description='List of sentences')
 
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         if not isinstance(answer, ChooseSentenceAnswer):
             raise ValueError('Answer must be ChooseSentenceAnswer')
-        return answer.sentence
+        return answer.answer
+
+
+class ChooseAccentExerciseData(ExerciseData):
+    options: List[str] = Field(description='List of accents')
+
+    def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
+        if not isinstance(answer, ChooseAccentAnswer):
+            raise ValueError('Answer must be ChooseAccentAnswer')
+        return answer.answer
 
 
 class SentenceConstructionExerciseData(ExerciseData):
@@ -95,6 +105,7 @@ def create_exercise_data_model_validate(data: Dict[str, Any]) -> ExerciseData:
     exercise_data_types: Dict[str, Type[ExerciseData]] = {
         'FillInTheBlankExerciseData': FillInTheBlankExerciseData,
         'ChooseSentenceExerciseData': ChooseSentenceExerciseData,
+        'ChooseAccentExerciseData': ChooseAccentExerciseData,
         'SentenceConstructionExerciseData': SentenceConstructionExerciseData,
         'MultipleChoiceExerciseData': MultipleChoiceExerciseData,
         'TranslationExerciseData': TranslationExerciseData,

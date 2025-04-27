@@ -114,6 +114,7 @@ class ChooseAccentGenerator:
                 <= len(ChooseAccentGenerator.get_vowels_indexes(word))
                 <= MAX_VOWELS
                 and len(meaning) > MIN_MEANING_LEN
+                and 'остар.' not in meaning.lower()
             )
             if is_ok:
                 exercise = Exercise(

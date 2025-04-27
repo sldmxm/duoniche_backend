@@ -99,6 +99,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
     async def get_any_new_exercise(
         self,
         user: User,
+        exercise_type: Optional[ExerciseType],
     ) -> Optional[Exercise]:
         answered_exercise_exists_subquery = select(literal(1)).where(
             and_(
@@ -107,14 +108,18 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             )
         )
 
+        conditions = [
+            ExerciseModel.exercise_language == user.target_language,
+            not_(exists(answered_exercise_exists_subquery)),
+        ]
+        if exercise_type is not None:
+            conditions.append(
+                ExerciseModel.exercise_type == exercise_type.value
+            )
+
         stmt = (
             select(ExerciseModel)
-            .where(
-                and_(
-                    ExerciseModel.exercise_language == user.target_language,
-                    not_(exists(answered_exercise_exists_subquery)),
-                )
-            )
+            .where(and_(*conditions))
             .order_by(func.random())
             .limit(1)
         )

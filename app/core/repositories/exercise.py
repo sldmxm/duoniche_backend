@@ -34,6 +34,7 @@ class ExerciseRepository(AsyncRepository[Exercise]):
     async def get_any_new_exercise(
         self,
         user: User,
+        exercise_type: Optional[ExerciseType],
     ) -> Optional[Exercise]:
         raise NotImplementedError
 

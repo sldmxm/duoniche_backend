@@ -50,21 +50,23 @@ class ExerciseGetter:
             )
             return exercise
 
-        any_new_exercise = await self.exercise_repository.get_any_new_exercise(
-            user=user,
-        )
-        if any_new_exercise:
-            any_new_exercise.exercise_text = get_text(
-                any_new_exercise.exercise_type,
-                user.user_language,
+        for is_same_type in (True, False):
+            any_new_exercise = (
+                await self.exercise_repository.get_any_new_exercise(
+                    user=user,
+                    exercise_type=exercise_type if is_same_type else None,
+                )
             )
-            logger.info(
-                f'New exercise from db but random level and topic'
-                f'({exercise_type.value}, {topic.value}, '
-                f'{language_level.value}): '
-                f'{any_new_exercise}'
-            )
-            return any_new_exercise
+            if any_new_exercise:
+                any_new_exercise.exercise_text = get_text(
+                    any_new_exercise.exercise_type,
+                    user.user_language,
+                )
+                logger.info(
+                    f'New exercise from db, but not 100% as requested: '
+                    f'{any_new_exercise}'
+                )
+                return any_new_exercise
 
         exercise_for_repetition = await self.get_exercise_for_repetition(user)
         if exercise_for_repetition:

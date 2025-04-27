@@ -7,9 +7,9 @@ class ExerciseType(Enum):
     FILL_IN_THE_BLANK = 'fill_in_the_blank'
     CHOOSE_SENTENCE = 'choose_sentence'
     CHOOSE_ACCENT = 'choose_accent'
-    SENTENCE_CONSTRUCTION = 'sentence_construction'
-    MULTIPLE_CHOICE = 'multiple_choice'
-    TRANSLATION = 'translation'
+    # SENTENCE_CONSTRUCTION = 'sentence_construction'
+    # MULTIPLE_CHOICE = 'multiple_choice'
+    # TRANSLATION = 'translation'
 
     @classmethod
     def get_next_type(cls) -> 'ExerciseType':

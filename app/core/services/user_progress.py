@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from app.core.consts import (
     DELTA_BETWEEN_SESSIONS,
     EXERCISES_IN_SET,
+    MAX_SESSIONS_LENGTH,
     RENEWING_SET_PERIOD,
     SETS_IN_SESSION,
 )
@@ -124,6 +125,10 @@ class UserProgressService:
             current_session_time = timedelta(0)
         else:
             current_session_time = now - user.session_started_at
+
+        if current_session_time > MAX_SESSIONS_LENGTH:
+            user = await _start_new_session()
+            current_session_time = timedelta(0)
 
         renewed_sets = int(
             current_session_time.total_seconds()

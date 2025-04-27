@@ -16,6 +16,7 @@ DELTA_BETWEEN_SESSIONS = timedelta(hours=3)
 RENEWING_SET_PERIOD = timedelta(
     seconds=int(DELTA_BETWEEN_SESSIONS.total_seconds() // SETS_IN_SESSION)
 )
+MAX_SESSIONS_LENGTH = timedelta(hours=3)
 
 # there is no point longer, it will already be in the db
 # and no new ones will be started.

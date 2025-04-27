@@ -5,21 +5,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
-from app.core.value_objects.answer import SentenceConstructionAnswer
+from app.core.value_objects.answer import ChooseSentenceAnswer
 from app.db.models import Exercise, ExerciseAnswer, ExerciseAttempt
 
 pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-def sentence_construction_answer():
-    return SentenceConstructionAnswer(sentences=['Test sentence'])
+def choose_sentence_answer():
+    return ChooseSentenceAnswer(answer='Test sentence')
 
 
 @pytest.fixture
 def exercise_data():
     return {
-        'exercise_type': ExerciseType.SENTENCE_CONSTRUCTION.value,
+        'exercise_type': ExerciseType.CHOOSE_SENTENCE.value,
         'exercise_language': 'en',
         'language_level': LanguageLevel.B1.value,
         'topic': ExerciseTopic.GENERAL.value,
@@ -40,13 +40,13 @@ async def exercise(async_session: AsyncSession, exercise_data):
 
 @pytest_asyncio.fixture
 async def exercise_answer(
-    async_session: AsyncSession, exercise, sentence_construction_answer
+    async_session: AsyncSession, exercise, choose_sentence_answer
 ):
     async with async_session as session:
         db_exercise_answer = ExerciseAnswer(
             exercise_id=exercise.exercise_id,
-            answer=sentence_construction_answer.model_dump(),
-            answer_text=sentence_construction_answer.get_answer_text(),
+            answer=choose_sentence_answer.model_dump(),
+            answer_text=choose_sentence_answer.get_answer_text(),
             is_correct=True,
             feedback='Good!',
         )
@@ -61,14 +61,14 @@ async def exercise_attempt(
     async_session: AsyncSession,
     exercise,
     exercise_answer,
-    sentence_construction_answer,
+    choose_sentence_answer,
     add_db_user,
 ):
     async with async_session as session:
         db_exercise_attempt = ExerciseAttempt(
             user_id=add_db_user.user_id,
             exercise_id=exercise.exercise_id,
-            answer=sentence_construction_answer.model_dump(),
+            answer=choose_sentence_answer.model_dump(),
             is_correct=True,
             feedback='Good!',
             answer_id=exercise_answer.answer_id,
@@ -88,7 +88,7 @@ async def test_exercise_model(async_session: AsyncSession, exercise):
         # Read
         loaded = await session.get(Exercise, db_exercise.exercise_id)
         assert loaded is not None
-        assert loaded.exercise_type == ExerciseType.SENTENCE_CONSTRUCTION.value
+        assert loaded.exercise_type == ExerciseType.CHOOSE_SENTENCE.value
 
         # Delete
         await session.delete(db_exercise)

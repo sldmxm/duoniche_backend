@@ -226,23 +226,29 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         count = result.scalar_one_or_none() or 0
         return count
 
-    async def count_untouched_exercises_by_language(self) -> dict[str, int]:
+    async def count_untouched_exercises(
+        self,
+    ) -> dict[str, dict[str, int]]:
         attempts_exist = select(literal(1)).where(
             ExerciseAttemptModel.exercise_id == ExerciseModel.exercise_id
         )
 
         stmt = (
             select(
-                ExerciseModel.exercise_language, func.count().label('count')
+                ExerciseModel.exercise_language,
+                ExerciseModel.exercise_type,
+                func.count().label('count'),
             )
             .where(not_(exists(attempts_exist)))
-            .group_by(ExerciseModel.exercise_language)
+            .group_by(
+                ExerciseModel.exercise_language, ExerciseModel.exercise_type
+            )
         )
 
         result = await self.session.execute(stmt)
 
-        counts_by_language = {
-            row.exercise_language: row.count for row in result
-        }
+        counts: dict[str, dict[str, int]] = {}
+        for lang, ex_type, count in result:
+            counts.setdefault(lang, {})[ex_type] = count
 
-        return counts_by_language
+        return counts

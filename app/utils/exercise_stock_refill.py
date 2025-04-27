@@ -20,7 +20,7 @@ from app.utils.choose_accent_generator import ChooseAccentGenerator
 
 logger = logging.getLogger(__name__)
 
-MIN_EXERCISE_COUNT_TO_GENERATE_NEW = 10
+MIN_EXERCISE_COUNT_TO_GENERATE_NEW = 5
 EXERCISE_REFILL_INTERVAL = 60
 
 exercise_generation_semaphore = asyncio.Semaphore(5)
@@ -29,13 +29,13 @@ exercise_generation_semaphore = asyncio.Semaphore(5)
 async def generate_and_save_exercise(
     user_language: str,
     target_language: str,
+    exercise_type: ExerciseType,
 ) -> None:
     try:
         async with exercise_generation_semaphore:
             language_level = LanguageLevel.get_next_exercise_level(
                 DEFAULT_LANGUAGE_LEVEL
             )
-            exercise_type = ExerciseType.get_next_type()
             topic = ExerciseTopic.get_next_topic()
             if exercise_type == ExerciseType.CHOOSE_ACCENT:
                 if target_language == 'Bulgarian':
@@ -83,29 +83,36 @@ async def exercise_stock_refill():
         tasks = []
         async with async_session_maker() as session:
             exercise_repo = SQLAlchemyExerciseRepository(session)
-            available_count = (
-                await exercise_repo.count_untouched_exercises_by_language()
-            )
+            available_count = await exercise_repo.count_untouched_exercises()
             if not available_count:
-                available_count = {DEFAULT_TARGET_LANGUAGE: 0}
-            for exercise_language, count in available_count.items():
-                logger.info(
-                    f'Untouched exercises: Language: {exercise_language}, '
-                    f'Count: {count}'
-                )
-                BACKEND_EXERCISE_METRICS['untouched_exercises'].labels(
-                    exercise_language=exercise_language
-                ).set(count)
+                available_count = {DEFAULT_TARGET_LANGUAGE: {}}
+            all_exercise_types = list(ExerciseType)
+            for exercise_language in available_count:
+                for exercise_type in all_exercise_types:
+                    count = available_count.get(exercise_language, {}).get(
+                        exercise_type.value, 0
+                    )
 
-                if count < MIN_EXERCISE_COUNT_TO_GENERATE_NEW:
-                    to_generate = MIN_EXERCISE_COUNT_TO_GENERATE_NEW - count
-                    for _ in range(to_generate):
-                        tasks.append(
-                            generate_and_save_exercise(
-                                user_language=DEFAULT_USER_LANGUAGE,
-                                target_language=exercise_language,
-                            )
+                    logger.info(
+                        f'Untouched exercises: Language: {exercise_language}, '
+                        f'Type: {exercise_type.value} Count: {count}'
+                    )
+                    BACKEND_EXERCISE_METRICS['untouched_exercises'].labels(
+                        exercise_language=exercise_language
+                    ).set(count)
+
+                    if count < MIN_EXERCISE_COUNT_TO_GENERATE_NEW:
+                        to_generate = (
+                            MIN_EXERCISE_COUNT_TO_GENERATE_NEW - count
                         )
+                        for _ in range(to_generate):
+                            tasks.append(
+                                generate_and_save_exercise(
+                                    user_language=DEFAULT_USER_LANGUAGE,
+                                    target_language=exercise_language,
+                                    exercise_type=exercise_type,
+                                )
+                            )
 
         if tasks:
             results = await asyncio.gather(*tasks, return_exceptions=True)

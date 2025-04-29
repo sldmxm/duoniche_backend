@@ -79,6 +79,7 @@ services:
     logging: *json_logging
     environment:
       - WEBHOOK_PATH_BG=${WEBHOOK_PATH_BG}
+      - MINIAPP_PATH_BG=${MINIAPP_PATH_BG}
       - HOST=${HOST}
     volumes:
       - ./nginx/:/etc/nginx/templates

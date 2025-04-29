@@ -41,6 +41,7 @@ jobs:
           REDIS_HOST=redis
           SENTRY_DSN=${{ secrets.SENTRY_DSN }}
           WEBHOOK_PATH_BG=${{ secrets.WEBHOOK_PATH_BG }}
+          MINIAPP_PATH_BG=${{ secrets.MINIAPP_PATH_BG }}
           HOST=${{ secrets.HOST }}
           BACKEND_IMAGE_TAG=ghcr.io/${{ github.repository }}:${{ github.sha }}
           EOF

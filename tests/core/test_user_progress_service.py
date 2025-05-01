@@ -18,7 +18,7 @@ from app.core.repositories.user import UserRepository
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
 from app.core.services.user_progress import UserProgressService
-from app.core.texts import Messages, get_text
+from app.core.texts import MESSAGES_TRANSLATIONS, Messages, get_text
 
 
 # --- Mocks for Dependencies ---
@@ -76,7 +76,9 @@ async def test_get_next_action_returns_limit_reached_when_session_frozen(
     mock_user_service.get_by_id.assert_awaited_once_with(user.user_id)
     assert result.action == UserAction.limit_reached
     assert result.message == get_text(
-        Messages.LIMIT_REACHED, user.user_language
+        Messages.LIMIT_REACHED,
+        language_code=user.user_language,
+        pause_time=str(timedelta(seconds=59 * 60 + 59)).split('.')[0],
     )
 
 
@@ -160,8 +162,11 @@ async def test_get_next_action_returns_praise_and_next_set_when_set_completed(
         errors_count_in_set=0,
     )
     assert result.action == UserAction.praise_and_next_set
-    assert result.message == get_text(
-        Messages.PRAISE_AND_NEXT_SET, user.user_language
+    assert (
+        result.message
+        in MESSAGES_TRANSLATIONS[Messages.PRAISE_AND_NEXT_SET][
+            user.user_language
+        ]
     )
     assert user.exercises_get_in_set == 0
     assert user.errors_count_in_set == 0
@@ -202,8 +207,9 @@ async def test_get_next_action_returns_congratulations_and_wait(
     assert result.action == UserAction.congratulations_and_wait
     assert result.message == get_text(
         Messages.CONGRATULATIONS_AND_WAIT,
-        user.user_language,
+        language_code=user.user_language,
         exercise_num=EXERCISES_IN_SESSION,
+        pause_time=str(DELTA_BETWEEN_SESSIONS).split('.')[0],
     )
     assert result.pause == DELTA_BETWEEN_SESSIONS
     assert user.exercises_get_in_session == EXERCISES_IN_SESSION

@@ -106,10 +106,16 @@ class UserProgressService:
                     language_level=user.language_level.value,
                 ).inc()
 
+                delta_to_next_session = str(
+                    user.session_frozen_until - now
+                ).split('.')[0]
+
                 return NextAction(
                     action=UserAction.limit_reached,
                     message=get_text(
-                        Messages.LIMIT_REACHED, user.user_language
+                        Messages.LIMIT_REACHED,
+                        language_code=user.user_language,
+                        pause_time=delta_to_next_session,
                     ),
                 )
             else:
@@ -159,8 +165,9 @@ class UserProgressService:
                 action=UserAction.congratulations_and_wait,
                 message=get_text(
                     Messages.CONGRATULATIONS_AND_WAIT,
-                    user.user_language,
+                    language_code=user.user_language,
                     exercise_num=user.exercises_get_in_session,
+                    pause_time=str(DELTA_BETWEEN_SESSIONS).split('.')[0],
                 ),
                 pause=DELTA_BETWEEN_SESSIONS,
             )

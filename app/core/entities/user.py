@@ -19,6 +19,8 @@ class User(BaseModel):
     language_level: LanguageLevel = DEFAULT_LANGUAGE_LEVEL
     user_language: str = DEFAULT_USER_LANGUAGE
     target_language: str = DEFAULT_TARGET_LANGUAGE
+    telegram_data: Optional[dict] = None
+
     cohort: Optional[str] = None
     plan: Optional[str] = None
 

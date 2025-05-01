@@ -9,6 +9,9 @@ class UserCreate(BaseModel):
     name: Optional[str] = Field(description='Name')
     user_language: str = Field(description='User language')
     target_language: str = Field(description='Target language')
+    telegram_data: Optional[dict] = Field(
+        description='Telegram data', default=None
+    )
 
 
 class UserUpdate(BaseModel):
@@ -18,6 +21,9 @@ class UserUpdate(BaseModel):
     name: Optional[str] = Field(description='Name')
     user_language: str = Field(description='User language')
     target_language: str = Field(description='Target language')
+    telegram_data: Optional[dict] = Field(
+        description='Telegram data', default=None
+    )
 
 
 class UserResponse(BaseModel):
@@ -26,6 +32,7 @@ class UserResponse(BaseModel):
     username: Optional[str] = Field(description='Username')
     name: Optional[str] = Field(description='Name')
     user_language: str = Field(description='User language')
+    telegram_data: Optional[dict] = Field(description='Telegram data')
     target_language: str = Field(description='Target language')
     language_level: Optional[str] = Field(description='User language level')
     cohort: Optional[str] = Field(description='Cohort')

@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -22,6 +23,8 @@ class User(Base):
     user_language: Mapped[str] = mapped_column(String, default='ru')
     target_language: Mapped[str] = mapped_column(String, default='bg')
     language_level: Mapped[str] = mapped_column(String, default='A2')
+    telegram_data: Mapped[dict] = mapped_column(JSONB, nullable=True)
+
     cohort: Mapped[str] = mapped_column(String, nullable=True)
     plan: Mapped[str] = mapped_column(String, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

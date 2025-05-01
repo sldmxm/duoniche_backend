@@ -17,6 +17,7 @@ async def test_get_or_create_user_new_user(
         'name': 'New User',
         'user_language': 'en',
         'target_language': 'en',
+        'telegram_data': {'test': 'test'},
     }
     response = await client.put('/api/v1/users/', json=user_data)
     assert response.status_code == 200
@@ -49,6 +50,7 @@ async def test_get_or_create_user_existing_user(
         'name': 'Updated User',
         'user_language': 'ru',
         'target_language': 'ru',
+        'telegram_data': {'test': 'test'},
     }
     response = await client.put('/api/v1/users/', json=user_data)
     assert response.status_code == 200
@@ -110,6 +112,7 @@ async def test_update_user_by_telegram_id_success(
         'name': 'Updated User',
         'user_language': 'ru',
         'target_language': 'ru',
+        'telegram_data': {'test': 'test'},
     }
     response = await client.put(
         f'/api/v1/users/{user.user_id}', json=user_data
@@ -145,6 +148,7 @@ async def test_update_user_by_telegram_id_not_found(client: AsyncClient):
         'user_language': 'ru',
         'target_language': 'ru',
         'language_level': 'B1',
+        'telegram_data': {'test': 'test'},
     }
     response = await client.put('/api/v1/users/157', json=user_data)
     assert response.status_code == 404

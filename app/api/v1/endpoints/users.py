@@ -75,6 +75,7 @@ async def update_user_by_user_id(
             username=user.username,
             name=user.name,
             user_language=user.user_language,
+            telegram_data=user.telegram_data,
         )
     except ValueError as e:
         raise NotFoundError(detail=str(e)) from e

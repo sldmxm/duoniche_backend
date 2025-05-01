@@ -49,3 +49,10 @@ markers = [
     'asyncio: mark test as using asyncio',
 ]
 asyncio_default_fixture_loop_scope = 'function'
+
+[tool.uv]
+dev-dependencies = [
+    "pytest-asyncio>=0.26.0",
+    "pytest-mock>=3.14.0",
+    "pytest>=8.3.5",
+]

@@ -83,8 +83,6 @@ services:
       - HOST=${HOST}
     volumes:
       - ./nginx/:/etc/nginx/templates
-    depends_on:
-      - backend
     networks:
       - duo_shared
 

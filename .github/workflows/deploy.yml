@@ -18,9 +18,13 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           docker info
 
-      - name: Set image tag
-        id: vars
-        run: echo "tag=ghcr.io/${{ github.repository }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+      - name: Build and push Docker image
+        id: build-image
+        run: |
+          TAG="ghcr.io/${{ github.repository }}:${{ github.sha }}"
+          docker build -t $TAG .
+          docker push $TAG
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Create .env file
         run: |
@@ -43,7 +47,7 @@ jobs:
           WEBHOOK_PATH_BG=${{ secrets.WEBHOOK_PATH_BG }}
           MINIAPP_PATH_BG=${{ secrets.MINIAPP_PATH_BG }}
           HOST=${{ secrets.HOST }}
-          BACKEND_IMAGE_TAG=ghcr.io/${{ github.repository }}:${{ github.sha }}
+          BACKEND_IMAGE_TAG=${{ steps.build-image.outputs.tag }}
           EOF
 
       - name: Create .htpasswd file
@@ -51,25 +55,6 @@ jobs:
           cat << 'EOF' > ./infra/nginx/.htpasswd
           ${{ secrets.HTPASSWD }}
           EOF
-
-      - name: Check if image exists locally
-        run: |
-          if ! docker image inspect ${{ steps.vars.outputs.tag }} > /dev/null 2>&1; then
-            cp ./infra/.env ./.env
-            docker build -t ${{ steps.vars.outputs.tag }} .
-            docker push ${{ steps.vars.outputs.tag }}
-          else
-            echo "Image already exists, skipping build"
-          fi
-
-      - name: Remove old version on remote server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST_IP }}
-          username: ${{ secrets.USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            sudo rm -rf /home/${{ secrets.USER }}/app
 
       - name: Uploading project files to remote server
         uses: appleboy/scp-action@master
@@ -89,7 +74,10 @@ jobs:
           script: |
             sudo docker network create duo_shared
             cd /home/${{ secrets.USER }}/app/infra
+
             echo "Logging in to GHCR on remote server..."
             echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
             echo "Login completed."
-            sudo docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up --force-recreate --build -d
+
+            sudo docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up --build -d
+            sudo docker restart duo_nginx

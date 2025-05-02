@@ -20,11 +20,11 @@ class ExerciseForAssessor(BaseModel):
 
 
 class LLMExerciseReview(BaseModel):
-    issues: list[str] = Field(
-        ...,
-        description='Empty if is valid. '
-        'Description of the problems found in English. Be concise.',
-    )
+    # issues: list[str] = Field(
+    #     ...,
+    #     description='Empty if is valid. '
+    #     'Description of the problems found in English. Be concise.',
+    # )
     is_valid: bool = Field(
         ..., description='True if the exercise is correct and useful'
     )
@@ -65,7 +65,7 @@ class ExerciseQualityAssessor(BaseLLMService):
                 llm_model=self.model.model_name,
             ).inc()
             message = (
-                f'Exercise rejected by LLM: {review.issues}. '
+                # f'Exercise rejected by LLM: {review.issues}. '
                 f'Exercise: {exercise}'
             )
             raise ValueError(message)

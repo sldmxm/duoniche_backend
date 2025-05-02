@@ -121,13 +121,13 @@ BACKEND_LLM_METRICS = {
         'exercise_creation_time_seconds',
         'Time spent for creation an exercise by LLM',
         labelnames=backend_llm_metrics_label_names,
-        buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
+        buckets=(3, 5, 7, 9, 10, 11, 12, 13, 14, 15),
     ),
     'verification_time': Histogram(
         'exercise_verification_time_seconds',
         "Time spent for verification a user's solution by LLM",
         labelnames=backend_llm_metrics_label_names,
-        buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
+        buckets=(3, 5, 7, 9, 10, 11, 12, 13, 14, 15),
     ),
     'exercises_verified': Counter(
         'exercise_verified_total',

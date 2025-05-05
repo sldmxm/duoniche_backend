@@ -52,6 +52,11 @@ class ExerciseTopic(Enum):
     HOME = 'home'
     TRANSPORT = 'transport'
     RESTAURANT = 'restaurant'
+    FAMILY = 'family'
+    PHARMACY = 'pharmacy'
+    NATURE = 'NATURE'
+    ANIMALS = 'ANIMALS'
+    KIDS = 'KIDS'
     # Add more topics here...
 
     @classmethod

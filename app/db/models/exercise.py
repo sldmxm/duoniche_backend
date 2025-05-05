@@ -18,6 +18,14 @@ class Exercise(Base):
     exercise_id: Mapped[int] = mapped_column(
         Integer, primary_key=True, index=True, autoincrement=True
     )
+    # TODO: Сделать SQLAlchemyEnum поля exercise_type, language_level, topic
+    # language_level: Mapped[LanguageLevel] = mapped_column(
+    #     SQLAlchemyEnum(
+    #         LanguageLevel, name='language_level_enum', create_type=True
+    #     ),
+    #     nullable=False,
+    #     default=DEFAULT_LANGUAGE_LEVEL,
+    # )
     exercise_type: Mapped[str] = mapped_column(String, nullable=False)
     exercise_language: Mapped[str] = mapped_column(String, nullable=False)
     language_level: Mapped[str] = mapped_column(String, nullable=False)

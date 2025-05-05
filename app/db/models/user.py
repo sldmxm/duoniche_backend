@@ -9,6 +9,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.db.models.exercise_attempt import ExerciseAttempt
+    from app.db.models.user_bot_profile import UserBotProfile
 
 
 class User(Base):
@@ -50,3 +51,12 @@ class User(Base):
     attempts: Mapped[list['ExerciseAttempt']] = relationship(
         back_populates='user', cascade='all, delete-orphan'
     )
+
+    bot_profiles: Mapped[list['UserBotProfile']] = relationship(
+        back_populates='user', cascade='all, delete-orphan'
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<User(user_id={self.user_id}, telegram_id='{self.telegram_id}')>"
+        )

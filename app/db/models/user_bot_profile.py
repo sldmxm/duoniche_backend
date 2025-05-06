@@ -13,14 +13,16 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func  # Для server_default и onupdate
 
+from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.entities.user_bot_profile import BotID, UserStatusInBot
+from app.core.enums import LanguageLevel
 from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.db.models.user import User
 
 
-class UserBotProfile(Base):
+class DBUserBotProfile(Base):
     __tablename__ = 'user_bot_profiles'
 
     user_id: Mapped[int] = mapped_column(
@@ -36,14 +38,14 @@ class UserBotProfile(Base):
         default=BotID.BG,
     )
 
-    # user_language: Mapped[str] = mapped_column(String, nullable=False)
-    # language_level: Mapped[LanguageLevel] = mapped_column(
-    #     SQLAlchemyEnum(
-    #         LanguageLevel, name='language_level_enum', create_type=True
-    #     ),
-    #     nullable=False,
-    #     default=DEFAULT_LANGUAGE_LEVEL,
-    # )
+    user_language: Mapped[str] = mapped_column(String, nullable=False)
+    language_level: Mapped[LanguageLevel] = mapped_column(
+        SQLAlchemyEnum(
+            LanguageLevel, name='language_level_enum', create_type=True
+        ),
+        nullable=False,
+        default=DEFAULT_LANGUAGE_LEVEL,
+    )
     status: Mapped[UserStatusInBot] = mapped_column(
         SQLAlchemyEnum(
             UserStatusInBot, name='user_status_in_bot_enum', create_type=True
@@ -53,18 +55,18 @@ class UserBotProfile(Base):
         index=True,
     )
     reason: Mapped[str | None] = mapped_column(String, nullable=True)
-    # exercises_get_in_session: Mapped[int] = mapped_column(Integer, default=0)
-    # exercises_get_in_set: Mapped[int] = mapped_column(Integer, default=0)
-    # errors_count_in_set: Mapped[int] = mapped_column(Integer, default=0)
-    # last_exercise_at: Mapped[datetime] = mapped_column(
-    #     DateTime(timezone=True), nullable=True
-    # )
-    # session_started_at: Mapped[datetime] = mapped_column(
-    #     DateTime(timezone=True), nullable=True
-    # )
-    # session_frozen_until: Mapped[datetime] = mapped_column(
-    #     DateTime(timezone=True), nullable=True
-    # )
+    exercises_get_in_session: Mapped[int] = mapped_column(Integer, default=0)
+    exercises_get_in_set: Mapped[int] = mapped_column(Integer, default=0)
+    errors_count_in_set: Mapped[int] = mapped_column(Integer, default=0)
+    last_exercise_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_frozen_until: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -77,7 +79,7 @@ class UserBotProfile(Base):
 
     def __repr__(self) -> str:
         return (
-            f'<UserBotProfile(user_id={self.user_id}, '
+            f'<DBUserBotProfile(user_id={self.user_id}, '
             f"bot_id='{self.bot_id.value}', "
             f"status='{self.status.value}')>"
         )

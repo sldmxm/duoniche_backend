@@ -31,9 +31,6 @@ class UserService:
         return updated_user
 
     async def get_or_create(self, user: User) -> User:
-        # TODO: Для дополнительного языка того же пользователя
-        #  заводить нового пользователя
-
         existing_user = await self.user_repository.get_by_telegram_id(
             user.telegram_id
         )

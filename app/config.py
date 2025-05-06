@@ -24,6 +24,7 @@ class Settings(BaseSettings):  # type: ignore
     openai_api_key: str = ''
     openai_main_model_name: str = ''
     openai_assessor_model_name: str = ''
+    openai_translator_model_name: str = ''
     openai_test_model_name: str = ''
     openai_temperature: float = 0.3
     openai_max_retries: int = 6
@@ -39,6 +40,7 @@ class Settings(BaseSettings):  # type: ignore
     model_config = SettingsConfigDict(
         env_file='.env',
         env_file_encoding='utf-8',
+        extra='ignore',
     )
 
 

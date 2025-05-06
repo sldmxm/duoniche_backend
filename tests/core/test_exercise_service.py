@@ -94,10 +94,20 @@ def mock_translator(mocker):
     mock = mocker.AsyncMock(spec=TranslateProvider)
 
     # Default mock behavior for translate_text
-    async def _translate(text, target_language):
+    async def _translate_text(text, target_language):
         return f'Translated to {target_language}: {text}'
 
-    mock.translate_text.side_effect = _translate
+    async def _translate_feedback(
+        feedback: str,
+        user_language: str,
+        exercise_data: str,
+        user_answer: str,
+        exercise_language: str,
+    ):
+        return f'Translated to {user_language}: {feedback}'
+
+    mock.translate_text.side_effect = _translate_text
+    mock.translate_feedback.side_effect = _translate_feedback
     return mock
 
 
@@ -368,9 +378,12 @@ class TestExerciseServiceValidation:
 
         # 3. Translation service call
         # (inside the task_func simulated by cache mock)
-        mock_translator.translate_text.assert_awaited_once_with(
-            text=db_answer_wrong_lang.feedback,
-            target_language=user.user_language,
+        mock_translator.translate_feedback.assert_awaited_once_with(
+            feedback=db_answer_wrong_lang.feedback,
+            user_language=user.user_language,
+            exercise_data=exercise.data.model_dump_json(),
+            user_answer=answer_vo.get_answer_text(),
+            exercise_language=exercise.exercise_language,
         )
 
         # 4. Save call for the *new* translated answer

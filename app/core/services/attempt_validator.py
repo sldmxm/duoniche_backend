@@ -163,17 +163,14 @@ class AttemptValidator:
                     and db_answer.feedback_language != user.user_language
                 ):
                     new_answer = await self.copy_answer_translate_feedback(
-                        db_answer, user.user_language
+                        exercise=exercise,
+                        answer=db_answer,
+                        user_language=user.user_language,
                     )
                 else:
                     new_answer = await self.llm_validate_and_save_new_answer(
                         user, exercise, answer
                     )
-
-                    if new_answer.feedback_language != user.user_language:
-                        new_answer = await self.copy_answer_translate_feedback(
-                            new_answer, user.user_language
-                        )
 
             if pre_saved_attempt.attempt_id is None:
                 raise ValueError(
@@ -292,17 +289,23 @@ class AttemptValidator:
 
     async def copy_answer_translate_feedback(
         self,
-        db_answer: ExerciseAnswer,
-        target_language: str,
+        exercise: Exercise,
+        answer: ExerciseAnswer,
+        user_language: str,
     ) -> ExerciseAnswer:
         async def _inner(
+            exercise: Exercise,
             answer: ExerciseAnswer,
             target_language: str,
         ) -> ExerciseAnswer:
             new_answer = answer.model_copy(deep=True)
             new_answer.answer_id = None
-            new_answer.feedback = await self.translator.translate_text(
-                text=answer.feedback, target_language=target_language
+            new_answer.feedback = await self.translator.translate_feedback(
+                feedback=answer.feedback,
+                user_language=user_language,
+                exercise_data=exercise.data.model_dump_json(),
+                user_answer=answer.answer.get_answer_text(),
+                exercise_language=exercise.exercise_language,
             )
             new_answer.feedback_language = target_language
             new_answer.created_at = datetime.now(timezone.utc)
@@ -314,15 +317,15 @@ class AttemptValidator:
             return saved_answer
 
         logger.info(
-            f'Begin translation process for {db_answer} '
-            f'to {target_language}'
+            f'Begin translation process for {answer} ' f'to {user_language}'
         )
-        cache_key = f'translation_{db_answer.answer_id}_{target_language}'
+        cache_key = f'translation_{answer.answer_id}_{user_language}'
         translated = await self.async_task_cache.get_or_create_task(
             key=cache_key,
             task_func=lambda: _inner(
-                db_answer,
-                target_language,
+                exercise,
+                answer,
+                user_language,
             ),
             serializer=serialize_exercise_answer,
             deserializer=deserialize_exercise_answer,

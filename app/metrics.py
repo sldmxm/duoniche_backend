@@ -183,6 +183,7 @@ async def update_user_sessions_metrics():
                 SESSION_TTL_SINCE_LAST_EXERCISE.total_seconds()
                 + UPDATE_USER_METRICS_INTERVAL
             )
+            # TODO: Переписать логику получения из UserBotProfile
             users = await user_repository.get_users_with_exercise_lately(
                 period_seconds
             )

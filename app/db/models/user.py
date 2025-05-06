@@ -9,7 +9,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.db.models.exercise_attempt import ExerciseAttempt
-    from app.db.models.user_bot_profile import UserBotProfile
+    from app.db.models.user_bot_profile import DBUserBotProfile
 
 
 class User(Base):
@@ -52,7 +52,7 @@ class User(Base):
         back_populates='user', cascade='all, delete-orphan'
     )
 
-    bot_profiles: Mapped[list['UserBotProfile']] = relationship(
+    bot_profiles: Mapped[list['DBUserBotProfile']] = relationship(
         back_populates='user', cascade='all, delete-orphan'
     )
 

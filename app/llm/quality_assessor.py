@@ -36,6 +36,10 @@ class ExerciseQualityAssessor(BaseLLMService):
         openai_api_key: str = settings.openai_api_key,
         model_name: str = settings.openai_assessor_model_name,
     ):
+        if not model_name:
+            raise ValueError(
+                'OPENAI_ASSESSOR_MODEL_NAME environment variable is not set'
+            )
         super().__init__(
             openai_api_key=openai_api_key,
             model_name=model_name,

@@ -40,6 +40,7 @@ jobs:
           OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
           OPENAI_MAIN_MODEL_NAME=${{ secrets.OPENAI_MAIN_MODEL_NAME }}
           OPENAI_ASSESSOR_MODEL_NAME=${{ secrets.OPENAI_ASSESSOR_MODEL_NAME }}
+          OPENAI_TRANSLATOR_MODEL_NAME=${{ secrets.OPENAI_TRANSLATOR_MODEL_NAME }}
           GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
           REDIS_URL="redis://redis:6379"
           REDIS_HOST=redis

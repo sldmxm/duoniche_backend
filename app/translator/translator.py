@@ -68,3 +68,13 @@ class Translator(TranslateProvider):
             error_text = f'Request error: {exc}'
             logger.error(error_text)
             raise
+
+    async def translate_feedback(
+        self,
+        feedback: str,
+        user_language: str,
+        exercise_data: str,
+        user_answer: str,
+        exercise_language: str,
+    ) -> str:
+        raise NotImplementedError

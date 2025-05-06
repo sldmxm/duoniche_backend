@@ -16,7 +16,7 @@ from app.db.repositories.exercise_attempt import (
 )
 from app.db.repositories.user import SQLAlchemyUserRepository
 from app.llm.llm_service import LLMService
-from app.translator.translator import Translator
+from app.llm.llm_translator import LLMTranslator
 
 
 def get_user_service(
@@ -37,7 +37,7 @@ def get_exercise_service(
             session
         ),
         llm_service=LLMService(),
-        translator=Translator(),
+        translator=LLMTranslator(),
     )
 
 
@@ -55,6 +55,6 @@ def get_user_progress_service(
                 session
             ),
             llm_service=LLMService(),
-            translator=Translator(),
+            translator=LLMTranslator(),
         ),
     )

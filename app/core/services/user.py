@@ -38,7 +38,7 @@ class UserService:
             logger.info(f'User tg_id={user.telegram_id} already exists')
             return existing_user
         logger.info(f'User tg_id={user.telegram_id} does not exist.')
-        new_user = await self.user_repository.save(user)
+        new_user = await self.user_repository.create(user)
 
         BACKEND_USER_METRICS['new'].labels(
             cohort=new_user.cohort,

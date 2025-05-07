@@ -192,7 +192,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         return await self._to_entity(db_exercise)
 
     @override
-    async def save(self, exercise: Exercise) -> Exercise:
+    async def create(self, exercise: Exercise) -> Exercise:
         db_exercise = await self._to_db_model(exercise)
         self.session.add(db_exercise)
         await self.session.commit()

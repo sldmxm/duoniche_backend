@@ -17,7 +17,7 @@ class ExerciseRepository(AsyncRepository[Exercise]):
         raise NotImplementedError
 
     @abstractmethod
-    async def save(self, exercise: Exercise) -> Exercise:
+    async def create(self, exercise: Exercise) -> Exercise:
         raise NotImplementedError
 
     @abstractmethod

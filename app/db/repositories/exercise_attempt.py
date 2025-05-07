@@ -84,7 +84,7 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
         return self._to_entity(attempt)
 
     @override
-    async def save(
+    async def create(
         self, exercise_attempt: ExerciseAttemptEntity
     ) -> ExerciseAttemptEntity:
         db_attempt = ExerciseAttempt(

@@ -3,14 +3,24 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.dependencies import get_user_progress_service, get_user_service
+from app.api.dependencies import (
+    get_user_bot_profile_service,
+    get_user_progress_service,
+    get_user_service,
+)
 from app.api.errors import NotFoundError
 from app.api.schemas.exercise import ExerciseSchema
 from app.api.schemas.next_action_result import NextActionSchema
 from app.api.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.api.schemas.user_status import (
+    ReportBlockResponse,
+    UserBlockReportPayload,
+)
 from app.core.entities.next_action_result import NextAction
 from app.core.entities.user import User
+from app.core.entities.user_bot_profile import BotID
 from app.core.services.user import UserService
+from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_progress import UserProgressService
 
 logger = logging.getLogger(__name__)
@@ -123,3 +133,36 @@ async def get_next_action(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f'Invalid parameter value: {str(e)}',
         ) from e
+
+
+@router.post(
+    '/{user_id}/bots/{bot_id}/block/',
+    response_model=ReportBlockResponse,
+    summary='Set bot as blocked by user',
+    description='Set bot as blocked by user',
+)
+async def block_bot(
+    user_bot_profile_service: Annotated[
+        UserBotProfileService, Depends(get_user_bot_profile_service)
+    ],
+    user_service: Annotated[UserService, Depends(get_user_service)],
+    user_id: int,
+    bot_id: str,
+    report: UserBlockReportPayload,
+):
+    user = await user_service.get_by_id(user_id)
+    if not user or user.telegram_id != report.telegram_id:
+        raise NotFoundError(detail='User not found')
+    try:
+        bot = BotID(bot_id)
+        await user_bot_profile_service.mark_user_blocked(
+            user_id=user_id, bot_id=bot, reason=report.reason
+        )
+    except ValueError as e:
+        logger.error(f'Invalid parameter value: {str(e)}')
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f'Invalid parameter value: {str(e)}',
+        ) from e
+
+    return ReportBlockResponse(status='ok')

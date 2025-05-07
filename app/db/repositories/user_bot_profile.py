@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 from typing import List, Optional, override
 
 from sqlalchemy import select
@@ -8,9 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.entities.user_bot_profile import (
     BotID,
     UserBotProfile,
-    UserStatusInBot,
 )
-from app.core.enums import LanguageLevel
 from app.core.repositories.user_bot_profile_repository import (
     UserBotProfileRepository,
 )
@@ -22,6 +19,19 @@ logger = logging.getLogger(__name__)
 class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    @override
+    async def create(self, profile: UserBotProfile) -> UserBotProfile:
+        new_db_profile = DBUserBotProfile(**profile.model_dump())
+        self.session.add(new_db_profile)
+        try:
+            await self.session.commit()
+            await self.session.refresh(new_db_profile)
+        except Exception as e:
+            await self.session.rollback()
+            logger.error(f'Error creating UserBotProfile: {e}')
+            raise
+        return UserBotProfile.model_validate(new_db_profile)
 
     @override
     async def get_all_by_user_id(
@@ -47,74 +57,27 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
         return UserBotProfile.model_validate(db_profile)
 
     @override
-    async def save(self, profile: UserBotProfile) -> UserBotProfile:
-        db_profile = DBUserBotProfile(profile.model_dump())
-        self.session.add(db_profile)
-        await self.session.commit()
-        await self.session.refresh(db_profile)
-        return UserBotProfile.model_validate(db_profile)
-
-    @override
-    async def update_status(
-        self,
-        user_id: int,
-        bot_id: BotID,
-        status: UserStatusInBot,
-        reason: Optional[str],
-    ) -> UserBotProfile:
-        db_profile = await self.session.get(
-            DBUserBotProfile, (user_id, bot_id)
+    async def update(self, profile: UserBotProfile) -> UserBotProfile:
+        existing_db_profile = await self.session.get(
+            DBUserBotProfile, (profile.user_id, profile.bot_id)
         )
-        if not db_profile:
-            raise ValueError('User profile does not exist')
-        db_profile.status = status
-        db_profile.reason = reason
-        await self.session.commit()
-        await self.session.refresh(db_profile)
-        return UserBotProfile.model_validate(db_profile)
 
-    @override
-    async def update_profile(
-        self,
-        user_id: int,
-        bot_id: BotID,
-        user_language: str,
-        language_level: LanguageLevel,
-    ) -> UserBotProfile:
-        db_profile = await self.session.get(
-            DBUserBotProfile, (user_id, bot_id)
-        )
-        if not db_profile:
-            raise ValueError('User profile does not exist')
-        db_profile.user_language = user_language
-        db_profile.language_level = language_level
-        await self.session.commit()
-        await self.session.refresh(db_profile)
-        return UserBotProfile.model_validate(db_profile)
+        if not existing_db_profile:
+            raise ValueError(
+                f'Profile not found for user {profile.user_id} '
+                f'and bot {profile.bot_id}'
+            )
 
-    @override
-    async def update_session(
-        self,
-        user_id: int,
-        bot_id: BotID,
-        exercises_get_in_session: int,
-        exercises_get_in_set: int,
-        errors_count_in_set: int,
-        last_exercise_at: Optional[datetime],
-        session_started_at: Optional[datetime],
-        session_frozen_until: Optional[datetime],
-    ) -> UserBotProfile:
-        db_profile = await self.session.get(
-            DBUserBotProfile, (user_id, bot_id)
-        )
-        if not db_profile:
-            raise ValueError('User profile does not exist')
-        db_profile.exercises_get_in_session = exercises_get_in_session
-        db_profile.exercises_get_in_set = exercises_get_in_set
-        db_profile.errors_count_in_set = errors_count_in_set
-        db_profile.last_exercise_at = last_exercise_at
-        db_profile.session_started_at = session_started_at
-        db_profile.session_frozen_until = session_frozen_until
-        await self.session.commit()
-        await self.session.refresh(db_profile)
-        return UserBotProfile.model_validate(db_profile)
+        for key, value in profile.model_dump(exclude_unset=True).items():
+            setattr(existing_db_profile, key, value)
+        db_profile_to_commit = existing_db_profile
+
+        try:
+            await self.session.commit()
+            await self.session.refresh(db_profile_to_commit)
+        except Exception as e:
+            await self.session.rollback()
+            logger.error(f'Error saving UserBotProfile: {e}')
+            raise
+
+        return UserBotProfile.model_validate(db_profile_to_commit)

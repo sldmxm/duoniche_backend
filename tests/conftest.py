@@ -18,8 +18,12 @@ from sqlalchemy.ext.asyncio import (
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
+from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_progress import UserProgressService
 from app.db.repositories.user import SQLAlchemyUserRepository
+from app.db.repositories.user_bot_profile import (
+    SQLAlchemyUserBotProfileRepository,
+)
 from app.translator.translator import Translator
 
 sys.path.insert(
@@ -28,6 +32,7 @@ sys.path.insert(
 
 from app.api.dependencies import (
     get_exercise_service,
+    get_user_bot_profile_service,
     get_user_progress_service,
     get_user_service,
 )
@@ -134,21 +139,21 @@ async def user_service(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture(scope='function')
-async def user_progress_service(db_session, redis):
+async def user_bot_profile_service(db_session: AsyncSession):
+    """Create UserBotProfileService with test repositories"""
+    return UserBotProfileService(
+        profile_repo=SQLAlchemyUserBotProfileRepository(db_session)
+    )
+
+
+@pytest_asyncio.fixture(scope='function')
+async def user_progress_service(
+    db_session, redis, user_service, exercise_service
+):
     """Create ExerciseService with test repositories"""
     return UserProgressService(
-        user_service=UserService(SQLAlchemyUserRepository(db_session)),
-        exercise_service=ExerciseService(
-            exercise_repository=SQLAlchemyExerciseRepository(db_session),
-            exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
-                db_session
-            ),
-            exercise_answers_repository=SQLAlchemyExerciseAnswerRepository(
-                db_session
-            ),
-            llm_service=LLMService(),
-            translator=Translator(),
-        ),
+        user_service=user_service,
+        exercise_service=exercise_service,
     )
 
 
@@ -157,6 +162,7 @@ async def client(
     user_progress_service,
     user_service,
     exercise_service,
+    user_bot_profile_service,
 ) -> AsyncGenerator[AsyncClient, Any]:
     """Create test client with overridden dependencies"""
 
@@ -169,12 +175,18 @@ async def client(
     def override_get_exercise_service():
         return exercise_service
 
+    def override_get_user_bot_profile_service():
+        return user_bot_profile_service
+
     app.dependency_overrides[get_user_progress_service] = (
         override_get_user_progress_service
     )
     app.dependency_overrides[get_user_service] = override_get_user_service
     app.dependency_overrides[get_exercise_service] = (
         override_get_exercise_service
+    )
+    app.dependency_overrides[get_user_bot_profile_service] = (
+        override_get_user_bot_profile_service
     )
     app.state.user_progress_service = user_progress_service
     app.state.exercise_service = exercise_service

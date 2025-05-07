@@ -59,7 +59,7 @@ def mock_attempt_repo(mocker):
                 setattr(base_attempt, key, value)
         return base_attempt
 
-    mock.save.side_effect = _save_attempt
+    mock.create.side_effect = _save_attempt
     mock.update.side_effect = _update_attempt
     return mock
 
@@ -76,7 +76,7 @@ def mock_answer_repo(mocker):
             )  # Assign a semi-unique dummy ID
         return answer
 
-    mock.save.side_effect = _save_answer
+    mock.create.side_effect = _save_answer
     mock.get_all_by_user_answer.return_value = []
     return mock
 
@@ -264,8 +264,8 @@ class TestExerciseServiceValidation:
             exercise.exercise_id, answer_vo
         )
         # Should save the attempt with data from the correct DB answer
-        mock_attempt_repo.save.assert_awaited_once()
-        saved_attempt_arg = mock_attempt_repo.save.call_args[0][0]
+        mock_attempt_repo.create.assert_awaited_once()
+        saved_attempt_arg = mock_attempt_repo.create.call_args[0][0]
         assert saved_attempt_arg.is_correct is True
         assert saved_attempt_arg.feedback == db_answer_correct.feedback
         assert saved_attempt_arg.answer_id == db_answer_correct.answer_id
@@ -324,8 +324,8 @@ class TestExerciseServiceValidation:
             exercise.exercise_id, answer_vo
         )
         # Should save the attempt with data from the correct language DB answer
-        mock_attempt_repo.save.assert_awaited_once()
-        saved_attempt_arg = mock_attempt_repo.save.call_args[0][0]
+        mock_attempt_repo.create.assert_awaited_once()
+        saved_attempt_arg = mock_attempt_repo.create.call_args[0][0]
         assert saved_attempt_arg.is_correct is False
         assert saved_attempt_arg.feedback == db_answer_correct_lang.feedback
         assert saved_attempt_arg.answer_id == db_answer_correct_lang.answer_id
@@ -369,8 +369,8 @@ class TestExerciseServiceValidation:
             exercise.exercise_id, answer_vo
         )
         # 1. Initial save of the attempt (before translation)
-        mock_attempt_repo.save.assert_awaited_once()
-        initial_attempt_arg = mock_attempt_repo.save.call_args[0][0]
+        mock_attempt_repo.create.assert_awaited_once()
+        initial_attempt_arg = mock_attempt_repo.create.call_args[0][0]
         assert initial_attempt_arg.is_correct is None  # Not determined yet
         assert initial_attempt_arg.feedback is None
         assert initial_attempt_arg.answer_id is None
@@ -394,7 +394,7 @@ class TestExerciseServiceValidation:
         # A better way is to check the arguments specifically
         # for the translated answer.
         found_translated_save = False
-        for call_args in mock_answer_repo.save.call_args_list:
+        for call_args in mock_answer_repo.create.call_args_list:
             saved_answer = call_args[0][0]
             if (
                 saved_answer.created_by
@@ -459,8 +459,8 @@ class TestExerciseServiceValidation:
             exercise.exercise_id, answer_vo
         )
         # 1. Initial save of the attempt (before validation)
-        mock_attempt_repo.save.assert_awaited_once()
-        initial_attempt_arg = mock_attempt_repo.save.call_args[0][0]
+        mock_attempt_repo.create.assert_awaited_once()
+        initial_attempt_arg = mock_attempt_repo.create.call_args[0][0]
         assert initial_attempt_arg.is_correct is None
         initial_attempt_id = 123  # From mock_attempt_repo.save side_effect
 
@@ -476,7 +476,7 @@ class TestExerciseServiceValidation:
         # (inside llm_validate_and_save...)
         found_validated_save = False
         saved_answer = None
-        for call_args in mock_answer_repo.save.call_args_list:
+        for call_args in mock_answer_repo.create.call_args_list:
             saved_answer = call_args[0][0]
             if saved_answer.created_by == f'LLM:user:{user.user_id}':
                 found_validated_save = True
@@ -516,7 +516,7 @@ class TestExerciseServiceValidation:
 
         mock_llm_service.validate_attempt.return_value = False, 'Wrong!'
         mock_answer_repo.get_all_by_user_answer.return_value = []
-        mock_attempt_repo.save.return_value = ExerciseAttempt(
+        mock_attempt_repo.create.return_value = ExerciseAttempt(
             attempt_id=1,
             user_id=user.user_id,
             exercise_id=fill_in_the_blank_exercise.exercise_id,
@@ -560,7 +560,7 @@ class TestExerciseServiceValidation:
             fill_in_the_blank_exercise,
             fill_in_the_blank_answer,
         )
-        mock_attempt_repo.save.assert_awaited_once()
+        mock_attempt_repo.create.assert_awaited_once()
         mock_attempt_repo.update.assert_awaited_once()
         assert exercise_attempt1.is_correct is False
         assert exercise_attempt1.feedback == 'Wrong!'

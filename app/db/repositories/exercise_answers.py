@@ -45,7 +45,7 @@ class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
         answers = result.scalars().all()
         return [self._to_entity(answer) for answer in answers]
 
-    async def save(
+    async def create(
         self, exercise_answers: ExerciseAnswerEntity
     ) -> ExerciseAnswerEntity:
         db_answer = ExerciseAnswerModel(

@@ -71,7 +71,7 @@ class SQLAlchemyUserRepository(UserRepository):
         return self._to_entity(db_user)
 
     @override
-    async def save(self, user: User) -> User:
+    async def create(self, user: User) -> User:
         db_user = self._to_db_model(user)
         self.session.add(db_user)
         await self.session.commit()

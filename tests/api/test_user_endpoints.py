@@ -2,8 +2,13 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.consts import DEFAULT_LANGUAGE_LEVEL, DEFAULT_USER_LANGUAGE
 from app.core.entities.user import User
+from app.core.entities.user_bot_profile import BotID, UserStatusInBot
 from app.db.models.user import User as UserModel
+from app.db.models.user_bot_profile import (
+    DBUserBotProfile as UserBotProfileModel,
+)
 
 
 @pytest.mark.asyncio
@@ -195,3 +200,146 @@ async def test_get_new_exercise_bad_request(
         'path',
         'user_id',
     ]
+
+
+@pytest.mark.asyncio
+async def test_block_bot_success(
+    client: AsyncClient,
+    async_session: AsyncSession,
+    add_db_user: UserModel,
+):
+    """Test successfully blocking a bot for
+    a user with an existing active profile."""
+    user_id = add_db_user.user_id
+    bot_to_block = BotID.BG
+    bot_id_value_for_url = bot_to_block.value
+    reason = 'User blocked the bot via notifier'
+
+    payload = {'telegram_id': add_db_user.telegram_id, 'reason': reason}
+
+    response = await client.post(
+        f'/api/v1/users/{user_id}/bots/{bot_id_value_for_url}/block/',
+        json=payload,
+    )
+
+    assert response.status_code == 200, response.text
+    response_data = response.json()
+    assert response_data == {'status': 'ok'}
+
+    db_profile = await async_session.get(
+        UserBotProfileModel, (user_id, bot_to_block)
+    )
+    assert db_profile is not None
+    assert db_profile.status == UserStatusInBot.BLOCKED
+    assert db_profile.reason == reason
+    assert db_profile.user_id == user_id
+    assert db_profile.bot_id == bot_to_block
+
+
+@pytest.mark.asyncio
+async def test_block_bot_user_not_found_by_path_id(client: AsyncClient):
+    """Test blocking bot when user_id in path does not exist."""
+    non_existent_user_id = 999999
+    bot_id_value_for_url = BotID.BG.value
+    payload = {'telegram_id': '1234567', 'reason': 'Test reason'}
+
+    response = await client.post(
+        f'/api/v1/users/{non_existent_user_id}/bots/{bot_id_value_for_url}/block/',
+        json=payload,
+    )
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'User not found'
+
+
+@pytest.mark.asyncio
+async def test_block_bot_telegram_id_mismatch(
+    client: AsyncClient, add_db_user: UserModel
+):
+    """Test blocking bot when telegram_id in payload
+    mismatches user's telegram_id."""
+    user_id = add_db_user.user_id
+    correct_telegram_id = int(add_db_user.telegram_id)
+    mismatched_telegram_id = str(correct_telegram_id + 1)
+    bot_id_value_for_url = BotID.BG.value
+
+    payload = {
+        'telegram_id': mismatched_telegram_id,
+        'reason': 'Test reason with mismatched telegram_id',
+    }
+
+    response = await client.post(
+        f'/api/v1/users/{user_id}/bots/{bot_id_value_for_url}/block/',
+        json=payload,
+    )
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'User not found'
+
+
+@pytest.mark.asyncio
+async def test_block_bot_invalid_bot_id_value(
+    client: AsyncClient, add_db_user: UserModel
+):
+    """Test blocking bot with an invalid bot_id string value in URL."""
+    user_id = add_db_user.user_id
+    invalid_bot_id_value_for_url = 'INVALID_BOT_ID_STRING'
+
+    payload = {
+        'telegram_id': add_db_user.telegram_id,
+        'reason': 'Test reason with invalid bot_id',
+    }
+
+    response = await client.post(
+        f'/api/v1/users/{user_id}/bots/{invalid_bot_id_value_for_url}/block/',
+        json=payload,
+    )
+    assert response.status_code == 400
+    assert (
+        f"Invalid parameter value: '{invalid_bot_id_value_for_url}' "
+        f'is not a valid BotID' in response.json()['detail']
+    )
+
+
+@pytest.mark.asyncio
+async def test_block_bot_creates_profile_if_not_exists_and_blocks(
+    client: AsyncClient, async_session: AsyncSession, add_db_user: UserModel
+):
+    """
+    Test that blocking a bot creates a UserBotProfile with BLOCKED status
+    if it doesn't exist for that specific user_id and bot_id combination.
+    """
+    user_id = add_db_user.user_id
+    bot_to_block = BotID.BG
+    bot_id_value_for_url = bot_to_block.value
+    reason = 'Blocking creates profile'
+
+    existing_profile = await async_session.get(
+        UserBotProfileModel, (user_id, bot_to_block)
+    )
+    if existing_profile:
+        await async_session.delete(existing_profile)
+        await async_session.commit()
+        assert (
+            await async_session.get(
+                UserBotProfileModel, (user_id, bot_to_block)
+            )
+            is None
+        )
+
+    payload = {'telegram_id': add_db_user.telegram_id, 'reason': reason}
+
+    response = await client.post(
+        f'/api/v1/users/{user_id}/bots/{bot_id_value_for_url}/block/',
+        json=payload,
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json() == {'status': 'ok'}
+
+    db_profile = await async_session.get(
+        UserBotProfileModel, (user_id, bot_to_block)
+    )
+    assert db_profile is not None
+    assert db_profile.status == UserStatusInBot.BLOCKED
+    assert db_profile.reason == reason
+    assert db_profile.user_language == DEFAULT_USER_LANGUAGE
+    assert db_profile.language_level == DEFAULT_LANGUAGE_LEVEL

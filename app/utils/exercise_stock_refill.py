@@ -58,7 +58,7 @@ async def generate_and_save_exercise(
                 exercise_answer_repository = (
                     SQLAlchemyExerciseAnswerRepository(session)
                 )
-                exercise = await exercise_repository.save(exercise)
+                exercise = await exercise_repository.create(exercise)
 
                 if exercise.exercise_id:
                     right_answer = ExerciseAnswer(
@@ -71,7 +71,7 @@ async def generate_and_save_exercise(
                         feedback_language='',
                         created_at=datetime.now(timezone.utc),
                     )
-                    await exercise_answer_repository.save(right_answer)
+                    await exercise_answer_repository.create(right_answer)
                 await session.commit()
 
     except Exception as e:

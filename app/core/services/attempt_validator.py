@@ -112,7 +112,7 @@ class AttemptValidator:
                     feedback=db_answer.feedback,
                     answer_id=db_answer.answer_id,
                 )
-                return await self.exercise_attempt_repository.save(
+                return await self.exercise_attempt_repository.create(
                     exercise_attempt
                 )
 
@@ -129,7 +129,7 @@ class AttemptValidator:
                 answer_id=None,
             )
 
-            pre_saved_attempt = await self.exercise_attempt_repository.save(
+            pre_saved_attempt = await self.exercise_attempt_repository.create(
                 pre_attempt
             )
             logger.debug(f'Pre saved user attempt {pre_saved_attempt}')
@@ -154,7 +154,7 @@ class AttemptValidator:
                     created_at=datetime.now(timezone.utc),
                     created_by=f'auto:{user.user_id}',
                 )
-                new_answer = await self.exercise_answer_repository.save(
+                new_answer = await self.exercise_answer_repository.create(
                     incorrect_answer
                 )
             else:
@@ -261,7 +261,7 @@ class AttemptValidator:
                 created_at=datetime.now(timezone.utc),
                 created_by=f'LLM:user:{user.user_id}',
             )
-            saved_answer = await self.exercise_answer_repository.save(
+            saved_answer = await self.exercise_answer_repository.create(
                 exercise_answer
             )
             return saved_answer
@@ -311,7 +311,7 @@ class AttemptValidator:
             new_answer.created_at = datetime.now(timezone.utc)
             new_answer.created_by = f'translated_answer:{answer.answer_id}'
 
-            saved_answer = await self.exercise_answer_repository.save(
+            saved_answer = await self.exercise_answer_repository.create(
                 new_answer
             )
             return saved_answer

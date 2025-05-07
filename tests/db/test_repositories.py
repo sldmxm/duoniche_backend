@@ -86,7 +86,7 @@ async def test_get_new_exercise(
     assert exercise.topic == topic
 
     attempt_repository = SQLAlchemyExerciseAttemptRepository(db_session)
-    await attempt_repository.save(
+    await attempt_repository.create(
         ExerciseAttempt(
             user_id=user.user_id,
             exercise_id=exercise.exercise_id,
@@ -128,7 +128,7 @@ async def test_save(db_session):
         data=exercise_data,
     )
 
-    saved_exercise = await repository.save(exercise)
+    saved_exercise = await repository.create(exercise)
     assert saved_exercise.exercise_id is not None
     assert saved_exercise.exercise_type == exercise.exercise_type
     assert saved_exercise.exercise_language == exercise.exercise_language

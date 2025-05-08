@@ -1,11 +1,10 @@
 import logging
-from typing import List, Optional, override
+from typing import Optional, override
 
 from sqlalchemy import and_, exists, func, literal, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.entities.exercise import Exercise
-from app.core.entities.user import User
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.repositories.exercise import ExerciseRepository
 from app.db.models import Exercise as ExerciseModel
@@ -50,25 +49,17 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         return await self._to_entity(db_exercise)
 
     @override
-    async def get_all(self) -> List[Exercise]:
-        stmt = select(ExerciseModel)
-        result = await self.session.execute(stmt)
-        db_exercises = result.scalars().all()
-        return [
-            await self._to_entity(db_exercise) for db_exercise in db_exercises
-        ]
-
-    @override
     async def get_new_exercise(
         self,
-        user: User,
+        user_id: int,
+        target_language: str,
         language_level: LanguageLevel,
         exercise_type: ExerciseType,
         topic: ExerciseTopic,
     ) -> Optional[Exercise]:
         answered_exercise_exists_subquery = select(literal(1)).where(
             and_(
-                ExerciseAttemptModel.user_id == user.user_id,
+                ExerciseAttemptModel.user_id == user_id,
                 ExerciseAttemptModel.exercise_id == ExerciseModel.exercise_id,
             )
         )
@@ -79,7 +70,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
                 and_(
                     ExerciseModel.language_level == language_level.value,
                     ExerciseModel.exercise_type == exercise_type.value,
-                    ExerciseModel.exercise_language == user.target_language,
+                    ExerciseModel.exercise_language == target_language,
                     ExerciseModel.topic == topic.value,
                     not_(exists(answered_exercise_exists_subquery)),
                 )
@@ -98,18 +89,19 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
     @override
     async def get_any_new_exercise(
         self,
-        user: User,
+        user_id: int,
+        target_language: str,
         exercise_type: Optional[ExerciseType],
     ) -> Optional[Exercise]:
         answered_exercise_exists_subquery = select(literal(1)).where(
             and_(
-                ExerciseAttemptModel.user_id == user.user_id,
+                ExerciseAttemptModel.user_id == user_id,
                 ExerciseAttemptModel.exercise_id == ExerciseModel.exercise_id,
             )
         )
 
         conditions = [
-            ExerciseModel.exercise_language == user.target_language,
+            ExerciseModel.exercise_language == target_language,
             not_(exists(answered_exercise_exists_subquery)),
         ]
         if exercise_type is not None:
@@ -127,18 +119,19 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         result = await self.session.execute(stmt)
         db_exercise = result.scalar_one_or_none()
         if db_exercise is None:
-            logger.info(f'No any new exercises found for user {user.user_id}')
+            logger.info(f'No any new exercises found for user {user_id}')
             return None
         return await self._to_entity(db_exercise)
 
     @override
     async def get_any_for_repetition(
         self,
-        user: User,
+        user_id: int,
+        target_language: str,
     ) -> Optional[Exercise]:
         answered_exercise_exists_subquery = select(literal(1)).where(
             and_(
-                ExerciseAttemptModel.user_id == user.user_id,
+                ExerciseAttemptModel.user_id == user_id,
                 ExerciseAttemptModel.exercise_id == ExerciseModel.exercise_id,
             )
         )
@@ -147,7 +140,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             select(ExerciseModel)
             .where(
                 and_(
-                    ExerciseModel.exercise_language == user.target_language,
+                    ExerciseModel.exercise_language == target_language,
                     exists(answered_exercise_exists_subquery),
                 )
             )
@@ -164,11 +157,12 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
     @override
     async def get_mistake_repetition(
         self,
-        user: User,
+        user_id: int,
+        target_language: str,
     ) -> Optional[Exercise]:
         incorrect_answered_subquery = select(literal(1)).where(
             and_(
-                ExerciseAttemptModel.user_id == user.user_id,
+                ExerciseAttemptModel.user_id == user_id,
                 not_(ExerciseAttemptModel.is_correct),
             )
         )
@@ -177,7 +171,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             select(ExerciseModel)
             .where(
                 and_(
-                    ExerciseModel.exercise_language == user.target_language,
+                    ExerciseModel.exercise_language == target_language,
                     exists(incorrect_answered_subquery),
                 )
             )
@@ -198,33 +192,6 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         await self.session.commit()
         await self.session.refresh(db_exercise)
         return await self._to_entity(db_exercise)
-
-    @override
-    async def count_new_exercises(
-        self,
-        user: User,
-        language_level: LanguageLevel,
-    ) -> int:
-        answered_exercise_exists_subquery = select(literal(1)).where(
-            and_(
-                ExerciseAttemptModel.user_id == user.user_id,
-                ExerciseAttemptModel.exercise_id == ExerciseModel.exercise_id,
-            )
-        )
-
-        stmt = (
-            select(ExerciseModel).where(
-                and_(
-                    ExerciseModel.language_level == language_level.value,
-                    ExerciseModel.exercise_language == user.target_language,
-                    not_(exists(answered_exercise_exists_subquery)),
-                )
-            )
-        ).with_only_columns(func.count())
-
-        result = await self.session.execute(stmt)
-        count = result.scalar_one_or_none() or 0
-        return count
 
     async def count_untouched_exercises(
         self,

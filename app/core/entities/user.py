@@ -16,15 +16,15 @@ class User(BaseModel):
     telegram_id: str
     username: Optional[str] = None
     name: Optional[str] = None
+    telegram_data: Optional[dict] = None
+    cohort: Optional[str] = None
+    plan: Optional[str] = None
+    is_active: bool = True
+
+    # TODO: Remove after moving to user_bot_profile
     language_level: LanguageLevel = DEFAULT_LANGUAGE_LEVEL
     user_language: str = DEFAULT_USER_LANGUAGE
     target_language: str = DEFAULT_TARGET_LANGUAGE
-    telegram_data: Optional[dict] = None
-
-    cohort: Optional[str] = None
-    plan: Optional[str] = None
-
-    is_active: bool = True
 
     exercises_get_in_session: int = 0
     exercises_get_in_set: int = 0

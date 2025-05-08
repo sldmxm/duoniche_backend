@@ -5,7 +5,6 @@ from typing import Optional
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
-from app.core.entities.user import User
 from app.core.enums import ExerciseType
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.interfaces.translate_provider import TranslateProvider
@@ -43,7 +42,12 @@ class AttemptValidator:
         self.async_task_cache = async_task_cache
 
     async def validate_exercise_attempt(
-        self, user: User, exercise: Exercise, answer: Answer
+        self,
+        user_id: int,
+        user_language: str,
+        last_exercise_at: Optional[datetime],
+        exercise: Exercise,
+        answer: Answer,
     ) -> ExerciseAttempt:
         """
         Validate a user's answer to an exercise,
@@ -66,7 +70,7 @@ class AttemptValidator:
                 (
                     a
                     for a in all_answers
-                    if a.feedback_language == user.user_language
+                    if a.feedback_language == user_language
                 ),
                 None,
             )
@@ -74,7 +78,7 @@ class AttemptValidator:
                 (
                     a
                     for a in all_answers
-                    if a.feedback_language != user.user_language
+                    if a.feedback_language != user_language
                 ),
                 None,
             )
@@ -89,14 +93,15 @@ class AttemptValidator:
             return chosen_answer
 
         async def _handle_exercise_attempt(
-            user: User,
+            user_id: int,
+            user_language: str,
             exercise: Exercise,
             answer: Answer,
         ) -> ExerciseAttempt:
             db_answer = await _get_answer_from_db()
             if db_answer and (
                 db_answer.is_correct
-                or db_answer.feedback_language == user.user_language
+                or db_answer.feedback_language == user_language
             ):
                 if exercise.exercise_id is None:
                     raise ValueError(
@@ -105,7 +110,7 @@ class AttemptValidator:
 
                 exercise_attempt = ExerciseAttempt(
                     attempt_id=None,
-                    user_id=user.user_id,
+                    user_id=user_id,
                     exercise_id=exercise.exercise_id,
                     answer=answer,
                     is_correct=db_answer.is_correct,
@@ -121,7 +126,7 @@ class AttemptValidator:
 
             pre_attempt = ExerciseAttempt(
                 attempt_id=None,
-                user_id=user.user_id,
+                user_id=user_id,
                 exercise_id=exercise.exercise_id,
                 answer=answer,
                 is_correct=None,
@@ -150,26 +155,26 @@ class AttemptValidator:
                     answer=answer,
                     is_correct=False,
                     feedback=feedback,
-                    feedback_language=user.user_language,
+                    feedback_language=user_language,
                     created_at=datetime.now(timezone.utc),
-                    created_by=f'auto:{user.user_id}',
+                    created_by=f'auto:{user_id}',
                 )
                 new_answer = await self.exercise_answer_repository.create(
                     incorrect_answer
                 )
             else:
-                if (
-                    db_answer
-                    and db_answer.feedback_language != user.user_language
-                ):
+                if db_answer and db_answer.feedback_language != user_language:
                     new_answer = await self.copy_answer_translate_feedback(
                         exercise=exercise,
                         answer=db_answer,
-                        user_language=user.user_language,
+                        user_language=user_language,
                     )
                 else:
                     new_answer = await self.llm_validate_and_save_new_answer(
-                        user, exercise, answer
+                        user_id=user_id,
+                        user_language=user_language,
+                        exercise=exercise,
+                        answer=answer,
                     )
 
             if pre_saved_attempt.attempt_id is None:
@@ -196,9 +201,9 @@ class AttemptValidator:
             exercise_type=exercise.exercise_type.value,
             level=exercise.language_level.value,
         ).inc()
-        if user.last_exercise_at:
+        if last_exercise_at:
             answer_duration = (
-                datetime.now(timezone.utc) - user.last_exercise_at
+                datetime.now(timezone.utc) - last_exercise_at
             ).total_seconds()
             BACKEND_EXERCISE_METRICS['attempt_time'].labels(
                 exercise_type=exercise.exercise_type.value,
@@ -214,7 +219,7 @@ class AttemptValidator:
         ):
             attempt_key = (
                 f'validate_attempt'
-                f'_{user.user_id}'
+                f'_{user_id}'
                 f'_{exercise.exercise_id}'
                 f'_{hash(answer.get_answer_text())}'
             )
@@ -222,9 +227,10 @@ class AttemptValidator:
             exercise_attempt = await self.async_task_cache.get_or_create_task(
                 key=attempt_key,
                 task_func=lambda: _handle_exercise_attempt(
-                    user,
-                    exercise,
-                    answer,
+                    user_id=user_id,
+                    user_language=user_language,
+                    exercise=exercise,
+                    answer=answer,
                 ),
                 serializer=serialize_exercise_attempt,
                 deserializer=deserialize_exercise_attempt,
@@ -238,18 +244,24 @@ class AttemptValidator:
         return exercise_attempt
 
     async def llm_validate_and_save_new_answer(
-        self, user: User, exercise: Exercise, answer: Answer
+        self,
+        user_id: int,
+        user_language: str,
+        exercise: Exercise,
+        answer: Answer,
     ) -> ExerciseAnswer:
         async def _inner(
-            user: User, exercise: Exercise, answer: Answer
+            user_id: int,
+            user_language: str,
+            exercise: Exercise,
+            answer: Answer,
         ) -> ExerciseAnswer:
             if exercise.exercise_id is None:
                 raise ValueError('Cannot validate an exercise without an ID')
             is_correct, feedback = await self.llm_service.validate_attempt(
-                user.user_language,
-                user.target_language,
-                exercise,
-                answer,
+                user_language=user_language,
+                exercise=exercise,
+                answer=answer,
             )
             exercise_answer = ExerciseAnswer(
                 answer_id=None,
@@ -257,9 +269,9 @@ class AttemptValidator:
                 answer=answer,
                 is_correct=is_correct,
                 feedback=feedback,
-                feedback_language=user.user_language,
+                feedback_language=user_language,
                 created_at=datetime.now(timezone.utc),
-                created_by=f'LLM:user:{user.user_id}',
+                created_by=f'LLM:user:{user_id}',
             )
             saved_answer = await self.exercise_answer_repository.create(
                 exercise_answer
@@ -274,9 +286,10 @@ class AttemptValidator:
         validated = await self.async_task_cache.get_or_create_task(
             key=cache_key,
             task_func=lambda: _inner(
-                user,
-                exercise,
-                answer,
+                user_id=user_id,
+                user_language=user_language,
+                exercise=exercise,
+                answer=answer,
             ),
             serializer=serialize_exercise_answer,
             deserializer=deserialize_exercise_answer,

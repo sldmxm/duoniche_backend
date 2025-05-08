@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Optional
 
 from app.core.consts import (
@@ -6,7 +7,6 @@ from app.core.consts import (
 )
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
-from app.core.entities.user import User
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.interfaces.translate_provider import TranslateProvider
@@ -51,27 +51,49 @@ class ExerciseService:
 
     async def get_next_exercise(
         self,
-        user: User,
+        user_id: int,
+        target_language: str,
+        user_language: str,
         exercise_type: ExerciseType = ExerciseType.FILL_IN_THE_BLANK,
         topic: ExerciseTopic = ExerciseTopic.GENERAL,
         language_level: LanguageLevel = DEFAULT_LANGUAGE_LEVEL,
     ) -> Optional[Exercise]:
         return await self.exercise_getter.get_next_exercise(
-            user, exercise_type, topic, language_level
+            user_id=user_id,
+            target_language=target_language,
+            user_language=user_language,
+            exercise_type=exercise_type,
+            topic=topic,
+            language_level=language_level,
         )
 
     async def get_exercise_for_repetition(
         self,
-        user: User,
+        user_id: int,
+        target_language: str,
+        user_language: str,
     ) -> Optional[Exercise]:
-        return await self.exercise_getter.get_exercise_for_repetition(user)
+        return await self.exercise_getter.get_exercise_for_repetition(
+            user_id=user_id,
+            target_language=target_language,
+            user_language=user_language,
+        )
 
     async def get_exercise_by_id(self, exercise_id: int) -> Optional[Exercise]:
         return await self.exercise_getter.get_exercise_by_id(exercise_id)
 
     async def validate_exercise_attempt(
-        self, user: User, exercise: Exercise, answer: Answer
+        self,
+        user_id: int,
+        user_language: str,
+        last_exercise_at: Optional[datetime],
+        exercise: Exercise,
+        answer: Answer,
     ) -> ExerciseAttempt:
         return await self.attempt_validator.validate_exercise_attempt(
-            user, exercise, answer
+            user_id=user_id,
+            user_language=user_language,
+            last_exercise_at=last_exercise_at,
+            exercise=exercise,
+            answer=answer,
         )

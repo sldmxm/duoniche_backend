@@ -6,7 +6,7 @@ import pytest
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.user import User
-from app.core.enums import ExerciseType, LanguageLevel
+from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.repositories.exercise import ExerciseRepository
 from app.core.repositories.exercise_answer import ExerciseAnswerRepository
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
@@ -36,7 +36,7 @@ def exercise():
         exercise_type=ExerciseType.FILL_IN_THE_BLANK,
         exercise_language='bg',
         language_level=LanguageLevel.A1,
-        topic='general',
+        topic=ExerciseTopic.GENERAL,
         exercise_text='Fill in the blank',
         data=FillInTheBlankExerciseData(
             text_with_blanks='Test text with ___ blank.',
@@ -121,12 +121,17 @@ async def test_validate_exercise_attempt_metrics(
     mock_backend_exercise_metrics,
 ):
     # Arrange
-    user.last_exercise_at = datetime.now(timezone.utc) - timedelta(seconds=10)
     mock_answer_repo.get_all_by_user_answer.return_value = []
     mock_llm_service.validate_attempt.return_value = False, 'Wrong!'
 
     # Act
-    await exercise_service.validate_exercise_attempt(user, exercise, answer_vo)
+    await exercise_service.validate_exercise_attempt(
+        user_id=user.user_id,
+        user_language='en',
+        last_exercise_at=datetime.now(timezone.utc) - timedelta(seconds=10),
+        exercise=exercise,
+        answer=answer_vo,
+    )
 
     # Assert
     # Check attempts

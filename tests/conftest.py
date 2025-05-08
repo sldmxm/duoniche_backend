@@ -16,10 +16,12 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL
+from app.core.entities.user_bot_profile import BotID, UserBotProfile
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_progress import UserProgressService
+from app.db.models import DBUserBotProfile
 from app.db.repositories.user import SQLAlchemyUserRepository
 from app.db.repositories.user_bot_profile import (
     SQLAlchemyUserBotProfileRepository,
@@ -148,12 +150,13 @@ async def user_bot_profile_service(db_session: AsyncSession):
 
 @pytest_asyncio.fixture(scope='function')
 async def user_progress_service(
-    db_session, redis, user_service, exercise_service
+    db_session, redis, user_service, exercise_service, user_bot_profile_service
 ):
     """Create ExerciseService with test repositories"""
     return UserProgressService(
         user_service=user_service,
         exercise_service=exercise_service,
+        user_bot_profile_service=user_bot_profile_service,
     )
 
 
@@ -239,6 +242,32 @@ async def add_db_user(
     yield db_user
 
 
+@pytest.fixture
+def user_bot_profile_data():
+    return {
+        'user_id': 12345,
+        'bot_id': BotID.BG,
+        'user_language': 'en',
+        'language_level': LanguageLevel.A2,
+    }
+
+
+@pytest.fixture
+def user_bot_profile(user_bot_profile_data):
+    return UserBotProfile(**user_bot_profile_data)
+
+
+@pytest_asyncio.fixture
+async def add_user_bot_profile(
+    db_session: AsyncSession,
+    user_bot_profile,
+):
+    db_user_bot_profile = DBUserBotProfile(**user_bot_profile.model_dump())
+    db_session.add(db_user_bot_profile)
+    await db_session.flush()
+    yield db_user_bot_profile
+
+
 @pytest_asyncio.fixture
 async def db_sample_exercise(db_session: AsyncSession, user):
     exercise_data = FillInTheBlankExerciseData(
@@ -247,7 +276,7 @@ async def db_sample_exercise(db_session: AsyncSession, user):
     )
     exercise = ExerciseModel(
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
-        exercise_language='en',
+        exercise_language=BotID.BG.value,
         language_level=DEFAULT_LANGUAGE_LEVEL.value,
         topic=ExerciseTopic.GENERAL.value,
         exercise_text='Fill in the blank in the sentence.',

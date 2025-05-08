@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL, DEFAULT_USER_LANGUAGE
 from app.core.entities.user_bot_profile import (
@@ -14,6 +14,20 @@ from app.core.repositories.user_bot_profile_repository import (
 )
 
 logger = logging.getLogger(__name__)
+
+_ALLOWED_SESSION_UPDATE_FIELDS = {
+    'exercises_get_in_session',
+    'exercises_get_in_set',
+    'errors_count_in_set',
+    'last_exercise_at',
+    'session_started_at',
+    'session_frozen_until',
+}
+
+_ALLOWED_PROFILE_UPDATE_FIELDS = {
+    'user_language',
+    'language_level',
+}
 
 
 class UserBotProfileService:
@@ -65,65 +79,82 @@ class UserBotProfileService:
             is_created = True
             return created_profile, is_created
         except Exception as e:
-            logger.error(f'Error creating profile: {e}')
+            logger.error(
+                f'Error creating profile '
+                f'for user {user_id}, bot {bot_id}: {e}'
+            )
+            raise
+
+    async def _apply_and_save_changes(
+        self,
+        profile: UserBotProfile,
+        fields_to_update: Dict[str, Any],
+        allowed_fields: Set[str],
+    ) -> UserBotProfile:
+        actual_changes: Dict[str, Any] = {}
+        for key, value in fields_to_update.items():
+            if key in allowed_fields:
+                if hasattr(profile, key) and getattr(profile, key) != value:
+                    actual_changes[key] = value
+            else:
+                logger.error(
+                    f"Unknown or non-allowed field '{key}' provided to update"
+                    f'for user {profile.user_id}, bot {profile.bot_id}.'
+                )
+        if not actual_changes:
+            return profile
+        for key, value in actual_changes.items():
+            setattr(profile, key, value)
+
+        try:
+            updated_profile = await self._profile_repo.update(profile)
+            return updated_profile
+        except Exception as e:
+            logger.error(
+                f'Error saving profile updates '
+                f'for {profile.user_id}/{profile.bot_id}: {e}'
+            )
             raise
 
     async def update_session(
         self,
         user_id: int,
         bot_id: BotID,
-        exercises_get_in_session: int,
-        exercises_get_in_set: int,
-        errors_count_in_set: int,
-        last_exercise_at: Optional[datetime],
-        session_started_at: Optional[datetime],
-        session_frozen_until: Optional[datetime],
+        **fields_to_update: Union[int, datetime, None],
     ) -> UserBotProfile:
-        profile, _ = await self.get_or_create(
-            user_id=user_id,
-            bot_id=bot_id,
-            user_language=DEFAULT_USER_LANGUAGE,
-            language_level=DEFAULT_LANGUAGE_LEVEL,
+        profile = await self.get(user_id=user_id, bot_id=bot_id)
+        if not profile:
+            raise ValueError(
+                f'Profile not found for user {user_id}, '
+                f'bot {bot_id} to update session.'
+            )
+
+        if not fields_to_update:
+            return profile
+
+        return await self._apply_and_save_changes(
+            profile, fields_to_update, _ALLOWED_SESSION_UPDATE_FIELDS
         )
-
-        profile.exercises_get_in_session = exercises_get_in_session
-        profile.exercises_get_in_set = exercises_get_in_set
-        profile.errors_count_in_set = errors_count_in_set
-        profile.last_exercise_at = last_exercise_at
-        profile.session_started_at = session_started_at
-        profile.session_frozen_until = session_frozen_until
-
-        try:
-            updated_profile = await self._profile_repo.update(profile)
-            return updated_profile
-        except Exception as e:
-            logger.error(f'Error updating profile: {e}')
-            raise
 
     async def update_profile(
         self,
         user_id: int,
         bot_id: BotID,
-        user_language: str,
-        language_level: LanguageLevel,
+        **fields_to_update: Union[str, LanguageLevel],
     ) -> UserBotProfile:
-        profile, is_created = await self.get_or_create(
-            user_id=user_id,
-            bot_id=bot_id,
-            user_language=user_language,
-            language_level=language_level,
-        )
-        if is_created:
+        profile = await self.get(user_id=user_id, bot_id=bot_id)
+        if not profile:
+            raise ValueError(
+                f'Profile not found for user {user_id}, '
+                f'bot {bot_id} to update profile.'
+            )
+
+        if not fields_to_update:
             return profile
 
-        profile.user_language = user_language
-        profile.language_level = language_level
-        try:
-            updated_profile = await self._profile_repo.update(profile)
-            return updated_profile
-        except Exception as e:
-            logger.error(f'Error updating profile: {e}')
-            raise
+        return await self._apply_and_save_changes(
+            profile, fields_to_update, _ALLOWED_PROFILE_UPDATE_FIELDS
+        )
 
     async def mark_user_active(
         self, user_id: int, bot_id: BotID
@@ -138,15 +169,21 @@ class UserBotProfileService:
         if is_created:
             return profile
 
-        profile.status = UserStatusInBot.ACTIVE
-        profile.reason = None
+        if (
+            profile.status != UserStatusInBot.ACTIVE
+            or profile.reason is not None
+        ):
+            profile.status = UserStatusInBot.ACTIVE
+            profile.reason = None
 
-        try:
-            updated_profile = await self._profile_repo.update(profile)
-            return updated_profile
-        except Exception as e:
-            logger.error(f'Error updating profile: {e}')
-            raise
+            try:
+                updated_profile = await self._profile_repo.update(profile)
+                return updated_profile
+            except Exception as e:
+                logger.error(f'Error updating profile: {e}')
+                raise
+        else:
+            return profile
 
     async def mark_user_blocked(
         self,
@@ -161,12 +198,17 @@ class UserBotProfileService:
             language_level=DEFAULT_LANGUAGE_LEVEL,
         )
 
-        profile.status = UserStatusInBot.BLOCKED
-        profile.reason = reason
-
-        try:
-            updated_profile = await self._profile_repo.update(profile)
-            return updated_profile
-        except Exception as e:
-            logger.error(f'Error updating profile: {e}')
-            raise
+        if (
+            profile.status != UserStatusInBot.BLOCKED
+            or profile.reason != reason
+        ):
+            profile.status = UserStatusInBot.BLOCKED
+            profile.reason = reason
+            try:
+                updated_profile = await self._profile_repo.update(profile)
+                return updated_profile
+            except Exception as e:
+                logger.error(f'Error updating profile: {e}')
+                raise
+        else:
+            return profile

@@ -12,6 +12,7 @@ from fastapi.routing import APIRoute
 
 from app.api.dependencies import (
     get_exercise_service,
+    get_user_bot_profile_service,
     get_user_service,
 )
 from app.api.errors import NotFoundError
@@ -21,8 +22,10 @@ from app.api.schemas.answer import (
 )
 from app.api.schemas.validation_result import ValidationResultSchema
 from app.core.entities.exercise import Exercise
+from app.core.entities.user_bot_profile import BotID
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
+from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.value_objects.answer import (
     create_answer_model_validate,
 )
@@ -45,6 +48,9 @@ async def validate_exercise_attempt(
         ExerciseService, Depends(get_exercise_service)
     ],
     user_service: Annotated[UserService, Depends(get_user_service)],
+    user_bot_profile_service: Annotated[
+        UserBotProfileService, Depends(get_user_bot_profile_service)
+    ],
     exercise_id: Annotated[int, Body(description='Exercise ID')],
     answer: Annotated[
         Union[
@@ -60,6 +66,8 @@ async def validate_exercise_attempt(
 
     Returns a 404 error if the exercise is not found.
     """
+    # TODO: Переделать на /api/v1/exercises/{exercise_id}/validate/
+
     try:
         user = await user_service.get_by_id(user_id)
         if not user:
@@ -79,10 +87,22 @@ async def validate_exercise_attempt(
                 f'{exercise.exercise_type=}'
             )
 
+        bot_id = BotID(exercise.exercise_language)
+        user_bot_profile = await user_bot_profile_service.get(
+            user_id=user_id,
+            bot_id=bot_id,
+        )
+        if not user_bot_profile:
+            raise NotFoundError(
+                'User bot profile with provided ID not found in the database'
+            )
+
         user_answer = create_answer_model_validate(answer.model_dump())
 
         exercise_attempt = await exercise_service.validate_exercise_attempt(
-            user=user,
+            user_id=user_id,
+            user_language=user_bot_profile.user_language,
+            last_exercise_at=user_bot_profile.last_exercise_at,
             exercise=exercise,
             answer=user_answer,
         )

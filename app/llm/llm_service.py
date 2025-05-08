@@ -71,7 +71,6 @@ class LLMService(BaseLLMService, LLMProvider):
     async def validate_attempt(
         self,
         user_language: str,
-        target_language: str,
         exercise: Exercise,
         answer: Answer,
     ) -> Tuple[bool, str]:
@@ -79,6 +78,8 @@ class LLMService(BaseLLMService, LLMProvider):
         validator = ExerciseValidatorFactory.create_validator(
             exercise.exercise_type, self
         )
+
+        target_language = exercise.exercise_language
 
         with (
             BACKEND_LLM_METRICS['verification_time']

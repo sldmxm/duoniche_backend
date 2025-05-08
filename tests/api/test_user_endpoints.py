@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL, DEFAULT_USER_LANGUAGE
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserStatusInBot
+from app.db.models import DBUserBotProfile
 from app.db.models.user import User as UserModel
 from app.db.models.user_bot_profile import (
     DBUserBotProfile as UserBotProfileModel,
@@ -21,10 +22,11 @@ async def test_get_or_create_user_new_user(
         'username': 'newuser',
         'name': 'New User',
         'user_language': 'en',
-        'target_language': 'en',
+        'target_language': 'Bulgarian',
         'telegram_data': {'test': 'test'},
     }
     response = await client.put('/api/v1/users/', json=user_data)
+
     assert response.status_code == 200
     response_data = response.json()
     assert response_data['telegram_id'] == user_data['telegram_id']
@@ -54,7 +56,7 @@ async def test_get_or_create_user_existing_user(
         'username': 'updateduser',
         'name': 'Updated User',
         'user_language': 'ru',
-        'target_language': 'ru',
+        'target_language': BotID.BG.value,
         'telegram_data': {'test': 'test'},
     }
     response = await client.put('/api/v1/users/', json=user_data)
@@ -64,17 +66,20 @@ async def test_get_or_create_user_existing_user(
     assert response_data['telegram_id'] == user.telegram_id
     assert response_data['username'] == user.username
     assert response_data['name'] == user.name
-    assert response_data['user_language'] == user.user_language
-    assert response_data['target_language'] == user.target_language
+    assert response_data['user_language'] == user_data['user_language']
+    assert response_data['target_language'] == 'Bulgarian'
 
     # Check if the user was not updated in the database
     db_user = await async_session.get(UserModel, response_data['user_id'])
+    db_profile = await async_session.get(
+        DBUserBotProfile, (response_data['user_id'], BotID.BG)
+    )
     assert db_user is not None
     assert db_user.telegram_id == user.telegram_id
     assert db_user.username == user.username
     assert db_user.name == user.name
-    assert db_user.user_language == user.user_language
-    assert db_user.target_language == user.target_language
+    assert db_profile.user_language == user_data['user_language']
+    assert db_profile.bot_id == BotID('Bulgarian')
 
 
 @pytest.mark.asyncio
@@ -107,7 +112,11 @@ async def test_get_user_by_telegram_id_not_found(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_update_user_by_telegram_id_success(
-    client: AsyncClient, async_session: AsyncSession, user: User, add_db_user
+    client: AsyncClient,
+    async_session: AsyncSession,
+    user: User,
+    add_db_user,
+    add_user_bot_profile,
 ):
     """Test updating an existing user by telegram_id."""
     user_data = {
@@ -116,7 +125,7 @@ async def test_update_user_by_telegram_id_success(
         'username': 'updateduser',
         'name': 'Updated User',
         'user_language': 'ru',
-        'target_language': 'ru',
+        'target_language': 'Bulgarian',
         'telegram_data': {'test': 'test'},
     }
     response = await client.put(
@@ -130,16 +139,19 @@ async def test_update_user_by_telegram_id_success(
     assert response_data['username'] == user_data['username']
     assert response_data['name'] == user_data['name']
     assert response_data['user_language'] == user_data['user_language']
-    assert response_data['target_language'] == user.target_language
+    assert response_data['target_language'] == user_data['target_language']
 
     # Check if the user was updated in the database
     db_user = await async_session.get(UserModel, response_data['user_id'])
+    db_profile = await async_session.get(
+        DBUserBotProfile, (response_data['user_id'], BotID.BG)
+    )
     assert db_user is not None
     assert db_user.telegram_id == user.telegram_id
     assert db_user.username == user_data['username']
     assert db_user.name == user_data['name']
-    assert db_user.user_language == user_data['user_language']
-    assert db_user.target_language == user.target_language
+    assert db_profile.user_language == user_data['user_language']
+    assert db_profile.bot_id == BotID.BG
 
 
 @pytest.mark.asyncio
@@ -151,7 +163,7 @@ async def test_update_user_by_telegram_id_not_found(client: AsyncClient):
         'username': 'updateduser',
         'name': 'Updated User',
         'user_language': 'ru',
-        'target_language': 'ru',
+        'target_language': 'Bulgarian',
         'language_level': 'B1',
         'telegram_data': {'test': 'test'},
     }
@@ -172,6 +184,8 @@ async def test_get_new_exercise_success(
     response = await client.get(
         f'/api/v1/users/{user_id}/next_action/',
     )
+
+    print(f'Response: {response.json()}')
 
     assert response.status_code == 200
     assert (

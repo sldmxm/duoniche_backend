@@ -22,7 +22,6 @@ class LLMProvider(ABC):
     async def validate_attempt(
         self,
         user_language: str,
-        target_language: str,
         exercise: Exercise,
         answer: Answer,
     ) -> Tuple[bool, str]:

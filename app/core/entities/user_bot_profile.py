@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.enums import LanguageLevel
@@ -23,7 +23,7 @@ class UserBotProfile(BaseModel):
     bot_id: BotID = Field(default=BotID.BG)
 
     user_language: str
-    language_level: LanguageLevel = DEFAULT_LANGUAGE_LEVEL
+    language_level: LanguageLevel = Field(default=DEFAULT_LANGUAGE_LEVEL)
 
     status: UserStatusInBot = Field(default=UserStatusInBot.ACTIVE)
     reason: Optional[str] = None
@@ -36,6 +36,6 @@ class UserBotProfile(BaseModel):
     session_frozen_until: Optional[datetime] = None
     updated_at: Optional[datetime] = Field(default=None)
 
-    class Config:
-        from_attributes = True
-        use_enum_values = True
+    model_config = ConfigDict(
+        from_attributes=True,
+    )

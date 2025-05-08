@@ -1,8 +1,7 @@
 from abc import abstractmethod
-from typing import List, Optional
+from typing import Optional
 
 from app.core.entities.exercise import Exercise
-from app.core.entities.user import User
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.repositories.base import AsyncRepository
 
@@ -13,17 +12,14 @@ class ExerciseRepository(AsyncRepository[Exercise]):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_all(self) -> List[Exercise]:
-        raise NotImplementedError
-
-    @abstractmethod
     async def create(self, exercise: Exercise) -> Exercise:
         raise NotImplementedError
 
     @abstractmethod
     async def get_new_exercise(
         self,
-        user: User,
+        user_id: int,
+        target_language: str,
         language_level: LanguageLevel,
         exercise_type: ExerciseType,
         topic: ExerciseTopic,
@@ -33,29 +29,24 @@ class ExerciseRepository(AsyncRepository[Exercise]):
     @abstractmethod
     async def get_any_new_exercise(
         self,
-        user: User,
+        user_id: int,
+        target_language: str,
         exercise_type: Optional[ExerciseType],
     ) -> Optional[Exercise]:
         raise NotImplementedError
 
     @abstractmethod
-    async def count_new_exercises(
-        self,
-        user: User,
-        language_level: LanguageLevel,
-    ) -> int:
-        raise NotImplementedError
-
-    @abstractmethod
     async def get_any_for_repetition(
         self,
-        user: User,
+        user_id: int,
+        target_language: str,
     ) -> Optional[Exercise]:
         raise NotImplementedError
 
     @abstractmethod
     async def get_mistake_repetition(
         self,
-        user: User,
+        user_id: int,
+        target_language: str,
     ) -> Optional[Exercise]:
         raise NotImplementedError

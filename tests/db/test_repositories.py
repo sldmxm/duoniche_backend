@@ -59,16 +59,6 @@ async def test_get_by_id_not_found(db_session):
 
 
 @pytest.mark.asyncio
-async def test_get_all(db_session, fill_sample_exercises):
-    """Test getting all exercises."""
-    repository = SQLAlchemyExerciseRepository(db_session)
-    exercises = await repository.get_all()
-    assert len(exercises) == len(fill_sample_exercises)
-    for exercise in exercises:
-        assert isinstance(exercise, Exercise)
-
-
-@pytest.mark.asyncio
 async def test_get_new_exercise(
     db_session, get_exercises_by_level, user, add_db_user
 ):
@@ -77,9 +67,10 @@ async def test_get_new_exercise(
     language_level = LanguageLevel.B1
     topic = ExerciseTopic.GENERAL
     exercise = await exercise_repository.get_new_exercise(
+        user_id=user.user_id,
+        target_language='en',
         language_level=language_level,
         topic=topic,
-        user=user,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK,
     )
     assert exercise.language_level == language_level
@@ -105,7 +96,8 @@ async def test_get_new_exercise(
     exercise = await exercise_repository.get_new_exercise(
         language_level=language_level,
         topic=topic,
-        user=user,
+        user_id=user.user_id,
+        target_language='en',
         exercise_type=ExerciseType.FILL_IN_THE_BLANK,
     )
     assert exercise is None

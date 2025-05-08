@@ -56,6 +56,9 @@ def get_user_progress_service(
 ) -> UserProgressService:
     return UserProgressService(
         user_service=UserService(SQLAlchemyUserRepository(session)),
+        user_bot_profile_service=UserBotProfileService(
+            SQLAlchemyUserBotProfileRepository(session)
+        ),
         exercise_service=ExerciseService(
             exercise_repository=SQLAlchemyExerciseRepository(session),
             exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(

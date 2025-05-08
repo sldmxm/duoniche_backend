@@ -11,12 +11,15 @@ async def test_validate_exercise_success(
     request_data_correct_answer_for_sample_exercise,
     add_db_correct_exercise_answer,
     add_db_user,
+    add_user_bot_profile,
 ):
     """Test successful validation of an exercise attempt."""
     response = await client.post(
         '/api/v1/exercises/validate/',
         json=request_data_correct_answer_for_sample_exercise,
     )
+
+    print(response.json())
 
     assert response.status_code == 200
     assert response.json() == {
@@ -30,6 +33,7 @@ async def test_validate_exercise_bad_request(
     client,
     user_data,
     add_db_user,
+    add_user_bot_profile,
 ):
     """Test validation with invalid parameters."""
     response = await client.post(
@@ -68,6 +72,7 @@ async def test_validate_exercise_bad_request_answer_type(
     user_id_for_sample_request,
     db_sample_exercise,
     add_db_user,
+    add_user_bot_profile,
 ):
     """Test validation with invalid parameters."""
     response_exercise = await client.get(

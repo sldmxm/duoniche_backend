@@ -256,7 +256,11 @@ class TestExerciseServiceValidation:
 
         # Act
         result_attempt = await exercise_service.validate_exercise_attempt(
-            user, exercise, answer_vo
+            user_id=user.user_id,
+            exercise=exercise,
+            answer=answer_vo,
+            user_language='en',
+            last_exercise_at=None,
         )
 
         # Assert
@@ -316,7 +320,11 @@ class TestExerciseServiceValidation:
 
         # Act
         result_attempt = await exercise_service.validate_exercise_attempt(
-            user, exercise, answer_vo
+            user_id=user.user_id,
+            exercise=exercise,
+            answer=answer_vo,
+            user_language='en',
+            last_exercise_at=None,
         )
 
         # Assert
@@ -361,7 +369,11 @@ class TestExerciseServiceValidation:
 
         # Act
         result_attempt = await exercise_service.validate_exercise_attempt(
-            user, exercise, answer_vo
+            user_id=user.user_id,
+            exercise=exercise,
+            answer=answer_vo,
+            user_language='en',
+            last_exercise_at=None,
         )
 
         # Assert
@@ -451,7 +463,11 @@ class TestExerciseServiceValidation:
 
         # Act
         result_attempt = await exercise_service.validate_exercise_attempt(
-            user, exercise, answer_vo
+            user_id=user.user_id,
+            exercise=exercise,
+            answer=answer_vo,
+            user_language='en',
+            last_exercise_at=None,
         )
 
         # Assert
@@ -469,7 +485,9 @@ class TestExerciseServiceValidation:
 
         # 3. LLM service call (inside the task_func simulated by cache mock)
         mock_llm_service.validate_attempt.assert_awaited_once_with(
-            user.user_language, user.target_language, exercise, answer_vo
+            user_language=user.user_language,
+            exercise=exercise,
+            answer=answer_vo,
         )
 
         # 4. Save call for the *new* validated answer
@@ -538,12 +556,20 @@ class TestExerciseServiceValidation:
         # Simulate two concurrent requests
         task1 = asyncio.create_task(
             exercise_service.validate_exercise_attempt(
-                user, fill_in_the_blank_exercise, fill_in_the_blank_answer
+                user_id=user.user_id,
+                exercise=fill_in_the_blank_exercise,
+                answer=fill_in_the_blank_answer,
+                user_language='en',
+                last_exercise_at=None,
             )
         )
         task2 = asyncio.create_task(
             exercise_service.validate_exercise_attempt(
-                user, fill_in_the_blank_exercise, fill_in_the_blank_answer
+                user_id=user.user_id,
+                exercise=fill_in_the_blank_exercise,
+                answer=fill_in_the_blank_answer,
+                user_language='en',
+                last_exercise_at=None,
             )
         )
 
@@ -555,10 +581,9 @@ class TestExerciseServiceValidation:
         # Assertions
         assert mock_answer_repo.get_all_by_user_answer.assert_awaited_once
         mock_llm_service.validate_attempt.assert_awaited_once_with(
-            user.user_language,
-            user.target_language,
-            fill_in_the_blank_exercise,
-            fill_in_the_blank_answer,
+            user_language=user.user_language,
+            exercise=fill_in_the_blank_exercise,
+            answer=fill_in_the_blank_answer,
         )
         mock_attempt_repo.create.assert_awaited_once()
         mock_attempt_repo.update.assert_awaited_once()

@@ -48,6 +48,7 @@ async def test_validate_exercise_correct_with_db(
     request_data_correct_answer_for_sample_exercise,
     add_db_correct_exercise_answer,
     add_db_user,
+    add_user_bot_profile,
 ):
     """Test validating an exercise with correct answer
     with adding correct answer into db via fixture."""
@@ -70,6 +71,7 @@ async def test_validate_exercise_incorrect(
     db_sample_exercise,
     add_db_incorrect_exercise_answer,
     add_db_user,
+    add_user_bot_profile,
 ):
     """Test validating an exercise with incorrect answer."""
     response = await client.post(

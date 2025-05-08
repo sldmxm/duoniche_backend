@@ -66,7 +66,7 @@ async def test_generate_choose_sentence_exercise(user):
     assert isinstance(answer, ChooseSentenceAnswer)
 
 
-async def test_validate_attempt_correct(user):
+async def test_validate_attempt_correct():
     exercise = Exercise(
         exercise_id=1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
@@ -82,18 +82,18 @@ async def test_validate_attempt_correct(user):
 
     answer = FillInTheBlankAnswer(words=['sat'])
     is_correct, feedback = await llm_service.validate_attempt(
-        user.user_language, user.target_language, exercise, answer
+        'en', exercise, answer
     )
 
     assert is_correct is True
     assert feedback == ''
 
 
-async def test_validate_attempt_incorrect(user):
+async def test_validate_attempt_incorrect():
     exercise = Exercise(
         exercise_id=1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
-        exercise_language='en',
+        exercise_language='Bulgarian',
         language_level=LanguageLevel.B1,
         topic=ExerciseTopic.GENERAL,
         exercise_text='Fill in the blank',
@@ -105,8 +105,7 @@ async def test_validate_attempt_incorrect(user):
 
     answer = FillInTheBlankAnswer(words=['гледам'])
     is_correct, feedback = await llm_service.validate_attempt(
-        user.user_language,
-        user.target_language,
+        'en',
         exercise,
         answer,
     )

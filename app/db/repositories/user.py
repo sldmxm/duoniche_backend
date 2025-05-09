@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime, timedelta, timezone
 from typing import List, Optional, override
 
 from sqlalchemy import select
@@ -77,19 +76,3 @@ class SQLAlchemyUserRepository(UserRepository):
         await self.session.commit()
         await self.session.refresh(db_user)
         return self._to_entity(db_user)
-
-    @override
-    async def get_users_with_exercise_lately(
-        self, period_seconds: int
-    ) -> List[User]:
-        now = datetime.now(timezone.utc)
-        stmt = select(UserModel).where(
-            UserModel.last_exercise_at.isnot(None),
-            (
-                UserModel.last_exercise_at
-                >= now - timedelta(seconds=period_seconds)
-            ),
-        )
-        result = await self.session.execute(stmt)
-        db_users = result.scalars().all()
-        return [self._to_entity(db_user) for db_user in db_users]

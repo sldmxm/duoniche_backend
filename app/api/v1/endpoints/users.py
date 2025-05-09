@@ -199,7 +199,7 @@ async def get_next_action_legacy(
 
 
 @router.get(
-    '{user_id}/bots/{bot_id}/next-action/',
+    '/{user_id}/bots/{bot_id}/next-action/',
     response_model=NextActionSchema,
     response_model_exclude_none=True,
     summary='Get next action for user',

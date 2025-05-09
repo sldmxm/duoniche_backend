@@ -47,6 +47,8 @@ class LLMTranslator(BaseLLMService, TranslateProvider):
         exercise_language: str,
     ) -> str:
         parser = PydanticOutputParser(pydantic_object=LLMTranslateResult)
+        if user_language == 'uk':
+            user_language = 'Ukrainian'
         prompt_template = (
             'You are an experienced {exercise_language} language teacher. '
             'Your task is to translate for '

@@ -1,8 +1,10 @@
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, override
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.core.entities.user_bot_profile import (
     BotID,
@@ -81,3 +83,20 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
             raise
 
         return UserBotProfile.model_validate(db_profile_to_commit)
+
+    async def get_by_recent_exercise_with_user_data(
+        self, period_seconds: int
+    ) -> List[DBUserBotProfile]:
+        now = datetime.now(timezone.utc)
+        stmt = (
+            select(DBUserBotProfile)
+            .where(
+                DBUserBotProfile.last_exercise_at.isnot(None),
+                DBUserBotProfile.last_exercise_at
+                >= now - timedelta(seconds=period_seconds),
+            )
+            .options(joinedload(DBUserBotProfile.user))
+        )
+        result = await self.session.execute(stmt)
+        db_user_bot_profiles = result.scalars().unique().all()
+        return list(db_user_bot_profiles)

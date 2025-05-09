@@ -2,12 +2,15 @@ import asyncio
 import collections
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Set
+from typing import List, Set
 
 from prometheus_client import Counter, Gauge, Histogram
 
 from app.db.db import async_session_maker
-from app.db.repositories.user import SQLAlchemyUserRepository
+from app.db.models import DBUserBotProfile
+from app.db.repositories.user_bot_profile import (
+    SQLAlchemyUserBotProfileRepository,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -178,24 +181,26 @@ async def update_user_sessions_metrics():
     active_users_label_counts = collections.Counter()
     try:
         async with async_session_maker() as session:
-            user_repository = SQLAlchemyUserRepository(session)
+            user_profile_repo = SQLAlchemyUserBotProfileRepository(session)
             period_seconds = int(
                 SESSION_TTL_SINCE_LAST_EXERCISE.total_seconds()
                 + UPDATE_USER_METRICS_INTERVAL
             )
-            # TODO: Переписать логику получения из UserBotProfile
-            users = await user_repository.get_users_with_exercise_lately(
-                period_seconds
+            profiles: List[
+                DBUserBotProfile
+            ] = await user_profile_repo.get_by_recent_exercise_with_user_data(
+                period_seconds=period_seconds
             )
 
-            for user in users:
+            for profile in profiles:
                 label_tuple = (
-                    user.cohort,
-                    user.plan,
-                    user.target_language,
-                    user.user_language,
-                    user.language_level.value,
+                    profile.user.cohort,
+                    profile.user.plan,
+                    profile.bot_id.value,
+                    profile.user_language,
+                    profile.language_level.value,
                 )
+
                 label_dict = dict(
                     zip(
                         backend_user_metrics_label_names,
@@ -206,29 +211,29 @@ async def update_user_sessions_metrics():
                 all_possible_active_user_labels.add(label_tuple)
 
                 if (
-                    user.session_frozen_until is not None
-                    or now - user.last_exercise_at
+                    profile.session_frozen_until is not None
+                    or now - profile.last_exercise_at
                     > SESSION_TTL_SINCE_LAST_EXERCISE
                 ):
                     session_duration = (
-                        user.last_exercise_at - user.session_started_at
+                        profile.last_exercise_at - profile.session_started_at
                     ).total_seconds()
                     BACKEND_USER_METRICS['session_length'].labels(
                         **label_dict
                     ).observe(session_duration)
                     BACKEND_USER_METRICS['exercises_per_session'].labels(
                         **label_dict
-                    ).inc(user.exercises_get_in_session)
+                    ).inc(profile.exercises_get_in_session)
                     logger.debug(
-                        f'Session ended for user {user.user_id}: '
+                        f'Session ended for user {profile.user_id}: '
                         f'{session_duration}'
                     )
                 else:
                     session_duration = (
-                        now - user.session_started_at
+                        now - profile.session_started_at
                     ).total_seconds()
                     logger.debug(
-                        f'Session duration for user {user.user_id}: '
+                        f'Session duration for user {profile.user_id}: '
                         f'{session_duration}'
                     )
                     active_users_label_counts[label_tuple] += 1

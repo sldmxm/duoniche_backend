@@ -16,6 +16,7 @@ class UserStatusInBot(str, Enum):
 
 class BotID(str, Enum):
     BG = 'Bulgarian'
+    SRP = 'Serbian'
 
 
 class UserBotProfile(BaseModel):

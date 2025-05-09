@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL
+from app.core.entities.user_bot_profile import BotID
 from app.core.enums import ExerciseType
 from app.db.models.user import User as UserModel
 from app.db.repositories.exercise_attempt import (
@@ -87,7 +88,7 @@ async def test_validate_exercise_incorrect(
 
 
 @pytest.mark.asyncio
-async def test_exercise_not_found(
+async def test_exercise_not_found_legacy(
     client, request_data_correct_answer_for_sample_exercise, add_db_user
 ):
     """Test validation with non-existent exercise ID."""
@@ -98,9 +99,23 @@ async def test_exercise_not_found(
         json=request_data_correct_answer_for_sample_exercise,
     )
 
-    print(response.json())
+    assert response.status_code == 404
+    assert 'Exercise with ID 99999 not found' in response.json()['detail']
 
-    assert response.status_code == 400
+
+@pytest.mark.asyncio
+async def test_exercise_not_found(
+    client, request_data_correct_answer_for_sample_exercise, add_db_user
+):
+    """Test validation with non-existent exercise ID."""
+    request_data_correct_answer_for_sample_exercise['exercise_id'] = 99999
+
+    response = await client.post(
+        '/api/v1/exercises/99999/validate/',
+        json=request_data_correct_answer_for_sample_exercise,
+    )
+
+    assert response.status_code == 404
     assert 'Exercise with ID 99999 not found' in response.json()['detail']
 
 
@@ -123,7 +138,7 @@ async def test_multiple_requests_same_user(
     3. Attempt to solve it correctly.
     4. Get a new exercise.
     """
-    # 1. Get a new exercise
+    # 1. Get a new exercise (legacy)
     user_id = user_data.get('user_id')
 
     response = await client.get(
@@ -131,7 +146,16 @@ async def test_multiple_requests_same_user(
     )
     assert response.status_code == 200
 
-    # 2. Attempt to solve it incorrectly
+    # 1. Get a new exercise (new)
+    user_id = user_data.get('user_id')
+
+    bot_id = db_sample_exercise.exercise_language
+    response = await client.get(
+        f'/api/v1/users/{user_id}/bots/{bot_id}/next-action/',
+    )
+    assert response.status_code == 200
+
+    # 2. Attempt to solve it incorrectly (legacy)
     response = await client.post(
         '/api/v1/exercises/validate/',
         json=request_data_incorrect_answer_for_sample_exercise,
@@ -141,9 +165,30 @@ async def test_multiple_requests_same_user(
     assert result['is_correct'] is False
     assert 'feedback' in result
 
-    # 3. Attempt to solve it correctly
+    # 2. Attempt to solve it incorrectly
+    exercise_id = db_sample_exercise.exercise_id
+    response = await client.post(
+        f'/api/v1/exercises/{exercise_id}/validate/',
+        json=request_data_incorrect_answer_for_sample_exercise,
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result['is_correct'] is False
+    assert 'feedback' in result
+
+    # 3. Attempt to solve it correctly (legacy)
     response = await client.post(
         '/api/v1/exercises/validate/',
+        json=request_data_correct_answer_for_sample_exercise,
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result['is_correct'] is True
+    assert 'feedback' in result
+
+    # 3. Attempt to solve it correctly
+    response = await client.post(
+        f'/api/v1/exercises/{exercise_id}/validate/',
         json=request_data_correct_answer_for_sample_exercise,
     )
     assert response.status_code == 200
@@ -211,7 +256,7 @@ async def test_concurrent_requests(
 
         try:
             response = await client.get(
-                f'/api/v1/users/{user_id}/next_action/',
+                f'/api/v1/users/{user_id}/bots/{BotID.BG.value}/next-action/',
             )
 
             assert response.status_code == 200
@@ -219,8 +264,9 @@ async def test_concurrent_requests(
             exercise_responses.append(exercise_data)
             await asyncio.sleep(0.05)
 
+            exercise_id = exercise_data['exercise']['exercise_id']
             validation_response = await client.post(
-                '/api/v1/exercises/validate/',
+                f'/api/v1/exercises/{exercise_id}/validate/',
                 json={
                     **request_data_correct_answer_for_sample_exercise,
                     'exercise_id': exercise_data['exercise']['exercise_id'],

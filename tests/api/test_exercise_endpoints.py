@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio
-async def test_validate_exercise_success(
+async def test_validate_exercise_success_legacy(
     client,
     request_data_correct_answer_for_sample_exercise,
     add_db_correct_exercise_answer,
@@ -42,7 +42,7 @@ async def test_validate_exercise_bad_request(
 
     assert response.status_code == 422
     assert response.json()['detail'][0]['msg'] == 'Field required'
-    assert response.json()['detail'][0]['loc'] == ['body', 'exercise_id']
+    assert response.json()['detail'][0]['loc'] == ['body', 'answer']
 
     response = await client.post(
         '/api/v1/exercises/validate/', json={**user_data, 'exercise_id': 1}
@@ -100,3 +100,28 @@ async def test_validate_exercise_bad_request_answer_type(
         'FillInTheBlankAnswerSchema',
         'exercise_type',
     ]
+
+
+@pytest.mark.asyncio
+async def test_validate_exercise_success(
+    client,
+    request_data_correct_answer_for_sample_exercise,
+    add_db_correct_exercise_answer,
+    add_db_user,
+    add_user_bot_profile,
+):
+    """Test successful validation of an exercise attempt."""
+
+    exercise_id = request_data_correct_answer_for_sample_exercise[
+        'exercise_id'
+    ]
+    response = await client.post(
+        f'/api/v1/exercises/{exercise_id}/validate/',
+        json=request_data_correct_answer_for_sample_exercise,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        'is_correct': True,
+        'feedback': '',
+    }

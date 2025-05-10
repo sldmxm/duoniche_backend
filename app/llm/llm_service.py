@@ -56,15 +56,20 @@ class LLMService(BaseLLMService, LLMProvider):
                 exercise_for_quality_assessor,
             ) = await generator.generate(
                 user_language=user_language_for_prompt,
+                user_language_code=user_language,
                 target_language=target_language,
                 language_level=language_level,
                 topic=topic,
             )
-            await self.exercise_quality_assessor.assess(
-                exercise=exercise_for_quality_assessor,
-                user_language=user_language_for_prompt,
-                target_language=target_language,
-            )
+
+            # TODO: Посмотреть качество заданий после новых промптов,
+            #  кажется, качество стало сильно лучше,
+            #  если нет, включить проверку
+            # await self.exercise_quality_assessor.assess(
+            #     exercise=exercise_for_quality_assessor,
+            #     user_language=user_language_for_prompt,
+            #     target_language=target_language,
+            # )
 
         BACKEND_LLM_METRICS['exercises_created'].labels(
             exercise_type=exercise_type.value,

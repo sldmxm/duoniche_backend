@@ -1,6 +1,7 @@
 from typing import Tuple
 
 from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from app.core.entities.exercise import Exercise
@@ -8,6 +9,10 @@ from app.core.value_objects.answer import Answer, FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.interfaces.exercise_validator import ExerciseValidator
 from app.llm.llm_base import BaseLLMService
+from app.llm.validators.prompt_templates import (
+    BASE_SYSTEM_PROMPT_FOR_VALIDATION,
+    FILL_IN_THE_BLANK_INSTRUCTIONS,
+)
 
 
 class AttemptValidationResponse(BaseModel):
@@ -17,11 +22,6 @@ class AttemptValidationResponse(BaseModel):
         'Else answer the question "What\'s wrong with this user answer?" '
         '- clearly shortly explain grammatical, spelling, '
         'syntactic, semantic or other errors.\n '
-        'Explain to the user exactly what he did wrong, never '
-        'using the argument "because that\'s how you should have answered"'
-        'Warning! Don\'t write "Wrong answer", "Try again" '
-        'or other phrases that provide '
-        'no practical benefit to the user.\n'
         "Warning! Feedback for the user must be in user's language.\n"
         'Be concise.'
     )
@@ -40,35 +40,44 @@ class FillInTheBlankValidator(ExerciseValidator):
     ) -> Tuple[bool, str]:
         """Validate user's answer to the fill-in-the-blank exercise."""
         if not isinstance(answer, FillInTheBlankAnswer):
-            raise NotImplementedError(
-                'Only FillInTheBlankAnswer is implemented'
+            raise TypeError(
+                f'Expected FillInTheBlankAnswer, got {type(answer).__name__}'
             )
 
         if not isinstance(exercise.data, FillInTheBlankExerciseData):
-            raise NotImplementedError(
-                'Only FillInTheBlankExerciseData is implemented'
+            raise TypeError(
+                f'Expected FillInTheBlankExerciseData for exercise, '
+                f'got {type(exercise.data).__name__}'
             )
 
         parser = PydanticOutputParser(
             pydantic_object=AttemptValidationResponse
         )
 
-        prompt_template = (
-            'You are a language learning assistant.\n'
-            "You need to check the user's answer to the exercise.\n"
-            'User language: {user_language}\n'
-            'Exercise language: {exercise_language}\n'
+        system_prompt_template = BASE_SYSTEM_PROMPT_FOR_VALIDATION.replace(
+            '{specific_exercise_instructions}', FILL_IN_THE_BLANK_INSTRUCTIONS
+        )
+
+        user_prompt_template = (
+            'Please evaluate the following:\n'
+            "User's target language to learn: {exercise_language}\n"
+            "User's native language (for feedback): {user_language}\n"
             'Exercise topic: {topic}\n'
-            'Exercise task: {task}\n'
-            'Options: {options}\n'
-            'Exercise: {exercise}\n'
-            'User answer: {user_answer}\n'
-            'You have to give feedback in {user_language}.\n'
-            '{format_instructions}'
+            'Exercise task description: {task}\n'
+            'Full exercise sentence with blanks: {exercise_sentence}\n'
+            'Options provided for blanks (if any): {options}\n'
+            "User's completed sentence: {user_answer}"
+        )
+
+        chat_prompt = ChatPromptTemplate.from_messages(
+            [
+                ('system', system_prompt_template),
+                ('user', user_prompt_template),
+            ]
         )
 
         chain = await self.llm_service.create_llm_chain(
-            prompt_template, parser, is_chat_prompt=False
+            chat_prompt, parser, is_chat_prompt=True
         )
 
         request_data = {
@@ -76,11 +85,14 @@ class FillInTheBlankValidator(ExerciseValidator):
             'exercise_language': target_language,
             'topic': exercise.topic.value,
             'task': exercise.exercise_text,
-            'exercise': exercise.data.text_with_blanks,
-            'options': exercise.data.words,
+            'exercise_sentence': exercise.data.text_with_blanks,
+            'options': ', '.join(exercise.data.words)
+            if exercise.data.words
+            else 'N/A',
             'user_answer': exercise.data.get_answered_by_user_exercise_text(
                 answer
             ),
+            'format_instructions': parser.get_format_instructions(),
         }
 
         validation_result = await self.llm_service.run_llm_chain(

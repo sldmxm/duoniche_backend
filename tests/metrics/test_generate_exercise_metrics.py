@@ -15,6 +15,9 @@ from app.llm.quality_assessor import (
     ExerciseForAssessor,
     ExerciseQualityAssessor,
 )
+from app.utils.language_code_converter import (
+    convert_iso639_language_code_to_full_name,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -121,8 +124,11 @@ async def test_generate_exercise_metrics(
 
     # Assert
     # Проверяем, что был создан правильный генератор упражнений
+    user_language_for_prompt = convert_iso639_language_code_to_full_name(
+        user.user_language
+    )
     mock_generate.assert_called_once_with(
-        user_language=user.user_language,
+        user_language=user_language_for_prompt,
         target_language=user.target_language,
         language_level=language_level,
         topic=topic,

@@ -11,6 +11,9 @@ from app.llm.factories import (
 from app.llm.llm_base import BaseLLMService
 from app.llm.quality_assessor import ExerciseQualityAssessor
 from app.metrics import BACKEND_LLM_METRICS
+from app.utils.language_code_converter import (
+    convert_iso639_language_code_to_full_name,
+)
 
 
 class LLMService(BaseLLMService, LLMProvider):
@@ -44,18 +47,23 @@ class LLMService(BaseLLMService, LLMProvider):
             )
             .time()
         ):
+            user_language_for_prompt = (
+                convert_iso639_language_code_to_full_name(user_language)
+            )
             (
                 new_exercise,
                 new_answer,
                 exercise_for_quality_assessor,
             ) = await generator.generate(
-                user_language=user_language,
+                user_language=user_language_for_prompt,
                 target_language=target_language,
                 language_level=language_level,
                 topic=topic,
             )
             await self.exercise_quality_assessor.assess(
-                exercise_for_quality_assessor, user_language, target_language
+                exercise=exercise_for_quality_assessor,
+                user_language=user_language_for_prompt,
+                target_language=target_language,
             )
 
         BACKEND_LLM_METRICS['exercises_created'].labels(
@@ -80,6 +88,9 @@ class LLMService(BaseLLMService, LLMProvider):
         )
 
         target_language = exercise.exercise_language
+        user_language_for_prompt = convert_iso639_language_code_to_full_name(
+            user_language
+        )
 
         with (
             BACKEND_LLM_METRICS['verification_time']
@@ -93,7 +104,10 @@ class LLMService(BaseLLMService, LLMProvider):
             .time()
         ):
             is_correct, feedback = await validator.validate(
-                user_language, target_language, exercise, answer
+                user_language=user_language_for_prompt,
+                target_language=target_language,
+                exercise=exercise,
+                answer=answer,
             )
 
         BACKEND_LLM_METRICS['exercises_verified'].labels(

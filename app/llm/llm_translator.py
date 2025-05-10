@@ -6,6 +6,9 @@ from pydantic import BaseModel, Field
 from app.config import settings
 from app.core.interfaces.translate_provider import TranslateProvider
 from app.llm.llm_base import BaseLLMService
+from app.utils.language_code_converter import (
+    convert_iso639_language_code_to_full_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +50,11 @@ class LLMTranslator(BaseLLMService, TranslateProvider):
         exercise_language: str,
     ) -> str:
         parser = PydanticOutputParser(pydantic_object=LLMTranslateResult)
-        if user_language == 'uk':
-            user_language = 'Ukrainian'
+
+        user_language_for_prompt = convert_iso639_language_code_to_full_name(
+            user_language
+        )
+
         prompt_template = (
             'You are an experienced {exercise_language} language teacher. '
             'Your task is to translate for '
@@ -77,7 +83,7 @@ class LLMTranslator(BaseLLMService, TranslateProvider):
         )
 
         request_data = {
-            'user_language': user_language,
+            'user_language': user_language_for_prompt,
             'feedback': feedback,
             'exercise_data': exercise_data,
             'user_answer': user_answer,

@@ -12,6 +12,7 @@ class ExerciseGenerator(ABC):
     async def generate(
         self,
         user_language: str,
+        user_language_code: str,
         target_language: str,
         language_level: LanguageLevel,
         topic: ExerciseTopic,

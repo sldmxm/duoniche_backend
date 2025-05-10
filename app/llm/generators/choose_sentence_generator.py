@@ -1,6 +1,7 @@
 from typing import Tuple
 
 from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from app.core.entities.exercise import Exercise
@@ -8,25 +9,23 @@ from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.texts import get_text
 from app.core.value_objects.answer import ChooseSentenceAnswer
 from app.core.value_objects.exercise import ChooseSentenceExerciseData
+from app.llm.generators.prompt_templates import (
+    BASE_SYSTEM_PROMPT_FOR_GENERATION,
+    CHOOSE_SENTENCE_GENERATION_INSTRUCTIONS,
+)
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
 from app.llm.llm_base import BaseLLMService
 from app.llm.quality_assessor import ExerciseForAssessor
 
 
-class ChooseSentenceExerciseDataParsed(BaseModel):
-    correct_sentence: str = Field(description='Correct sentence.\n')
+class ChooseSentenceExerciseLLMOutput(BaseModel):
+    correct_sentence: str = Field(
+        description='The single, grammatically correct sentence.'
+    )
     incorrect_sentences: list[str] = Field(
-        description=(
-            'A list of 2 very similar unique misspelled sentences '
-            'that contains a typical mistake, '
-            'based on one or two of the following categories:\n'
-            '- Forgetting or misplacing the definite article '
-            'at the end of a noun\n'
-            '- Confusing past tenses and perfect aspect\n'
-            '- Misusing object or reflexive pronouns (e.g. го, му, си, се)\n'
-            '- Assigning the wrong gender to a noun\n'
-            '- Using an incorrect preposition with a verb'
-        )
+        description='A list of exactly 2 incorrect sentences. '
+        'Each should be very similar to the correct one '
+        'but contain a clear grammatical error.'
     )
 
 
@@ -37,46 +36,55 @@ class ChooseSentenceGenerator(ExerciseGenerator):
     async def generate(
         self,
         user_language: str,
+        user_language_code: str,
         target_language: str,
         language_level: LanguageLevel,
         topic: ExerciseTopic,
     ) -> Tuple[Exercise, ChooseSentenceAnswer, ExerciseForAssessor]:
         """Generate a choose-the-sentence exercise."""
-
         parser = PydanticOutputParser(
-            pydantic_object=ChooseSentenceExerciseDataParsed
+            pydantic_object=ChooseSentenceExerciseLLMOutput
         )
 
-        prompt_template = (
-            'You are helping {user_language}-speaking learner '
-            'of {exercise_language} language.\n'
-            'Generate the exercise - '
-            '1 correct {exercise_language} sentence and '
-            '2 very similar misspelled sentences.\n'
-            'Language level: {language_level}\n'
-            'Topic: {topic}\n'
-            '{format_instructions}'
+        system_prompt_template = BASE_SYSTEM_PROMPT_FOR_GENERATION.replace(
+            '{specific_exercise_generation_instructions}',
+            CHOOSE_SENTENCE_GENERATION_INSTRUCTIONS,
+        )
+
+        user_prompt_template = (
+            "Please generate the 'choose the correct sentence' exercise now, "
+            'following all system instructions.'
+        )
+
+        chat_prompt = ChatPromptTemplate.from_messages(
+            [
+                ('system', system_prompt_template),
+                ('user', user_prompt_template),
+            ]
         )
 
         chain = await self.llm_service.create_llm_chain(
-            prompt_template, parser, is_chat_prompt=False
+            chat_prompt, parser, is_chat_prompt=True
         )
 
-        input_data = {
+        request_data = {
             'user_language': user_language,
             'exercise_language': target_language,
             'language_level': language_level.value,
             'topic': topic.value,
+            'format_instructions': parser.get_format_instructions(),
         }
 
-        parsed_data = await self.llm_service.run_llm_chain(
-            chain=chain,
-            input_data=input_data,
+        llm_output: ChooseSentenceExerciseLLMOutput = (
+            await self.llm_service.run_llm_chain(
+                chain=chain,
+                input_data=request_data,
+            )
         )
 
-        sentences = [
-            parsed_data.correct_sentence
-        ] + parsed_data.incorrect_sentences
+        options = [
+            llm_output.correct_sentence
+        ] + llm_output.incorrect_sentences
 
         exercise = Exercise(
             exercise_id=None,
@@ -85,22 +93,23 @@ class ChooseSentenceGenerator(ExerciseGenerator):
             language_level=language_level,
             topic=topic,
             exercise_text=get_text(
-                ExerciseType.CHOOSE_SENTENCE, user_language
+                ExerciseType.CHOOSE_SENTENCE, user_language_code
             ),
             data=ChooseSentenceExerciseData(
-                options=sentences,
+                options=options,
             ),
         )
-        correct_answer = ChooseSentenceAnswer(
-            answer=parsed_data.correct_sentence
+
+        correct_answer_obj = ChooseSentenceAnswer(
+            answer=llm_output.correct_sentence
         )
 
         exercise_for_quality_assessor = ExerciseForAssessor(
             text=exercise.exercise_text,
-            options=sentences,
-            correct_answer=parsed_data.correct_sentence,
+            options=options,
+            correct_answer=llm_output.correct_sentence,
             exercise_type=ExerciseType.CHOOSE_SENTENCE,
             language_level=language_level,
         )
 
-        return exercise, correct_answer, exercise_for_quality_assessor
+        return exercise, correct_answer_obj, exercise_for_quality_assessor

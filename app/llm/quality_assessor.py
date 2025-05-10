@@ -69,7 +69,7 @@ class ExerciseQualityAssessor(BaseLLMService):
                 llm_model=self.model.model_name,
             ).inc()
             message = (
-                # f'Exercise rejected by LLM: {review.issues}. '
+                f'Exercise rejected by LLM'  # {review.issues}. '
                 f'Exercise: {exercise}'
             )
             raise ValueError(message)

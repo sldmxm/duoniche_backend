@@ -129,6 +129,7 @@ async def test_generate_exercise_metrics(
     )
     mock_generate.assert_called_once_with(
         user_language=user_language_for_prompt,
+        user_language_code=user.user_language,
         target_language=user.target_language,
         language_level=language_level,
         topic=topic,

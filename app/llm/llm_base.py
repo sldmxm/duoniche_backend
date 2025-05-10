@@ -33,14 +33,12 @@ class BaseLLMService:
 
     async def create_llm_chain(
         self,
-        prompt_template: str,
+        prompt_template: str | ChatPromptTemplate,
         output_parser: Union[PydanticOutputParser, JsonOutputParser],
         is_chat_prompt: bool = False,
     ) -> RunnableSerializable:
         if is_chat_prompt:
-            prompt = ChatPromptTemplate.from_messages(
-                [('system', prompt_template)]
-            )
+            prompt = prompt_template
         else:
             prompt = PromptTemplate(
                 template=prompt_template,

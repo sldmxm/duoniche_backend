@@ -10,7 +10,7 @@ from app.core.entities.user_bot_profile import (
 from app.core.enums import LanguageLevel
 from app.db.models import DBUserBotProfile
 from app.db.models import User as DBUser
-from app.metrics import (
+from app.workers.metrics_updater import (
     SESSION_TTL_SINCE_LAST_EXERCISE,
     update_user_sessions_metrics,
 )
@@ -132,11 +132,11 @@ def mock_backend_user_metrics():
     for metric_mock in metrics.values():
         metric_mock.labels.return_value = metric_mock
 
-    with patch('app.metrics.BACKEND_USER_METRICS', metrics):
+    with patch('app.workers.metrics_updater.BACKEND_USER_METRICS', metrics):
         yield metrics
 
 
-@patch('app.metrics.SQLAlchemyUserBotProfileRepository')
+@patch('app.workers.metrics_updater.SQLAlchemyUserBotProfileRepository')
 async def test_update_user_sessions_metrics_new_logic(
     mock_repo_cls, mock_backend_user_metrics, mock_user_bot_profiles_data
 ):
@@ -183,6 +183,9 @@ async def test_update_user_sessions_metrics_new_logic(
     }
 
     # Assertions for session_length metric (Users 1 and 2)
+    print(session_length_metric.labels.call_args_list)
+    print(session_length_metric.observe.call_args_list)
+
     session_length_metric.labels.assert_any_call(**labels_user1)
     session_length_metric.labels.assert_any_call(**labels_user2)
 

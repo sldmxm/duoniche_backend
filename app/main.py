@@ -9,9 +9,9 @@ from app.api.v1.api import api_router
 from app.config import settings
 from app.db.db import init_db
 from app.logging_config import configure_logging
-from app.metrics import metrics_loop
 from app.sentry_sdk import sentry_init
-from app.utils.exercise_stock_refill import exercise_stock_refill_loop
+from app.workers.exercise_stock_refill import exercise_stock_refill_loop
+from app.workers.metrics_updater import metrics_loop
 
 configure_logging()
 

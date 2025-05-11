@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
+from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
@@ -26,7 +27,7 @@ from app.db.repositories.user import SQLAlchemyUserRepository
 from app.db.repositories.user_bot_profile import (
     SQLAlchemyUserBotProfileRepository,
 )
-from app.translator.translator import Translator
+from app.services.google_translator import GoogleTranslator
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -130,7 +131,7 @@ async def exercise_service(db_session: AsyncSession, redis):
             db_session
         ),
         llm_service=LLMService(),
-        translator=Translator(),
+        translator=GoogleTranslator(),
     )
 
 
@@ -518,7 +519,7 @@ async def mock_llm_service():
 @pytest_asyncio.fixture
 async def mock_translator():
     """Mock LLMService for testing."""
-    return create_autospec(Translator, instance=True)
+    return create_autospec(TranslateProvider, instance=True)
 
 
 @pytest.fixture

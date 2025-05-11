@@ -9,7 +9,7 @@ from app.metrics import BACKEND_TRANSLATOR_METRICS
 logger = logging.getLogger(__name__)
 
 
-class Translator(TranslateProvider):
+class GoogleTranslator(TranslateProvider):
     def __init__(
         self,
         google_api_key: str = settings.google_api_key,

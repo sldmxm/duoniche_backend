@@ -16,7 +16,7 @@ from app.db.repositories.exercise_answers import (
 )
 from app.llm.llm_service import LLMService
 from app.metrics import BACKEND_EXERCISE_METRICS
-from app.utils.choose_accent_generator import ChooseAccentGenerator
+from app.services.choose_accent_generator import ChooseAccentGenerator
 
 logger = logging.getLogger(__name__)
 

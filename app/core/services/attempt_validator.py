@@ -17,9 +17,6 @@ from app.core.services.async_task_cache import (
     serialize_exercise_answer,
     serialize_exercise_attempt,
 )
-from app.core.services.async_task_cache import (
-    async_task_cache as default_async_task_cache,
-)
 from app.core.value_objects.answer import Answer
 from app.metrics import BACKEND_EXERCISE_METRICS
 
@@ -33,7 +30,7 @@ class AttemptValidator:
         exercise_answers_repository: ExerciseAnswerRepository,
         llm_service: LLMProvider,
         translator: TranslateProvider,
-        async_task_cache: AsyncTaskCache = default_async_task_cache,
+        async_task_cache: AsyncTaskCache,
     ):
         self.exercise_attempt_repository = exercise_attempt_repository
         self.exercise_answer_repository = exercise_answers_repository

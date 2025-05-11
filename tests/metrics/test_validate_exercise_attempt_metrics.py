@@ -10,6 +10,7 @@ from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.repositories.exercise import ExerciseRepository
 from app.core.repositories.exercise_answer import ExerciseAnswerRepository
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
+from app.core.services.async_task_cache import AsyncTaskCache
 from app.core.services.exercise import ExerciseService
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
@@ -48,6 +49,11 @@ def exercise():
 @pytest.fixture
 def mock_exercise_repo():
     return AsyncMock(spec=ExerciseRepository)
+
+
+@pytest.fixture
+def mock_async_task_cache():
+    return AsyncMock(spec=AsyncTaskCache)
 
 
 @pytest.fixture
@@ -99,6 +105,7 @@ def exercise_service(
     mock_attempt_repo,
     mock_llm_service,
     mock_translator,
+    mock_async_task_cache,
 ):
     return ExerciseService(
         mock_exercise_repo,
@@ -106,6 +113,7 @@ def exercise_service(
         mock_answer_repo,
         mock_llm_service,
         mock_translator,
+        mock_async_task_cache,
     )
 
 

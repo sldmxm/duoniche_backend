@@ -8,6 +8,7 @@ from lxml import html
 
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.entities.exercise import Exercise
+from app.core.entities.user_bot_profile import BotID
 from app.core.enums import ExerciseTopic, ExerciseType
 from app.core.texts import get_text
 from app.core.value_objects.answer import Answer, ChooseAccentAnswer
@@ -27,36 +28,52 @@ class ChooseAccentGenerationError(Exception):
 
 
 class ChooseAccentGenerator:
-    @staticmethod
+    def __init__(self, http_client: httpx.AsyncClient):  # <--- Конструктор
+        self.http_client = http_client
+
     async def fetch_word(
-        client: httpx.AsyncClient,
+        self,
     ) -> Optional[Tuple[str, str]]:
         try:
-            resp = await client.get(
+            resp = await self.http_client.get(
                 'https://rechnik.chitanka.info/random', follow_redirects=True
             )
             tree = html.fromstring(resp.text)
-            word = tree.xpath('/html/body/div[2]/div[2]/div[1]/h2/span[1]')
-            meaning = tree.xpath('/html/body/div[2]/div[2]/div[1]/div[1]/div')
-            if not word:
+            word_elements = tree.xpath(
+                '/html/body/div[2]/div[2]/div[1]/h2/span[1]'
+            )
+            meaning_elements = tree.xpath(
+                '/html/body/div[2]/div[2]/div[1]/div[1]/div'
+            )
+            if not word_elements:
                 return None
-            return word[0].text_content().strip(), meaning[
-                0
-            ].text_content().strip()
+            word = word_elements[0].text_content().strip()
+            meaning = meaning_elements[0].text_content().strip()
+            return word, meaning
+
+        except httpx.RequestError as e:
+            logger.error(f'HTTPX RequestError while fetching word: {e}')
+        except html.etree.ParserError as e:
+            logger.error(f'lxml ParserError while fetching word: {e}')
         except Exception as e:
-            logger.error(f'Error while fetching word: {e}')
+            logger.error(
+                f'Unexpected error while fetching word: {e}', exc_info=True
+            )
         return None
 
-    @staticmethod
     async def fetch_words_batch(
+        self,
         n: int = BATCH_FETCH_NUM,
     ) -> List[Tuple[str, str]]:
-        async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
-            tasks = [
-                ChooseAccentGenerator.fetch_word(client) for _ in range(n)
-            ]
-            words = await asyncio.gather(*tasks)
-            return [w for w in words if w]
+        tasks = [self.fetch_word() for _ in range(n)]
+        words_results = await asyncio.gather(*tasks, return_exceptions=True)
+        valid_words = []
+        for i, res in enumerate(words_results):
+            if isinstance(res, Exception):
+                logger.error(f'Error in fetch_word task {i}: {res}')
+            elif isinstance(res, tuple):
+                valid_words.append(res)
+        return valid_words
 
     @staticmethod
     def has_accent_nfd(word: str) -> bool:
@@ -102,47 +119,67 @@ class ChooseAccentGenerator:
             res.append(incorrect_word)
         return res
 
-    @staticmethod
     async def generate(
+        self,
         user_language,
-    ) -> Optional[Tuple[Exercise, Answer]]:
-        words = await ChooseAccentGenerator.fetch_words_batch(BATCH_FETCH_NUM)
-        for word, meaning in words:
+    ) -> Tuple[Exercise, Answer]:
+        words_data = await self.fetch_words_batch(BATCH_FETCH_NUM)
+
+        if not words_data:
+            logger.warning(
+                'Failed to fetch any words for accent exercise generation.'
+            )
+            raise ChooseAccentGenerationError('Failed to fetch any words.')
+
+        for word, meaning in words_data:
             is_ok = (
                 ChooseAccentGenerator.has_accent_nfd(word)
                 and MIN_VOWELS
                 <= len(ChooseAccentGenerator.get_vowels_indexes(word))
                 <= MAX_VOWELS
-                and len(meaning) > MIN_MEANING_LEN
+                and len(meaning) >= MIN_MEANING_LEN
                 and 'остар.' not in meaning.lower()
                 and 'спец.' not in meaning.lower()
             )
             if is_ok:
+                incorrect_options = self.generate_incorrect_accents(word)
+                all_options = [word] + incorrect_options
+
                 exercise = Exercise(
                     exercise_id=None,
                     exercise_type=ExerciseType.CHOOSE_ACCENT,
-                    exercise_language='Bulgarian',
+                    exercise_language=BotID.BG.value,
                     language_level=DEFAULT_LANGUAGE_LEVEL,
                     topic=ExerciseTopic.GENERAL,
                     exercise_text=get_text(
                         ExerciseType.CHOOSE_ACCENT, user_language
                     ),
                     data=ChooseAccentExerciseData(
-                        options=[word]
-                        + ChooseAccentGenerator.generate_incorrect_accents(
-                            word
-                        ),
+                        options=all_options,
                     ),
                 )
                 correct_answer = ChooseAccentAnswer(answer=word)
                 logger.info(f'Generated exercise: {exercise}')
                 return exercise, correct_answer
-        logger.warning('Failed to generate exercise')
-        raise ChooseAccentGenerationError('Failed to generate exercise')
+
+        logger.warning(
+            'Failed to generate a suitable CHOOSE_ACCENT exercise '
+            'after checking all fetched words.'
+        )
+        raise ChooseAccentGenerationError(
+            'Failed to generate a suitable exercise from fetched words.'
+        )
 
 
 async def gen():
-    print(await ChooseAccentGenerator.generate('ru'))
+    async with httpx.AsyncClient() as client:
+        generator = ChooseAccentGenerator(client)
+        try:
+            exercise, answer = await generator.generate('ru')
+            print(exercise)
+            print(answer)
+        except ChooseAccentGenerationError as e:
+            print(e)
 
 
 if __name__ == '__main__':

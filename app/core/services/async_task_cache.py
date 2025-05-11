@@ -2,10 +2,9 @@ import asyncio
 import logging
 from typing import Any, Callable, Coroutine, Generic, Optional, TypeVar
 
-from redis.asyncio import Redis
+from redis.asyncio import Redis as AsyncRedis
 from redis.exceptions import ConnectionError
 
-from app.config import settings
 from app.core.consts import ASYNC_TASK_CACHE_TTL
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
@@ -24,8 +23,8 @@ class AsyncTaskCache(Generic[T]):
     to avoid redundant computations.
     """
 
-    def __init__(self, redis: Redis):
-        self.redis = redis
+    def __init__(self, redis_client: AsyncRedis):
+        self.redis = redis_client
         self.running_tasks: dict[str, asyncio.Task[T]] = {}
 
     async def get_or_create_task(
@@ -51,7 +50,7 @@ class AsyncTaskCache(Generic[T]):
         :param deserializer: A function to deserialize bytes back
             to the result (T).
         :param ttl: Time-to-live for the cache entry in seconds.
-            Uses settings.async_task_cache_ttl if None.
+            Uses ASYNC_TASK_CACHE_TTL if None.
         :return: The result of the task function (T).
         :raises: Exception if the task_func raises an exception.
         """
@@ -168,11 +167,6 @@ class AsyncTaskCache(Generic[T]):
 
     def clear(self):
         self.running_tasks.clear()
-
-
-async_task_cache: AsyncTaskCache = AsyncTaskCache(
-    Redis.from_url(settings.redis_url)
-)
 
 
 def deserialize_exercise_answer(data: bytes) -> ExerciseAnswer:

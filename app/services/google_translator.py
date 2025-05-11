@@ -12,11 +12,13 @@ logger = logging.getLogger(__name__)
 class GoogleTranslator(TranslateProvider):
     def __init__(
         self,
+        http_client: httpx.AsyncClient,
         google_api_key: str = settings.google_api_key,
     ):
         if not google_api_key:
             raise ValueError('GOOGLE_API_KEY environment variable is not set')
         self.google_api_key = google_api_key
+        self.http_client = http_client
         self.URL: str = (
             'https://translation.googleapis.com/language/translate/v2'
         )
@@ -38,25 +40,24 @@ class GoogleTranslator(TranslateProvider):
                 )
                 .time()
             ):
-                async with httpx.AsyncClient() as client:
-                    response = await client.request(
-                        'post',
-                        self.URL,
-                        json=request_data,
-                        headers=headers,
-                    )
-                    response.raise_for_status()
-                    logger.info(f'Response: {response.json()}')
-                    data = response.json()
+                response = await self.http_client.request(
+                    'post',
+                    self.URL,
+                    json=request_data,
+                    headers=headers,
+                )
+                response.raise_for_status()
+                logger.info(f'Response: {response.json()}')
+                data = response.json()
 
-                    BACKEND_TRANSLATOR_METRICS['translations'].labels(
-                        target_language=target_language,
-                    ).inc()
-                    BACKEND_TRANSLATOR_METRICS['translations_chars'].labels(
-                        target_language=target_language,
-                    ).inc(len(text))
+                BACKEND_TRANSLATOR_METRICS['translations'].labels(
+                    target_language=target_language,
+                ).inc()
+                BACKEND_TRANSLATOR_METRICS['translations_chars'].labels(
+                    target_language=target_language,
+                ).inc(len(text))
 
-                    return data['data']['translations'][0]['translatedText']
+                return data['data']['translations'][0]['translatedText']
         except httpx.HTTPStatusError as exc:
             error_text = (
                 f'HTTP error with status code '

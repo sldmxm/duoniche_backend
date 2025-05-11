@@ -16,9 +16,6 @@ from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
 from app.core.services.async_task_cache import (
     AsyncTaskCache,
 )
-from app.core.services.async_task_cache import (
-    async_task_cache as default_async_task_cache,
-)
 from app.core.services.attempt_validator import AttemptValidator
 from app.core.services.exercise_getter import ExerciseGetter
 from app.core.value_objects.answer import Answer
@@ -34,7 +31,7 @@ class ExerciseService:
         exercise_answers_repository: ExerciseAnswerRepository,
         llm_service: LLMProvider,
         translator: TranslateProvider,
-        async_task_cache: AsyncTaskCache = default_async_task_cache,
+        async_task_cache: AsyncTaskCache,
     ):
         self.exercise_getter = ExerciseGetter(
             exercise_repository=exercise_repository,

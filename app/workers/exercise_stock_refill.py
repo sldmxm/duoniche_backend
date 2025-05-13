@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 
 from app.core.consts import (
     DEFAULT_LANGUAGE_LEVEL,
-    DEFAULT_TARGET_LANGUAGE,
     DEFAULT_USER_LANGUAGE,
 )
 from app.core.entities.exercise_answer import ExerciseAnswer
@@ -43,6 +42,7 @@ async def generate_and_save_exercise(
                 DEFAULT_LANGUAGE_LEVEL
             )
             topic = ExerciseTopic.get_next_topic()
+
             if exercise_type == ExerciseType.CHOOSE_ACCENT:
                 if target_language == BotID.BG.value:
                     try:
@@ -52,12 +52,18 @@ async def generate_and_save_exercise(
                         ) = await choose_accent_generator.generate(
                             user_language=DEFAULT_USER_LANGUAGE
                         )
+                        created_by = 'scrapper'
                     except ChooseAccentGenerationError as e:
                         logger.warning(
                             f'Failed to generate CHOOSE_ACCENT exercise: {e}'
                         )
                         return
-                    created_by = 'scrapper'
+                else:
+                    logger.warning(
+                        f'Skipping CHOOSE_ACCENT generation for non-BG '
+                        f'language: {target_language}'
+                    )
+                    return
             else:
                 exercise, answer = await llm_service.generate_exercise(
                     user_language=user_language,
@@ -89,9 +95,11 @@ async def generate_and_save_exercise(
                         await exercise_answer_repository.create(right_answer)
                     await session.commit()
             else:
-                logger.info(
-                    f'Skipping save for exercise type {exercise_type} '
-                    f'as it was not generated.'
+                logger.warning(
+                    f'Skipping save for exercise type '
+                    f'{exercise_type.value} for {target_language} '
+                    f'as it was not generated (exercise_data '
+                    f'or answer_data is None).'
                 )
 
     except Exception as e:
@@ -110,48 +118,70 @@ async def exercise_stock_refill(
         tasks = []
         async with async_session_maker() as session:
             exercise_repo = SQLAlchemyExerciseRepository(session)
-            available_count = await exercise_repo.count_untouched_exercises()
-            if not available_count:
-                available_count = {DEFAULT_TARGET_LANGUAGE: {}}
+            available_counts_by_lang_type = (
+                await exercise_repo.count_untouched_exercises()
+            )
+
+            all_target_languages = [bot_id.value for bot_id in BotID]
             all_exercise_types = list(ExerciseType)
-            for exercise_language in available_count:
-                for exercise_type in all_exercise_types:
-                    count = available_count.get(exercise_language, {}).get(
-                        exercise_type.value, 0
+
+            for lang in all_target_languages:
+                if lang not in available_counts_by_lang_type:
+                    available_counts_by_lang_type[lang] = {}
+
+                for ex_type in all_exercise_types:
+                    count = available_counts_by_lang_type.get(lang, {}).get(
+                        ex_type.value, 0
                     )
 
                     logger.info(
-                        f'Untouched exercises: Language: {exercise_language}, '
-                        f'Type: {exercise_type.value} Count: {count}'
+                        f'Untouched exercises: Language: {lang}, '
+                        f'Type: {ex_type.value}, Count: {count}'
                     )
+
                     BACKEND_EXERCISE_METRICS['untouched_exercises'].labels(
-                        exercise_language=exercise_language
+                        exercise_language=lang,
                     ).set(count)
 
                     if count < MIN_EXERCISE_COUNT_TO_GENERATE_NEW:
                         to_generate = (
                             MIN_EXERCISE_COUNT_TO_GENERATE_NEW - count
                         )
+                        logger.info(
+                            f'Need to generate {to_generate} exercises '
+                            f'for {lang}, type {ex_type.value}'
+                        )
                         for _ in range(to_generate):
                             tasks.append(
                                 generate_and_save_exercise(
                                     user_language=DEFAULT_USER_LANGUAGE,
-                                    target_language=exercise_language,
-                                    exercise_type=exercise_type,
+                                    target_language=lang,
+                                    exercise_type=ex_type,
                                     llm_service=llm_service,
                                     choose_accent_generator=choose_accent_generator,
                                 )
                             )
 
             if tasks:
+                logger.info(
+                    f'Starting generation of {len(tasks)} '
+                    f'new exercises in batch.'
+                )
                 results = await asyncio.gather(*tasks, return_exceptions=True)
+                successful_generations = 0
                 for i, result in enumerate(results):
                     if isinstance(result, Exception):
-                        logger.error(
+                        logger.warning(
                             f'Exercise generation task {i} in batch '
-                            f'resulted in an error '
-                            f'(already logged): {type(result).__name__}'
+                            f'resulted in an error (see previous logs): '
+                            f'{type(result).__name__}'
                         )
+                    elif result is not None:
+                        successful_generations += 1
+                logger.info(
+                    f'Finished generation batch. Successful: '
+                    f'{successful_generations}/{len(tasks)}'
+                )
 
     except Exception as e:
         logger.error(
@@ -163,11 +193,42 @@ async def exercise_stock_refill(
 async def exercise_stock_refill_loop(
     llm_service: LLMService,
     choose_accent_generator: ChooseAccentGenerator,
+    stop_event: asyncio.Event,
 ):
-    while True:
-        logger.info('Starting exercise refill loop...')
-        await exercise_stock_refill(
-            llm_service=llm_service,
-            choose_accent_generator=choose_accent_generator,
-        )
-        await asyncio.sleep(EXERCISE_REFILL_INTERVAL)
+    logger.info('Exercise stock refill worker started.')
+    try:
+        while not stop_event.is_set():
+            logger.info('Starting exercise refill cycle...')
+            try:
+                await exercise_stock_refill(
+                    llm_service=llm_service,
+                    choose_accent_generator=choose_accent_generator,
+                )
+            except Exception as e:
+                logger.error(
+                    f'Exercise refill cycle failed: {e}', exc_info=True
+                )
+
+            if stop_event.is_set():
+                break
+            try:
+                await asyncio.wait_for(
+                    stop_event.wait(), timeout=EXERCISE_REFILL_INTERVAL
+                )
+                logger.info(
+                    'Exercise stock refill: stop event '
+                    'received during sleep interval.'
+                )
+                break
+            except asyncio.TimeoutError:
+                pass
+            except asyncio.CancelledError:
+                logger.info(
+                    'Exercise stock refill: loop task cancelled '
+                    'during sleep interval.'
+                )
+                raise
+    except asyncio.CancelledError:
+        logger.info('Exercise stock refill loop was cancelled.')
+    finally:
+        logger.info('Exercise stock refill loop terminated.')

@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 from app.core.entities.user_bot_profile import (
     BotID,
     UserBotProfile,
+    UserStatusInBot,
 )
 from app.core.repositories.user_bot_profile_repository import (
     UserBotProfileRepository,
@@ -39,7 +40,7 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
     async def get_all_by_user_id(
         self, user_id: int
     ) -> List[Optional[UserBotProfile]]:
-        stmt = select(UserBotProfile).where(
+        stmt = select(DBUserBotProfile).where(
             DBUserBotProfile.user_id == user_id
         )
         result = await self.session.execute(stmt)
@@ -94,6 +95,44 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
                 DBUserBotProfile.last_exercise_at.isnot(None),
                 DBUserBotProfile.last_exercise_at
                 >= now - timedelta(seconds=period_seconds),
+            )
+            .options(joinedload(DBUserBotProfile.user))
+        )
+        result = await self.session.execute(stmt)
+        db_user_bot_profiles = result.scalars().unique().all()
+        return list(db_user_bot_profiles)
+
+    async def get_unfrozen_for_reminder(
+        self, period_seconds: int
+    ) -> List[DBUserBotProfile]:
+        now = datetime.now(timezone.utc)
+        window_start_time = now - timedelta(seconds=period_seconds)
+
+        stmt = (
+            select(DBUserBotProfile)
+            .where(
+                DBUserBotProfile.session_frozen_until.isnot(None),
+                DBUserBotProfile.wants_session_reminders.isnot(False),
+                DBUserBotProfile.status == UserStatusInBot.ACTIVE,
+                DBUserBotProfile.session_frozen_until > window_start_time,
+                DBUserBotProfile.session_frozen_until <= now,
+            )
+            .options(joinedload(DBUserBotProfile.user))
+        )
+        result = await self.session.execute(stmt)
+        db_user_bot_profiles = result.scalars().unique().all()
+        return list(db_user_bot_profiles)
+
+    async def get_with_long_break_for_reminder(
+        self, min_break_duration_seconds: int
+    ) -> List[DBUserBotProfile]:
+        now = datetime.now(timezone.utc)
+        stmt = (
+            select(DBUserBotProfile)
+            .where(
+                DBUserBotProfile.status == UserStatusInBot.ACTIVE,
+                DBUserBotProfile.last_exercise_at
+                <= now - timedelta(seconds=min_break_duration_seconds),
             )
             .options(joinedload(DBUserBotProfile.user))
         )

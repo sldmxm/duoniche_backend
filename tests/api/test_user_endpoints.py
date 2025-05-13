@@ -369,10 +369,7 @@ async def test_block_bot_invalid_bot_id_value(
     # Expect 422 from FastAPI's automatic Enum validation
     assert response.status_code == 422
     # The expected error message depends on the actual BotID values
-    assert (
-        response.json()['detail'][0]['msg']
-        == "Input should be 'Bulgarian' or 'Serbian'"
-    )
+    assert response.json()['detail'][0]['msg'] == "Input should be 'Bulgarian'"
     assert response.json()['detail'][0]['loc'] == ['path', 'bot_id']
 
 

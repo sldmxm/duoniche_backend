@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     ForeignKey,
     Integer,
@@ -11,7 +12,7 @@ from sqlalchemy import (
     Enum as SQLAlchemyEnum,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func  # Для server_default и onupdate
+from sqlalchemy.sql import func
 
 from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.entities.user_bot_profile import BotID, UserStatusInBot
@@ -58,16 +59,33 @@ class DBUserBotProfile(Base):
     exercises_get_in_session: Mapped[int] = mapped_column(Integer, default=0)
     exercises_get_in_set: Mapped[int] = mapped_column(Integer, default=0)
     errors_count_in_set: Mapped[int] = mapped_column(Integer, default=0)
-    last_exercise_at: Mapped[datetime] = mapped_column(
+    last_exercise_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    session_started_at: Mapped[datetime] = mapped_column(
+    session_started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    session_frozen_until: Mapped[datetime] = mapped_column(
+    session_frozen_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
+    wants_session_reminders: Mapped[bool | None] = mapped_column(
+        Boolean, default=None, nullable=True
+    )
+    last_long_break_reminder_type_sent: Mapped[str | None] = mapped_column(
+        String, nullable=True
+    )
+    last_long_break_reminder_sent_at: Mapped[datetime | None] = (
+        mapped_column(  # Добавил | None
+            DateTime(timezone=True), nullable=True
+        )
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

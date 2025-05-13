@@ -58,6 +58,9 @@ class UserProgressService:
                 errors_count_in_set=0,
                 session_started_at=now,
                 session_frozen_until=None,
+                wants_session_reminders=None,
+                last_long_break_reminder_type_sent=None,
+                last_long_break_reminder_sent_at=None,
             )
 
         # TODO: разобраться, как собирать количество ошибок,
@@ -195,6 +198,8 @@ class UserProgressService:
                 exercises_get_in_session=user_bot_profile.exercises_get_in_session,
                 exercises_get_in_set=user_bot_profile.exercises_get_in_set,
                 last_exercise_at=now,
+                last_long_break_reminder_type_sent=None,
+                last_long_break_reminder_sent_at=None,
             )
 
             BACKEND_EXERCISE_METRICS['sent'].labels(
@@ -207,8 +212,6 @@ class UserProgressService:
                 action=UserAction.new_exercise,
             )
         else:
-            user_bot_profile.exercises_get_in_set = 0
-            user_bot_profile.errors_count_in_set = 0
             user_bot_profile = (
                 await self.user_bot_profile_service.update_session(
                     user_id=user.user_id,

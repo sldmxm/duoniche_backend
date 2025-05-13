@@ -22,6 +22,9 @@ _ALLOWED_SESSION_UPDATE_FIELDS = {
     'last_exercise_at',
     'session_started_at',
     'session_frozen_until',
+    'wants_session_reminders',
+    'last_long_break_reminder_type_sent',
+    'last_long_break_reminder_sent_at',
 }
 
 _ALLOWED_PROFILE_UPDATE_FIELDS = {
@@ -73,6 +76,9 @@ class UserBotProfileService:
             last_exercise_at=None,
             session_started_at=None,
             session_frozen_until=None,
+            wants_session_reminders=None,
+            last_long_break_reminder_type_sent=None,
+            last_long_break_reminder_sent_at=None,
         )
         try:
             created_profile = await self._profile_repo.create(new_profile)

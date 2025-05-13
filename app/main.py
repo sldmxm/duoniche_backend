@@ -20,8 +20,10 @@ from app.llm.llm_translator import LLMTranslator
 from app.logging_config import configure_logging
 from app.sentry_sdk import sentry_init
 from app.services.choose_accent_generator import ChooseAccentGenerator
+from app.services.notification_producer import NotificationProducerService
 from app.workers.exercise_stock_refill import exercise_stock_refill_loop
 from app.workers.metrics_updater import metrics_loop
+from app.workers.notification_scheduler import notification_scheduler_loop
 
 configure_logging()
 
@@ -44,31 +46,71 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     app.state.choose_accent_generator = ChooseAccentGenerator(
         http_client=app.state.http_client
     )
+    app.state.producer = NotificationProducerService(
+        redis_client=app.state.redis_client
+    )
 
-    metrics_task = asyncio.create_task(metrics_loop())
+    stop_event = asyncio.Event()
+
+    metrics_task = asyncio.create_task(
+        metrics_loop(
+            stop_event=stop_event,
+        ),
+        name='metrics_loop',
+    )
     exercise_refill_task = asyncio.create_task(
         exercise_stock_refill_loop(
             llm_service=app.state.llm_service,
             choose_accent_generator=app.state.choose_accent_generator,
-        )
+            stop_event=stop_event,
+        ),
+        name='exercise_refill_loop',
     )
-    logger.info('Application startup complete.')
+    notification_scheduler_task = asyncio.create_task(
+        notification_scheduler_loop(
+            notification_producer=app.state.producer,
+            stop_event=stop_event,
+        ),
+        name='notification_scheduler_loop',
+    )
+
+    logger.info('Application startup complete. All workers started.')
     yield
 
     logger.info('Application shutdown initiated.')
-    if not metrics_task.done():
-        metrics_task.cancel()
-    if not exercise_refill_task.done():
-        exercise_refill_task.cancel()
-    # TODO: Закрыть вокер уведомлений
-    try:
-        await metrics_task
-    except asyncio.CancelledError:
-        logger.info('Metrics loop cancelled.')
-    try:
-        await exercise_refill_task
-    except asyncio.CancelledError:
-        logger.info('Exercise refill loop cancelled.')
+    worker_tasks = [
+        metrics_task,
+        exercise_refill_task,
+        notification_scheduler_task,
+    ]
+    stop_event.set()
+    for task in worker_tasks:
+        if not task.done():
+            try:
+                await asyncio.wait_for(
+                    task, timeout=settings.worker_shutdown_timeout_seconds
+                )
+                logger.info(
+                    f'Worker task {task.get_name()} finished gracefully.'
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    f'Worker task {task.get_name()} timed '
+                    f'out during shutdown. Cancelling.'
+                )
+                task.cancel()
+            except asyncio.CancelledError:
+                logger.info(
+                    f'Worker task {task.get_name()} was '
+                    f'cancelled during shutdown.'
+                )
+            except Exception as e:
+                logger.error(
+                    f'Error during shutdown of worker task '
+                    f'{task.get_name()}: {e}',
+                    exc_info=True,
+                )
+
     if hasattr(app.state, 'http_client') and app.state.http_client:
         await app.state.http_client.aclose()
     if hasattr(app.state, 'async_task_cache') and app.state.async_task_cache:

@@ -159,6 +159,8 @@ async def test_get_next_action_returns_new_exercise(
         last_exercise_at=ANY,
         user_id=12345,
         bot_id=BotID.BG,
+        last_long_break_reminder_sent_at=None,
+        last_long_break_reminder_type_sent=None,
     )
     assert result.action == UserAction.new_exercise
     assert result.exercise is not None
@@ -213,8 +215,6 @@ async def test_get_next_action_returns_praise_and_next_set_when_set_completed(
             user.user_language
         ]
     )
-    assert user_bot_profile.exercises_get_in_set == 0
-    assert user_bot_profile.errors_count_in_set == 0
     assert user_bot_profile.exercises_get_in_session == 3
 
 

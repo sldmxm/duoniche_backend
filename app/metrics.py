@@ -155,3 +155,27 @@ BACKEND_TRANSLATOR_METRICS = {
         buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
     ),
 }
+
+BACKEND_NOTIFICATION_METRICS = {
+    'enqueue_attempt_total': Counter(
+        METRIC_PREFIX + 'notification_enqueue_attempt_total',
+        'Total attempts to enqueue notification tasks',
+        ['notification_type'],
+    ),
+    'enqueue_success_total': Counter(
+        METRIC_PREFIX + 'notification_enqueue_success_total',
+        'Total successfully enqueued notification tasks',
+        ['notification_type'],
+    ),
+    'enqueue_failure_total': Counter(
+        METRIC_PREFIX + 'notification_enqueue_failure_total',
+        'Total failed attempts to enqueue notification tasks',
+        ['reason', 'notification_type'],
+    ),
+    'enqueue_duration_seconds': Histogram(
+        METRIC_PREFIX + 'notification_enqueue_duration_seconds',
+        'Duration of enqueuing notification tasks (including retries)',
+        ['notification_type'],
+        buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10),
+    ),
+}

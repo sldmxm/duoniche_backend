@@ -215,7 +215,7 @@ class AttemptValidator:
             .time()
         ):
             attempt_key = (
-                f'validate_attempt'
+                f'backend_validate_attempt'
                 f'_{user_id}'
                 f'_{exercise.exercise_id}'
                 f'_{hash(answer.get_answer_text())}'
@@ -276,7 +276,7 @@ class AttemptValidator:
             return saved_answer
 
         cache_key = (
-            'validation'
+            'backend_validation'
             f'_{exercise.exercise_id}'
             f'_{hash(answer.get_answer_text())}'
         )
@@ -329,7 +329,7 @@ class AttemptValidator:
         logger.info(
             f'Begin translation process for {answer} ' f'to {user_language}'
         )
-        cache_key = f'translation_{answer.answer_id}_{user_language}'
+        cache_key = f'backend_translation_{answer.answer_id}_{user_language}'
         translated = await self.async_task_cache.get_or_create_task(
             key=cache_key,
             task_func=lambda: _inner(

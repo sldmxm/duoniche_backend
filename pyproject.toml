@@ -40,6 +40,9 @@ lint.select = ["E", "F", "B", "I", "SIM",]
 exclude = ["settings.py","migrations", "alembic/*"]
 line-length = 79
 
+[tool.ruff.lint.per-file-ignores]
+"app/api/v1/endpoints/*.py" = ["B008"]
+
 [tool.mypy]
 exclude = ["tests/", "alembic/"]
 ignore_missing_imports = true

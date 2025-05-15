@@ -46,9 +46,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     app.state.choose_accent_generator = ChooseAccentGenerator(
         http_client=app.state.http_client
     )
-    app.state.producer = NotificationProducerService(
-        redis_client=app.state.redis_client
-    )
+    app.state.producer = NotificationProducerService()
 
     stop_event = asyncio.Event()
 

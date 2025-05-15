@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.core.consts import (
     DEFAULT_LANGUAGE_LEVEL,
@@ -32,3 +32,7 @@ class User(BaseModel):
     last_exercise_at: Optional[datetime] = None
     session_started_at: Optional[datetime] = None
     session_frozen_until: Optional[datetime] = None
+
+    model_config = ConfigDict(
+        from_attributes=True,
+    )

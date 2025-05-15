@@ -163,7 +163,7 @@ async def update_user_by_user_id(
 
 
 @router.post(
-    '/{user_id}/bots/{bot_id}/block/',
+    '/{user_id}/bots/{bot_id}/block',
     response_model=ReportBlockResponse,
     summary='Set bot as blocked by user',
     description='Set bot as blocked by user',

@@ -3,11 +3,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from freezegun import freeze_time
-from redis.exceptions import RedisError
 
+from app.celery_producer import NOTIFIER_TASK_NAME, notifier_celery_producer
 from app.config import settings
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
+from app.core.enums import LanguageLevel
 from app.services.notification_producer import (
     NotificationProducerService,
     NotificationTaskData,
@@ -22,40 +23,30 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-def mock_redis_client(mocker) -> AsyncMock:
-    """Мок для AsyncRedis клиента."""
-    mock = mocker.AsyncMock(spec_set=['rpush'])
-    mock.rpush = AsyncMock(return_value=1)
-    return mock
+def producer() -> NotificationProducerService:
+    """Экземпляр NotificationProducerService."""
+    return NotificationProducerService()
 
 
 @pytest.fixture
-def producer(
-    mock_redis_client: AsyncMock,
-) -> NotificationProducerService:
-    """Экземпляр NotificationProducerService с моком Redis."""
-    return NotificationProducerService(redis_client=mock_redis_client)
-
-
-@pytest.fixture
-def sample_user(user: User) -> User:  # Используем фикстуру user из conftest.py
+def sample_user(user: User) -> User:
     """Пример пользователя для тестов."""
-    # Убедимся, что user_id и telegram_id имеют значения для тестов продюсера
     if user.user_id is None:
         user.user_id = 123
     if not isinstance(user.telegram_id, str) or not user.telegram_id.isdigit():
-        user.telegram_id = '123456789'  # Telegram ID должен быть строкой цифр
+        user.telegram_id = '123456789'
     return user
 
 
 @pytest.fixture
 def sample_user_bot_profile(
     user_bot_profile: UserBotProfile, sample_user: User
-) -> UserBotProfile:  # Используем фикстуру user_bot_profile из conftest.py
+) -> UserBotProfile:
     """Пример профиля пользователя для тестов."""
-    user_bot_profile.user_id = sample_user.user_id  # Связываем с sample_user
+    user_bot_profile.user_id = sample_user.user_id
     user_bot_profile.bot_id = BotID.BG
     user_bot_profile.user_language = 'ru'
+    user_bot_profile.language_level = LanguageLevel.A2
     return user_bot_profile
 
 
@@ -77,7 +68,7 @@ def sample_notification_task_data(
 ) -> NotificationTaskData:
     """Пример валидных данных для задачи уведомления."""
     return NotificationTaskData(
-        user_id=sample_user.user_id,  # sample_user.user_id уже int
+        user_id=sample_user.user_id,
         bot_id=sample_user_bot_profile.bot_id,
         text='Test notification text',
         notification_type=NotificationType.SESSION_REMINDER,
@@ -87,14 +78,45 @@ def sample_notification_task_data(
     )
 
 
+@pytest.fixture
+def mock_backend_notification_metrics(mocker):
+    """
+    Fixture to mock the BACKEND_NOTIFICATION_METRICS dictionary
+    and provide the mocked metrics to tests.
+    """
+    mocked_metrics = {
+        'enqueue_attempt_total': MagicMock(),
+        'enqueue_success_total': MagicMock(),
+        'enqueue_failure_total': MagicMock(),
+        'enqueue_duration_seconds': MagicMock(),
+    }
+    mocker.patch.dict(
+        'app.metrics.BACKEND_NOTIFICATION_METRICS', mocked_metrics, clear=True
+    )
+    return mocked_metrics
+
+
 # --- Тесты для enqueue_notification ---
 
 
+@patch.object(notifier_celery_producer, 'send_task', new_callable=MagicMock)
 async def test_enqueue_notification_success(
+    mock_send_task: MagicMock,
+    mock_backend_notification_metrics: dict,
     producer: NotificationProducerService,
-    mock_redis_client: AsyncMock,
     sample_notification_task_data: NotificationTaskData,
 ):
+    # Arrange
+    mock_duration_metric = MagicMock()
+    mock_backend_notification_metrics[
+        'enqueue_duration_seconds'
+    ].labels.return_value.time.return_value.__enter__.return_value = (
+        mock_duration_metric
+    )
+    mock_backend_notification_metrics[
+        'enqueue_duration_seconds'
+    ].labels.return_value.time.return_value.__exit__.return_value = None
+
     # Act
     success = await producer.enqueue_notification(
         sample_notification_task_data
@@ -102,23 +124,58 @@ async def test_enqueue_notification_success(
 
     # Assert
     assert success is True
-    mock_redis_client.rpush.assert_awaited_once_with(
-        settings.notification_tasks_queue_name,
-        sample_notification_task_data.model_dump_json().encode('utf-8'),
+
+    mock_send_task.assert_called_once_with(
+        NOTIFIER_TASK_NAME,
+        args=[sample_notification_task_data.model_dump()],
+        queue=settings.notification_tasks_queue_name,
+        task_id=sample_notification_task_data.task_id,
+        # eta=...
     )
 
+    mock_backend_notification_metrics[
+        'enqueue_attempt_total'
+    ].labels.assert_called_once_with(
+        notification_type=sample_notification_task_data.notification_type.value
+    )
+    mock_backend_notification_metrics[
+        'enqueue_attempt_total'
+    ].labels.return_value.inc.assert_called_once()
 
-@patch(
-    'app.services.notification_producer.NotificationTaskData.model_dump_json'
-)
-async def test_enqueue_notification_serialization_error(
-    mock_model_dump_json: MagicMock,
+    mock_backend_notification_metrics[
+        'enqueue_success_total'
+    ].labels.assert_called_once_with(
+        notification_type=sample_notification_task_data.notification_type.value
+    )
+    mock_backend_notification_metrics[
+        'enqueue_success_total'
+    ].labels.return_value.inc.assert_called_once()
+
+    mock_backend_notification_metrics[
+        'enqueue_failure_total'
+    ].labels.assert_not_called()
+
+    mock_backend_notification_metrics[
+        'enqueue_duration_seconds'
+    ].labels.assert_called_once_with(
+        notification_type=sample_notification_task_data.notification_type.value
+    )
+    mock_backend_notification_metrics[
+        'enqueue_duration_seconds'
+    ].labels.return_value.time.assert_called_once()
+
+
+@patch('app.services.notification_producer.NotificationTaskData.model_dump')
+@patch.object(notifier_celery_producer, 'send_task', new_callable=MagicMock)
+async def test_enqueue_notification_arg_preparation_error(
+    mock_send_task: MagicMock,
+    mock_model_dump: MagicMock,
+    mock_backend_notification_metrics: dict,
     producer: NotificationProducerService,
-    mock_redis_client: AsyncMock,
     sample_notification_task_data: NotificationTaskData,
 ):
     # Arrange
-    mock_model_dump_json.side_effect = TypeError('Serialization failed')
+    mock_model_dump.side_effect = TypeError('Argument preparation failed')
 
     # Act
     success = await producer.enqueue_notification(
@@ -127,30 +184,103 @@ async def test_enqueue_notification_serialization_error(
 
     # Assert
     assert success is False
-    mock_redis_client.rpush.assert_not_awaited()
+    mock_send_task.assert_not_called()
+
+    mock_backend_notification_metrics[
+        'enqueue_attempt_total'
+    ].labels.assert_called_once_with(
+        notification_type=sample_notification_task_data.notification_type.value
+    )
+    mock_backend_notification_metrics[
+        'enqueue_attempt_total'
+    ].labels.return_value.inc.assert_called_once()
+
+    mock_backend_notification_metrics[
+        'enqueue_success_total'
+    ].labels.assert_not_called()
+
+    mock_backend_notification_metrics[
+        'enqueue_failure_total'
+    ].labels.assert_called_once_with(
+        reason='arg_preparation_error',
+        notification_type=sample_notification_task_data.notification_type.value,
+    )
+    mock_backend_notification_metrics[
+        'enqueue_failure_total'
+    ].labels.return_value.inc.assert_called_once()
+
+    mock_backend_notification_metrics[
+        'enqueue_duration_seconds'
+    ].labels.assert_not_called()
 
 
-async def test_enqueue_notification_redis_error_after_retries(
+@patch.object(notifier_celery_producer, 'send_task', new_callable=MagicMock)
+async def test_enqueue_notification_celery_send_error(
+    mock_send_task: MagicMock,
+    mock_backend_notification_metrics: dict,
     producer: NotificationProducerService,
-    mock_redis_client: AsyncMock,
     sample_notification_task_data: NotificationTaskData,
 ):
     # Arrange
-    mock_redis_client.rpush.side_effect = RedisError('Connection failed')
+    mock_duration_metric = MagicMock()
+    mock_backend_notification_metrics[
+        'enqueue_duration_seconds'
+    ].labels.return_value.time.return_value.__enter__.return_value = (
+        mock_duration_metric
+    )
+    mock_backend_notification_metrics[
+        'enqueue_duration_seconds'
+    ].labels.return_value.time.return_value.__exit__.return_value = None
 
-    with patch('tenacity.wait.wait_exponential') as mock_wait_exponential:
-        mock_wait_exponential.return_value.wait = AsyncMock(
-            return_value=0.001
-        )  # Например, 1 миллисекунда
+    mock_send_task.side_effect = Exception('Celery broker connection failed')
 
-        # Act
-        success = await producer.enqueue_notification(
-            sample_notification_task_data
-        )
+    # Act
+    success = await producer.enqueue_notification(
+        sample_notification_task_data
+    )
 
     # Assert
     assert success is False
-    assert mock_redis_client.rpush.await_count == 5
+
+    mock_send_task.assert_called_once_with(
+        NOTIFIER_TASK_NAME,
+        args=[sample_notification_task_data.model_dump()],
+        queue=settings.notification_tasks_queue_name,
+        task_id=sample_notification_task_data.task_id,
+        # eta=...
+    )
+
+    mock_backend_notification_metrics[
+        'enqueue_attempt_total'
+    ].labels.assert_called_once_with(
+        notification_type=sample_notification_task_data.notification_type.value
+    )
+    mock_backend_notification_metrics[
+        'enqueue_attempt_total'
+    ].labels.return_value.inc.assert_called_once()
+
+    mock_backend_notification_metrics[
+        'enqueue_success_total'
+    ].labels.assert_not_called()
+
+    mock_backend_notification_metrics[
+        'enqueue_failure_total'
+    ].labels.assert_called_once_with(
+        reason='celery_send_error',
+        notification_type=sample_notification_task_data.notification_type.value,
+    )
+    mock_backend_notification_metrics[
+        'enqueue_failure_total'
+    ].labels.return_value.inc.assert_called_once()
+
+    mock_backend_notification_metrics[
+        'enqueue_duration_seconds'
+    ].labels.assert_called_once_with(
+        notification_type=sample_notification_task_data.notification_type.value
+    )
+    mock_backend_notification_metrics[
+        'enqueue_duration_seconds'
+    ].labels.return_value.time.assert_called_once()
 
 
 # --- Тесты для prepare_and_enqueue_session_reminder ---

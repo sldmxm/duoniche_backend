@@ -4,11 +4,9 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, Optional, cast
 
-import tenacity
 from pydantic import BaseModel, Field, field_validator
-from redis.asyncio import Redis as AsyncRedis
-from redis.exceptions import RedisError
 
+from app.celery_producer import NOTIFIER_TASK_NAME, notifier_celery_producer
 from app.config import settings
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
@@ -16,8 +14,6 @@ from app.metrics import BACKEND_NOTIFICATION_METRICS
 
 logger = logging.getLogger(__name__)
 
-REDIS_ENQUEUE_RETRIES = 5
-REDIS_ENQUEUE_BACKOFF_SECONDS = 1
 LONG_BREAK_REMINDER_INTERVALS: Dict[str, timedelta] = {
     '7d': timedelta(days=7),
     '30d': timedelta(days=30),
@@ -99,30 +95,9 @@ class NotificationProducerService:
     and enqueuing notification tasks to Redis.
     """
 
-    def __init__(self, redis_client: AsyncRedis):
-        self.redis = redis_client
+    def __init__(self):
+        self.celery_producer = notifier_celery_producer
         self.queue_name = settings.notification_tasks_queue_name
-
-    @tenacity.retry(
-        stop=tenacity.stop_after_attempt(REDIS_ENQUEUE_RETRIES),
-        wait=tenacity.wait_exponential(
-            multiplier=REDIS_ENQUEUE_BACKOFF_SECONDS
-        ),
-        before_sleep=lambda retry_state: logger.warning(
-            f'Retrying enqueue_notification '
-            f'(attempt {retry_state.attempt_number}'
-            f'/{REDIS_ENQUEUE_RETRIES})...'
-        ),
-        after=tenacity.after_log(logger, logging.ERROR),
-        retry=tenacity.retry_if_exception_type(RedisError),
-    )
-    async def _send_to_redis(self, serialized_task: bytes) -> None:
-        """Internal method to send the serialized task
-        to Redis with retries."""
-        await self.redis.rpush(self.queue_name, serialized_task)  # type: ignore[misc]
-        logger.debug(
-            f"Successfully pushed task to Redis queue '{self.queue_name}'."
-        )
 
     async def enqueue_notification(
         self, task_data: NotificationTaskData
@@ -142,17 +117,20 @@ class NotificationProducerService:
         ).inc()
 
         try:
-            serialized_task = task_data.model_dump_json().encode('utf-8')
-            logger.debug(f'Serialized task {task_data.task_id} for queue.')
+            task_args = [task_data.model_dump()]
+            logger.debug(
+                f'Preparing task {task_data.task_id} args for Celery.'
+            )
 
         except Exception as e:
             logger.error(
-                f'Failed to serialize notification task '
+                f'Failed to prepare arguments for notification task '
                 f'{task_data.task_id}: {e}',
                 exc_info=True,
             )
+
             BACKEND_NOTIFICATION_METRICS['enqueue_failure_total'].labels(
-                reason='serialization_error',
+                reason='arg_preparation_error',
                 notification_type=task_data.notification_type.value,
             ).inc()
             return False
@@ -163,36 +141,31 @@ class NotificationProducerService:
                 .labels(notification_type=task_data.notification_type.value)
                 .time()
             ):
-                await self._send_to_redis(serialized_task)
+                self.celery_producer.send_task(
+                    NOTIFIER_TASK_NAME,
+                    args=task_args,
+                    queue=self.queue_name,
+                    task_id=task_data.task_id,
+                    # eta=task_data.scheduled_at
+                )
 
             BACKEND_NOTIFICATION_METRICS['enqueue_success_total'].labels(
                 notification_type=task_data.notification_type.value
             ).inc()
             logger.info(
                 f'Notification task {task_data.task_id} '
-                f'successfully enqueued.'
+                f'successfully enqueued via Celery.'
             )
             return True
 
-        except tenacity.RetryError as e:
-            logger.error(
-                f'Failed to enqueue notification task {task_data.task_id} '
-                f'to Redis after multiple retries: {e}',
-                exc_info=True,
-            )
-            BACKEND_NOTIFICATION_METRICS['enqueue_failure_total'].labels(
-                reason='redis_error',
-                notification_type=task_data.notification_type.value,
-            ).inc()
-            return False
         except Exception as e:
             logger.error(
-                f'An unexpected error occurred while enqueuing notification '
-                f'task {task_data.task_id}: {e}',
+                f'Failed to enqueue notification task {task_data.task_id} '
+                f' via Celery: {e}',
                 exc_info=True,
             )
             BACKEND_NOTIFICATION_METRICS['enqueue_failure_total'].labels(
-                reason='unexpected_error',
+                reason='celery_send_error',
                 notification_type=task_data.notification_type.value,
             ).inc()
             return False

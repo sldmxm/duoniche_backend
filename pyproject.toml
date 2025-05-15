@@ -23,6 +23,7 @@ dependencies = [
     "uvicorn>=0.34.0",
     "lxml>=5.4.0",
     "pycountry>=24.6.1",
+    "celery>=5.5.2",
 ]
 
 [dependency-groups]

@@ -88,7 +88,6 @@ async def _validate_exercise_attempt_handler(
             )
 
         if exercise.exercise_type.value != answer.exercise_type:
-            # Используем f-string для более чистого вывода
             raise ValueError(
                 f'Answer type "{answer.exercise_type}" does not for exercise: '
                 f'"{exercise.exercise_type.value}".'

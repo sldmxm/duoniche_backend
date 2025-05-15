@@ -10,7 +10,7 @@ router = APIRouter()
 
 
 @router.get(
-    '/{task_id}/check_relevance/',
+    '/{task_id}/relevance',
     summary='Check if a notification task is still relevant for a user.',
     response_description='Returns a boolean indicating if '
     'the notification is relevant.',

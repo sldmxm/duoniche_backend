@@ -290,7 +290,7 @@ async def test_block_bot_success(
     payload = {'telegram_id': add_db_user.telegram_id, 'reason': reason}
 
     response = await client.post(
-        f'/api/v1/users/{user_id}/bots/{bot_id_value_for_url}/block/',
+        f'/api/v1/users/{user_id}/bots/{bot_id_value_for_url}/block',
         json=payload,
     )
 
@@ -321,7 +321,7 @@ async def test_block_bot_user_not_found_by_path_id(client: AsyncClient):
     payload = {'telegram_id': '1234567', 'reason': 'Test reason'}
 
     response = await client.post(
-        f'/api/v1/users/{non_existent_user_id}/bots/{bot_id_value_for_url}/block/',
+        f'/api/v1/users/{non_existent_user_id}/bots/{bot_id_value_for_url}/block',
         json=payload,
     )
     assert response.status_code == 404
@@ -343,7 +343,7 @@ async def test_block_bot_telegram_id_mismatch(
     }
 
     response = await client.post(
-        f'/api/v1/users/{user_id}/bots/{bot_id_value_for_url}/block/',
+        f'/api/v1/users/{user_id}/bots/{bot_id_value_for_url}/block',
         json=payload,
     )
     assert response.status_code == 404
@@ -363,7 +363,7 @@ async def test_block_bot_invalid_bot_id_value(
     }
 
     response = await client.post(
-        f'/api/v1/users/{user_id}/bots/{invalid_bot_id_value_for_url}/block/',
+        f'/api/v1/users/{user_id}/bots/{invalid_bot_id_value_for_url}/block',
         json=payload,
     )
     # Expect 422 from FastAPI's automatic Enum validation
@@ -399,7 +399,7 @@ async def test_block_bot_creates_profile_if_not_exists_and_blocks(
     payload = {'telegram_id': add_db_user.telegram_id, 'reason': reason}
 
     response = await client.post(
-        f'/api/v1/users/{user_id}/bots/{bot_id_value_for_url}/block/',
+        f'/api/v1/users/{user_id}/bots/{bot_id_value_for_url}/block',
         json=payload,
     )
 

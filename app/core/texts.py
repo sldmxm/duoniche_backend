@@ -1,6 +1,6 @@
 import random
 from enum import Enum
-from typing import Dict, List, Union, cast
+from typing import Any, Dict, List, Union, cast
 
 from app.core.consts import DEFAULT_BOT_MESSAGE_LANGUAGE
 from app.core.enums import ExerciseType
@@ -32,11 +32,6 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
     # TODO: Разные сообщения для разного количества ошибок
     #  найти за что хвалить, например,
     #  за короткое или длинное время сета
-    # Русский:
-    # Украинский:
-    # Болгарский:
-    # Английский:
-    # Турецкий:
     Messages.PRAISE_AND_NEXT_SET: {
         'en': [
             '🎉You are doing great! Keep going!',
@@ -120,18 +115,172 @@ EXERCISES_TASKS_TRANSLATIONS: Dict[
 }
 
 
+class Reminder(str, Enum):
+    SESSION_IS_READY = 'session_is_ready'
+    LONG_BREAK_1D_STREAK = 'long_break_1d_streak'
+    LONG_BREAK_1D = 'long_break_1d'
+    LONG_BREAK_3D = 'long_break_3d'
+    LONG_BREAK_5D = 'long_break_5d'
+    LONG_BREAK_8D = 'long_break_8d'
+    LONG_BREAK_13D = 'long_break_13d'
+    LONG_BREAK_21D = 'long_break_21d'
+    LONG_BREAK_30D = 'long_break_30d'
+    LONG_BREAK_90D = 'long_break_90d'
+
+
+DEFAULT_LONG_BREAK_REMINDER = Reminder.LONG_BREAK_5D
+
+REMINDERS_TRANSLATIONS: Dict[str, Dict[str, str]] = {
+    Reminder.SESSION_IS_READY: {
+        'en': '🚀Ready to level up? Your new session is here '
+        '— time to sharpen your skills!',
+        'bg': '🚀Готови ли сте да напреднете? Новата ви сесия е тук '
+        '— време е да подобрите уменията си!',
+        'tr': '🚀Hazır mısınız? Yeni oturum geldi '
+        '— becerilerinizi geliştirme zamanı!',
+        'ru': '🚀Готовы прокачаться? Новая сессия уже доступна '
+        '— время тренироваться!',
+        'uk': '🚀Готові підкорювати нові вершини? Нова сесія чекає на вас '
+        '— вперед до знань!',
+    },
+    Reminder.LONG_BREAK_1D_STREAK: {
+        'en': "🔥You're on a {streak_days}-day streak "
+        "— that's impressive! Don't break the rhythm now!",
+        'bg': '🔥Серията ти вече е {streak_days} 📆 '
+        '— впечатляващо! Не прекъсвай ритъма!',
+        'ru': '🔥У тебя уже серия {streak_days} 📆 '
+        '— крутой результат! Не сбивай ритм!',
+        'tr': '🔥Serin şu anda {streak_days} 📆 gün! '
+        'Harika, bırakma şimdi!',
+        'uk': '🔥У тебе вже серія {streak_days} 📆 '
+        '— це круто! Не зупиняйся!',
+    },
+    Reminder.LONG_BREAK_1D: {
+        'en': '📚Time to practice a bit — around this time yesterday, '
+        "you were crushing it! Let's keep it going!",
+        'bg': '📚Време е за малко практика — по това време вчера се '
+        'справяше страхотно! Продължавай в същия дух!',
+        'ru': '📚Пора немного позаниматься — вчера ты в это время '
+        'был молодцом и прокачивал язык! Держим темп!',
+        'tr': '📚Hadi biraz pratik yapalım — dün tam bu '
+        'saatte harikaydın! Aynı tempoda devam!',
+        'uk': '📚Час трохи попрактикуватися — у цей час учора '
+        'ти був на хвилі! Тримай темп!',
+    },
+    Reminder.LONG_BREAK_3D: {
+        'en': '⌛It’s been 3 days without practice. '
+        "One quick session — and you're back in the game!",
+        'bg': '⌛Изминаха 3 дни без практика. '
+        'Една бърза сесия и си обратно в играта!',
+        'ru': '⌛Прошло 3 дня без практики. '
+        'Одна быстрая сессия — и ты снова в игре!',
+        'tr': '⌛3 gündür pratik yok. ' 'Kısa bir seansla yeniden oyundasın!',
+        'uk': '⌛Минуло 3 дні без практики. '
+        'Швидка сесія — і ти знову в грі!',
+    },
+    Reminder.LONG_BREAK_5D: {
+        'en': '🌱The best time to plant a tree was 20 years ago. '
+        'The second best is now. Same with language learning.',
+        'bg': '🌱Най-доброто време да посадиш дърво беше преди 20 години. '
+        'Второто най-добро е сега. С езика е същото.',
+        'ru': '🌱Лучшее время посадить дерево было 20 лет назад. '
+        'Второе лучшее — сейчас. С языком то же самое.',
+        'tr': '🌱Bir ağacı dikmek için en iyi zaman 20 yıl önceydi. '
+        'İkincisi ise şimdi. Dil öğrenmek de böyle.',
+        'uk': '🌱Найкращий час посадити дерево був 20 років тому. '
+        'Другий найкращий — зараз. Із мовами так само.',
+    },
+    Reminder.LONG_BREAK_8D: {
+        'en': '🌟Every step counts — even after 8 days. '
+        'Your progress is waiting for you!',
+        'bg': '🌟Всяка крачка има значение — дори след 8 дни. '
+        'Напредъкът ти те очаква!',
+        'ru': '🌟Каждый шаг важен — даже спустя 8 дней. '
+        'Твой прогресс ждёт тебя!',
+        'tr': '🌟Her adım önemli — 8 gün sonra bile. '
+        'Gelişimin seni bekliyor!',
+        'uk': '🌟Кожен крок має значення — навіть після 8 днів. '
+        'Твій прогрес чекає на тебе!',
+    },
+    Reminder.LONG_BREAK_13D: {
+        'en': '⏳13 days away? No worries. The journey is still waiting. '
+        'Ready to take the next step?',
+        'bg': '⏳13 дни без практика? Няма страшно. Пътят те чака. '
+        'Готов ли си за следващата стъпка?',
+        'ru': '⏳13 дней без практики? Не беда. Путь всё ещё ждёт тебя. '
+        'Готов сделать следующий шаг?',
+        'tr': '⏳13 gündür ara mı verdin? '
+        'Sorun değil. Yolculuk seni bekliyor. '
+        'Bir adım daha atmaya var mısın?',
+        'uk': '⏳13 днів без практики? Не біда. Твоя подорож чекає. '
+        'Готовий зробити наступний крок?',
+    },
+    Reminder.LONG_BREAK_21D: {
+        'en': '⌛We know time is tight and language isn’t the top priority '
+        '— but even a few minutes can keep you moving forward.',
+        'bg': '⌛Знаем, че времето не стига и езикът не е на първо място '
+        '— но и няколко минути са важни за напредък.',
+        'ru': '⌛Понимаем — времени ни на что не хватает, язык '
+        '— не на первом месте. Но даже пару минут помогут '
+        'не остановиться.',
+        'tr': '⌛Zamanın dar olduğunu ve dilin öncelikli olmadığını '
+        'biliyoruz — ama birkaç dakika bile ilerlemeni sağlar.',
+        'uk': '⌛Розуміємо — часу бракує і мова не на першому місці. '
+        'Але навіть кілька хвилин допоможуть не зупинитись.',
+    },
+    Reminder.LONG_BREAK_30D: {
+        'en': '🥹 It’s been exactly a month since your last session. '
+        'No pressure, but maybe now’s a great time to continue?',
+        'bg': '🥹 Измина точно месец от последното ти занимание. '
+        'Без натиск, но може би сега е чудесен момент да продължиш?',
+        'ru': '🥹 Прошёл ровно месяц с твоего последнего занятия. '
+        'Ни на что не намекаю, но, кажется, отличный момент'
+        ' продолжить.',
+        'tr': '🥹 Son oturumundan tam bir ay geçti. Baskı yapmıyorum '
+        'ama belki şimdi devam etmek için harika bir zaman?',
+        'uk': '🥹 Минув рівно місяць з твого останнього заняття. Без '
+        'тиску, але, здається, чудовий момент продовжити.',
+    },
+    Reminder.LONG_BREAK_90D: {
+        'en': '🤗 It’s been 3 months since your last session. '
+        'No more reminders — I’ll miss you quietly...',
+        'bg': '🤗 Изминаха 3 месеца от последното ти занимание. '
+        'Никакви напомняния повече — ще ми липсваш тихо...',
+        'ru': '🤗 Прошло 3 месяца с твоего последнего занятия. '
+        'Никаких напоминаний больше — буду скучать молча...',
+        'tr': '🤗 Son oturumundan 3 ay geçti. Artık hatırlatma '
+        'yok — sessizce özleyeceğim...',
+        'uk': '🤗 Минуло 3 місяці з твого останнього заняття. '
+        'Жодних нагадувань більше — мовчки сумуватиму...',
+    },
+}
+
+
 def get_text(
-    key: Messages | ExerciseType, language_code: str, **kwargs
+    key: Union[Messages, ExerciseType, Reminder], language_code: str, **kwargs
 ) -> str:
-    if not isinstance(key, Messages | ExerciseType):
+    if not isinstance(key, Messages | ExerciseType | Reminder):
         raise ValueError(f'Unknown key type: {type(key)}')
 
-    dictionary = cast(
-        Dict[Messages | ExerciseType, Dict[str, Union[str, List[str]]]],
-        MESSAGES_TRANSLATIONS
-        if isinstance(key, Messages)
-        else EXERCISES_TASKS_TRANSLATIONS,
-    )
+    dictionary: Dict[Any, Dict[str, Union[str, List[str]]]]
+
+    if isinstance(key, Messages):
+        dictionary = cast(
+            Dict[Any, Dict[str, Union[str, List[str]]]], MESSAGES_TRANSLATIONS
+        )
+    elif isinstance(key, ExerciseType):
+        dictionary = cast(
+            Dict[Any, Dict[str, Union[str, List[str]]]],
+            EXERCISES_TASKS_TRANSLATIONS,
+        )
+    elif isinstance(key, Reminder):
+        dictionary = cast(
+            Dict[Any, Dict[str, Union[str, List[str]]]], REMINDERS_TRANSLATIONS
+        )
+    else:
+        raise ValueError(
+            f'Unhandled key type for dictionary selection: {type(key)}'
+        )
 
     if key not in dictionary:
         raise ValueError(f'Unknown key for translation: {key}')
@@ -141,11 +290,26 @@ def get_text(
         DEFAULT_BOT_MESSAGE_LANGUAGE
     )
 
+    if text_options is None:
+        raise ValueError(
+            f'No translation found for key '
+            f"'{key.value if isinstance(key, Enum) else key}' "
+            f"in language '{language_code}' "
+            f"or default '{DEFAULT_BOT_MESSAGE_LANGUAGE}'."
+        )
+
     if isinstance(text_options, list):
         text = random.choice(text_options)
     elif isinstance(text_options, str):
         text = text_options
     else:
-        raise ValueError('Invalid translation format')
+        raise ValueError(
+            f'Invalid translation format for key '
+            f"'{key.value if isinstance(key, Enum) else key}'. "
+            f'Expected str or list, got {type(text_options)}.'
+        )
+
+    if isinstance(key, Reminder):
+        text += '\n/next'
 
     return text.format(**kwargs) if kwargs else text

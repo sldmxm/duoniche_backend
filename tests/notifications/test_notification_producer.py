@@ -294,7 +294,7 @@ async def test_prepare_session_reminder_success(
 ):
     # Arrange
     sample_user_bot_profile.wants_session_reminders = True
-    sample_user_bot_profile.session_frozen_until = None  # Сессия не заморожена
+    sample_user_bot_profile.session_frozen_until = None
 
     with patch.object(
         producer,
@@ -318,8 +318,8 @@ async def test_prepare_session_reminder_success(
     )
     assert called_task_data.payload.telegram_id == int(sample_user.telegram_id)
     assert (
-        'сессия упражнений' in called_task_data.text.lower()
-        or 'exercise session' in called_task_data.text.lower()
+        '🚀готовы прокачаться? новая сессия уже доступна '
+        in called_task_data.text.lower()
     )
 
 
@@ -381,8 +381,8 @@ async def test_prepare_long_break_reminder_success(
     sample_user_bot_profile: UserBotProfile,
 ):
     # Arrange
-    reminder_type = '7d'
-    days_inactive = 8
+    reminder_type = '5d'
+    days_inactive = 5
 
     with patch.object(
         producer,
@@ -407,8 +407,9 @@ async def test_prepare_long_break_reminder_success(
     )
     assert called_task_data.payload.telegram_id == int(sample_user.telegram_id)
     assert (
-        'не заходил' in called_task_data.text.lower()
-        or "haven't been active" in called_task_data.text.lower()
+        'лучшее время посадить дерево было 20 лет назад'
+        in called_task_data.text.lower()
+        or 'best time to plant a tree' in called_task_data.text.lower()
     )
     assert called_task_data.metadata is not None
     assert called_task_data.metadata.get('reminder_type') == reminder_type

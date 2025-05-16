@@ -10,16 +10,31 @@ from app.celery_producer import NOTIFIER_TASK_NAME, notifier_celery_producer
 from app.config import settings
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
+from app.core.texts import DEFAULT_LONG_BREAK_REMINDER, Reminder, get_text
 from app.metrics import BACKEND_NOTIFICATION_METRICS
 
 logger = logging.getLogger(__name__)
 
 LONG_BREAK_REMINDER_INTERVALS: Dict[str, timedelta] = {
-    '7d': timedelta(days=7),
+    '1d': timedelta(days=1),
+    '3d': timedelta(days=3),
+    '5d': timedelta(days=5),
+    '8d': timedelta(days=8),
+    '13d': timedelta(days=13),
+    '21d': timedelta(days=21),
     '30d': timedelta(days=30),
     '90d': timedelta(days=90),
 }
-LONG_BREAK_REMINDER_SEQUENCE = ['7d', '30d', '90d']
+LONG_BREAK_REMINDER_SEQUENCE = [
+    '1d',
+    '3d',
+    '5d',
+    '8d',
+    '13d',
+    '21d',
+    '30d',
+    '90d',
+]
 # SESSION_REMINDER_COOLDOWN = timedelta(hours=1)
 
 
@@ -42,10 +57,10 @@ class TelegramMessagePayload(BaseModel):
         None, description='Disable web page preview'
     )
 
-    @classmethod
     @field_validator('parse_mode')
+    @classmethod
     def validate_parse_mode(cls, v: Optional[str]) -> Optional[str]:
-        if v and v not in ['HTML', 'MarkdownV2']:
+        if v and v not in ('HTML', 'MarkdownV2'):
             raise ValueError('Invalid parse_mode. Must be HTML or MarkdownV2')
         return v
 
@@ -209,7 +224,10 @@ class NotificationProducerService:
             )
             return False
 
-        text = self._get_session_reminder_text(user_profile)
+        text = get_text(
+            key=Reminder.SESSION_IS_READY,
+            language_code=user_profile.user_language,
+        )
         task_data = NotificationTaskData(
             user_id=cast(int, user.user_id),
             bot_id=user_profile.bot_id,
@@ -234,17 +252,33 @@ class NotificationProducerService:
         self,
         user_profile: UserBotProfile,
         reminder_type: str,
-        days_inactive: int,
     ) -> str:
+        reminder_key_map = {
+            '1d': Reminder.LONG_BREAK_1D,
+            '3d': Reminder.LONG_BREAK_3D,
+            '5d': Reminder.LONG_BREAK_5D,
+            '8d': Reminder.LONG_BREAK_8D,
+            '13d': Reminder.LONG_BREAK_13D,
+            '21d': Reminder.LONG_BREAK_21D,
+            '30d': Reminder.LONG_BREAK_30D,
+            '90d': Reminder.LONG_BREAK_90D,
+        }
+        text_key = reminder_key_map.get(reminder_type)
+
         # TODO: Реализовать получение текста из системы шаблонов
-        if user_profile.user_language.lower().startswith('ru'):
-            return (
-                f'Привет! Мы заметили, что ты не заходил '
-                f'уже {days_inactive} дней. Возвращайся к упражнениям!'
+        # TODO: Добавить вариацию, если есть серия более N дней,
+        #  писать об этом пользователю
+        if not text_key:
+            logger.warning(
+                f"Unknown reminder_type '{reminder_type}' "
+                f'for long break reminder. '
+                f'Falling back to a generic message or default.'
             )
-        return (
-            f"Hello! We've noticed you haven't been "
-            f'active for {days_inactive} days. Come back and practice!'
+            text_key = DEFAULT_LONG_BREAK_REMINDER
+
+        return get_text(
+            key=text_key,
+            language_code=user_profile.user_language,
         )
 
     async def prepare_and_enqueue_long_break_reminder(
@@ -258,7 +292,8 @@ class NotificationProducerService:
         Prepares and enqueues a long break reminder.
         """
         text = self._get_long_break_reminder_text(
-            user_profile, reminder_type, days_inactive
+            user_profile,
+            reminder_type,
         )
         task_data = NotificationTaskData(
             user_id=cast(int, user.user_id),

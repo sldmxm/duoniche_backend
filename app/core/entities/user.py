@@ -3,11 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from app.core.consts import (
-    DEFAULT_LANGUAGE_LEVEL,
-    DEFAULT_TARGET_LANGUAGE,
-    DEFAULT_USER_LANGUAGE,
-)
+from app.config import settings
 from app.core.enums import LanguageLevel
 
 
@@ -22,9 +18,9 @@ class User(BaseModel):
     is_active: bool = True
 
     # TODO: Remove after moving to user_bot_profile
-    language_level: LanguageLevel = DEFAULT_LANGUAGE_LEVEL
-    user_language: str = DEFAULT_USER_LANGUAGE
-    target_language: str = DEFAULT_TARGET_LANGUAGE
+    language_level: LanguageLevel = settings.default_language_level
+    user_language: str = settings.default_user_language
+    target_language: str = settings.default_target_language
 
     exercises_get_in_session: int = 0
     exercises_get_in_set: int = 0

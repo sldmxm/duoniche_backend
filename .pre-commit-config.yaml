@@ -42,4 +42,4 @@ repos:
         entry: pytest
         language: system
         pass_filenames: false
-        args: [--ignore=tests/llm, --ignore=tests/integration]
+        args: [--ignore=tests/llm]

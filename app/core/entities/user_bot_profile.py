@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.consts import DEFAULT_LANGUAGE_LEVEL
+from app.config import settings
 from app.core.enums import LanguageLevel
 
 
@@ -33,7 +33,7 @@ class UserBotProfile(BaseModel):
         ..., description="User's preferred language code (e.g., 'en', 'ru')"
     )
     language_level: LanguageLevel = Field(
-        default=DEFAULT_LANGUAGE_LEVEL,
+        default=settings.default_language_level,
         description="User's language level in target_language",
     )
 

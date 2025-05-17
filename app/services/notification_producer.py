@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional, cast
 
@@ -14,28 +14,6 @@ from app.core.texts import DEFAULT_LONG_BREAK_REMINDER, Reminder, get_text
 from app.metrics import BACKEND_NOTIFICATION_METRICS
 
 logger = logging.getLogger(__name__)
-
-LONG_BREAK_REMINDER_INTERVALS: Dict[str, timedelta] = {
-    '1d': timedelta(days=1),
-    '3d': timedelta(days=3),
-    '5d': timedelta(days=5),
-    '8d': timedelta(days=8),
-    '13d': timedelta(days=13),
-    '21d': timedelta(days=21),
-    '30d': timedelta(days=30),
-    '90d': timedelta(days=90),
-}
-LONG_BREAK_REMINDER_SEQUENCE = [
-    '1d',
-    '3d',
-    '5d',
-    '8d',
-    '13d',
-    '21d',
-    '30d',
-    '90d',
-]
-# SESSION_REMINDER_COOLDOWN = timedelta(hours=1)
 
 
 class NotificationType(str, Enum):

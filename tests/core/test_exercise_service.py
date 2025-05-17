@@ -5,9 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 import pytest_asyncio
 
-from app.core.consts import (
-    DEFAULT_LANGUAGE_LEVEL,
-)
+from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
@@ -151,7 +149,7 @@ def exercise() -> Exercise:
         exercise_id=1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
         exercise_language='en',
-        language_level=DEFAULT_LANGUAGE_LEVEL.value,
+        language_level=settings.default_language_level.value,
         topic=ExerciseTopic.GENERAL.value,
         exercise_text='Fill in the blank in the sentence.',
         data=exercise_data,

@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 import httpx
 from lxml import html
 
-from app.core.consts import DEFAULT_LANGUAGE_LEVEL
+from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.user_bot_profile import BotID
 from app.core.enums import ExerciseTopic, ExerciseType
@@ -149,7 +149,7 @@ class ChooseAccentGenerator:
                     exercise_id=None,
                     exercise_type=ExerciseType.CHOOSE_ACCENT,
                     exercise_language=BotID.BG.value,
-                    language_level=DEFAULT_LANGUAGE_LEVEL,
+                    language_level=settings.default_language_level,
                     topic=ExerciseTopic.GENERAL,
                     exercise_text=get_text(
                         ExerciseType.CHOOSE_ACCENT, user_language

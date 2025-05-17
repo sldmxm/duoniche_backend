@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Type
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.consts import EXERCISE_FILL_IN_THE_BLANK_BLANKS
+from app.config import settings
 from app.core.value_objects.answer import (
     Answer,
     ChooseAccentAnswer,
@@ -44,11 +44,15 @@ class FillInTheBlankExerciseData(ExerciseData):
         words_count = len(answer.words)
         if words_count == 0:
             return self.text_with_blanks
-        blanks = self.text_with_blanks.count(EXERCISE_FILL_IN_THE_BLANK_BLANKS)
+        blanks = self.text_with_blanks.count(
+            settings.exercise_fill_in_the_blank_blanks
+        )
         if blanks == 0:
             return self.text_with_blanks
 
-        parts = self.text_with_blanks.split(EXERCISE_FILL_IN_THE_BLANK_BLANKS)
+        parts = self.text_with_blanks.split(
+            settings.exercise_fill_in_the_blank_blanks
+        )
         result = ''
         for i in range(len(parts)):
             result += parts[i].replace('_', '')

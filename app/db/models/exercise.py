@@ -24,7 +24,7 @@ class Exercise(Base):
     #         LanguageLevel, name='language_level_enum', create_type=True
     #     ),
     #     nullable=False,
-    #     default=DEFAULT_LANGUAGE_LEVEL,
+    #     default=settings.default_language_level,
     # )
     exercise_type: Mapped[str] = mapped_column(String, nullable=False)
     exercise_language: Mapped[str] = mapped_column(String, nullable=False)

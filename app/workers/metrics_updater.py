@@ -1,9 +1,10 @@
 import asyncio
 import collections
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import List, Set
 
+from app.config import settings
 from app.db.db import async_session_maker
 from app.db.models import DBUserBotProfile
 from app.db.repositories.user_bot_profile import (
@@ -12,9 +13,6 @@ from app.db.repositories.user_bot_profile import (
 from app.metrics import BACKEND_USER_METRICS, backend_user_metrics_label_names
 
 logger = logging.getLogger(__name__)
-
-UPDATE_USER_METRICS_INTERVAL = 60
-SESSION_TTL_SINCE_LAST_EXERCISE = timedelta(minutes=5)
 
 all_possible_active_user_labels: Set[tuple] = set()
 
@@ -26,8 +24,8 @@ async def update_user_sessions_metrics():
         async with async_session_maker() as session:
             user_profile_repo = SQLAlchemyUserBotProfileRepository(session)
             period_seconds = int(
-                SESSION_TTL_SINCE_LAST_EXERCISE.total_seconds()
-                + UPDATE_USER_METRICS_INTERVAL
+                settings.session_ttl_since_last_exercise.total_seconds()
+                + settings.update_user_metrics_interval
             )
             profiles: List[
                 DBUserBotProfile
@@ -63,7 +61,7 @@ async def update_user_sessions_metrics():
                     profile.last_exercise_at
                     and (
                         now - profile.last_exercise_at
-                        > SESSION_TTL_SINCE_LAST_EXERCISE
+                        > settings.session_ttl_since_last_exercise
                     )
                 )
 
@@ -145,7 +143,8 @@ async def metrics_loop(stop_event: asyncio.Event):
                 break
             try:
                 await asyncio.wait_for(
-                    stop_event.wait(), timeout=UPDATE_USER_METRICS_INTERVAL
+                    stop_event.wait(),
+                    timeout=settings.update_user_metrics_interval,
                 )
                 logger.info(
                     'Metrics updater: stop event received '

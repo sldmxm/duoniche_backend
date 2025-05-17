@@ -6,20 +6,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from freezegun import freeze_time
 
+from app.config import settings
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.enums import LanguageLevel
 from app.db.models import DBUserBotProfile as DBUserBotProfileModel
 from app.db.models import User as DBUserModel
 from app.services.notification_producer import (
-    LONG_BREAK_REMINDER_INTERVALS,
-    LONG_BREAK_REMINDER_SEQUENCE,
     NotificationProducerService,
     NotificationType,
 )
 from app.workers.notification_scheduler import (
-    MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS,
-    NOTIFICATION_SCHEDULER_INTERVAL_SECONDS,
     NotificationScheduler,
 )
 
@@ -105,7 +102,11 @@ async def test_process_session_reminders_sends_when_conditions_met(
     [
         (False, -1, False),
         (True, 60, False),
-        (True, -(NOTIFICATION_SCHEDULER_INTERVAL_SECONDS // 60 + 5), False),
+        (
+            True,
+            -(settings.notification_scheduler_interval_seconds // 60 + 5),
+            False,
+        ),
         (None, -1, True),
         (True, None, False),
     ],
@@ -174,35 +175,35 @@ async def test_process_long_break_no_last_exercise_at(
         (
             2,
             '1d',
-            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            settings.long_break_reminders_cooldown_hours + 1,
             None,
             False,
         ),  # 2 дня неактивности, '1d' уже отправлен, следующее не время
         (
             3,
             '1d',
-            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            settings.long_break_reminders_cooldown_hours + 1,
             '3d',
             True,
         ),  # 3 дня неактивности, следующее '3d'
         (
             8,
             '5d',
-            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            settings.long_break_reminders_cooldown_hours + 1,
             '8d',
             True,
         ),
         (
             90,
             '30d',
-            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            settings.long_break_reminders_cooldown_hours + 1,
             '90d',
             True,
         ),
         (
             100,
             '90d',
-            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            settings.long_break_reminders_cooldown_hours + 1,
             None,
             False,
         ),  # После '90d' больше не шлем
@@ -217,14 +218,14 @@ async def test_process_long_break_no_last_exercise_at(
         (
             3,
             '1d',
-            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS - 1,
+            settings.long_break_reminders_cooldown_hours - 1,
             '3d',
             False,
         ),  # Cooldown почти прошел, но еще нет
         (
             3,
             '1d',
-            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS,
+            settings.long_break_reminders_cooldown_hours,
             '3d',
             True,
         ),  # Cooldown ровно прошел
@@ -238,7 +239,7 @@ async def test_process_long_break_no_last_exercise_at(
         (
             8,
             '5d',
-            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS,
+            settings.long_break_reminders_cooldown_hours,
             '8d',
             True,
         ),  # Cooldown прошел
@@ -249,7 +250,7 @@ async def test_process_long_break_no_last_exercise_at(
         (
             12,
             '5d',
-            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            settings.long_break_reminders_cooldown_hours + 1,
             '8d',
             True,
         ),  # Неактивен 12 дней, после 5d -> 8d
@@ -266,7 +267,7 @@ async def test_process_long_break_no_last_exercise_at(
         (
             13,
             '8d',
-            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            settings.long_break_reminders_cooldown_hours + 1,
             '13d',
             True,
         ),
@@ -304,7 +305,7 @@ async def test_process_long_break_reminders_scenarios(
         )
     elif last_sent_type is not None:
         user_bot_profile.last_long_break_reminder_sent_at = now - timedelta(
-            hours=MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 24
+            hours=settings.long_break_reminders_cooldown_hours + 24
         )  # Давно
     else:
         user_bot_profile.last_long_break_reminder_sent_at = None
@@ -411,11 +412,11 @@ async def test_run_check_cycle_processes_both_reminder_types(
             await notification_scheduler.run_check_cycle()
 
     mock_repo_instance.get_unfrozen_for_reminder.assert_awaited_once_with(
-        NOTIFICATION_SCHEDULER_INTERVAL_SECONDS
+        settings.notification_scheduler_interval_seconds
     )
 
-    first_reminder_key = LONG_BREAK_REMINDER_SEQUENCE[0]
-    expected_min_break_seconds = LONG_BREAK_REMINDER_INTERVALS[
+    first_reminder_key = settings.long_break_reminder_sequence[0]
+    expected_min_break_seconds = settings.long_break_reminder_intervals[
         first_reminder_key
     ].total_seconds()
     mock_repo_instance.get_with_long_break_for_reminder.assert_awaited_once_with(

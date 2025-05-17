@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from app.core.consts import DEFAULT_LANGUAGE_LEVEL
+from app.config import settings
 from app.core.entities.user_bot_profile import BotID
 from app.core.enums import ExerciseType
 from app.db.models.user import User as UserModel
@@ -242,7 +242,7 @@ async def test_concurrent_requests(
                 'target_language': 'en',
             }
             db_user = UserModel(**user_specific_data)
-            db_user.language_level = DEFAULT_LANGUAGE_LEVEL.value
+            db_user.language_level = settings.default_language_level.value
             async_session.add(db_user)
             await async_session.commit()
             await async_session.refresh(db_user)

@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.consts import DEFAULT_LANGUAGE_LEVEL, DEFAULT_USER_LANGUAGE
+from app.config import settings
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserStatusInBot
 from app.db.models.user import User as UserModel
@@ -34,7 +34,10 @@ async def test_get_or_create_user_new_user(
 
     assert response_data['user_id'] is not None
     assert response_data['plan'] is None
-    assert response_data['language_level'] == DEFAULT_LANGUAGE_LEVEL.value
+    assert (
+        response_data['language_level']
+        == settings.default_language_level.value
+    )
 
     db_user = await async_session.get(UserModel, response_data['user_id'])
     assert db_user is not None
@@ -49,7 +52,7 @@ async def test_get_or_create_user_new_user(
     assert db_profile is not None
     assert db_profile.user_language == user_data['user_language']
     assert db_profile.bot_id == BotID.BG
-    assert db_profile.language_level == DEFAULT_LANGUAGE_LEVEL
+    assert db_profile.language_level == settings.default_language_level
     assert db_profile.status == UserStatusInBot.ACTIVE
 
 
@@ -74,7 +77,10 @@ async def test_get_or_create_user_existing_user(
     assert response_data['name'] == user.name
     assert response_data['user_language'] == user_data['user_language']
     assert response_data['plan'] is None
-    assert response_data['language_level'] == DEFAULT_LANGUAGE_LEVEL.value
+    assert (
+        response_data['language_level']
+        == settings.default_language_level.value
+    )
 
     db_user = await async_session.get(UserModel, response_data['user_id'])
     db_profile = await async_session.get(
@@ -87,7 +93,7 @@ async def test_get_or_create_user_existing_user(
     assert db_user.plan is None
     assert db_profile.user_language == user_data['user_language']
     assert db_profile.bot_id == BotID.BG
-    assert db_profile.language_level == DEFAULT_LANGUAGE_LEVEL
+    assert db_profile.language_level == settings.default_language_level
 
 
 @pytest.mark.asyncio
@@ -416,5 +422,5 @@ async def test_block_bot_creates_profile_if_not_exists_and_blocks(
     assert db_profile.user_id == user_id
     assert db_profile.bot_id == bot_to_block
     # Check default values for newly created profile
-    assert db_profile.user_language == DEFAULT_USER_LANGUAGE
-    assert db_profile.language_level == DEFAULT_LANGUAGE_LEVEL
+    assert db_profile.user_language == settings.default_user_language
+    assert db_profile.language_level == settings.default_language_level

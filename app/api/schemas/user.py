@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from app.core.consts import DEFAULT_LANGUAGE_LEVEL, DEFAULT_USER_LANGUAGE
+from app.config import settings
 
 
 class UserCreate(BaseModel):
@@ -34,11 +34,13 @@ class UserResponse(BaseModel):
     username: Optional[str] = Field(description='Username')
     name: Optional[str] = Field(description='Name')
     user_language: str = Field(
-        description='User language', default=DEFAULT_USER_LANGUAGE
+        description='User language',
+        default=settings.default_user_language,
     )
     telegram_data: Optional[dict] = Field(description='Telegram data')
     language_level: Optional[str] = Field(
-        description='User language level', default=DEFAULT_LANGUAGE_LEVEL.value
+        description='User language level',
+        default=settings.default_language_level.value,
     )
     cohort: Optional[str] = Field(description='Cohort')
     plan: Optional[str] = Field(description='Plan')

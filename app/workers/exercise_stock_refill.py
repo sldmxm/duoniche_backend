@@ -2,10 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from app.core.consts import (
-    DEFAULT_LANGUAGE_LEVEL,
-    DEFAULT_USER_LANGUAGE,
-)
+from app.config import settings
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.user_bot_profile import BotID
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
@@ -39,7 +36,7 @@ async def generate_and_save_exercise(
     try:
         async with exercise_generation_semaphore:
             language_level = LanguageLevel.get_next_exercise_level(
-                DEFAULT_LANGUAGE_LEVEL
+                settings.default_language_level
             )
             topic = ExerciseTopic.get_next_topic()
 
@@ -50,7 +47,7 @@ async def generate_and_save_exercise(
                             exercise,
                             answer,
                         ) = await choose_accent_generator.generate(
-                            user_language=DEFAULT_USER_LANGUAGE
+                            user_language=settings.default_user_language
                         )
                         created_by = 'scrapper'
                     except ChooseAccentGenerationError as e:
@@ -154,7 +151,7 @@ async def exercise_stock_refill(
                         for _ in range(to_generate):
                             tasks.append(
                                 generate_and_save_exercise(
-                                    user_language=DEFAULT_USER_LANGUAGE,
+                                    user_language=settings.default_user_language,
                                     target_language=lang,
                                     exercise_type=ex_type,
                                     llm_service=llm_service,

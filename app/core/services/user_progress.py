@@ -89,6 +89,23 @@ class UserProgressService:
             )
 
         now = datetime.now(timezone.utc)
+        today_date = now.date()
+
+        new_streak_days = user_bot_profile.current_streak_days
+        last_exercise_date = None
+        if user_bot_profile.last_exercise_at:
+            last_exercise_date = user_bot_profile.last_exercise_at.astimezone(
+                timezone.utc
+            ).date()
+
+        if last_exercise_date is None:
+            new_streak_days = 1
+        elif last_exercise_date == today_date:
+            pass
+        elif last_exercise_date == today_date - timedelta(days=1):
+            new_streak_days = user_bot_profile.current_streak_days + 1
+        else:
+            new_streak_days = 1
 
         if user_bot_profile.session_frozen_until is not None:
             if now < user_bot_profile.session_frozen_until:
@@ -200,6 +217,7 @@ class UserProgressService:
                 last_exercise_at=now,
                 last_long_break_reminder_type_sent=None,
                 last_long_break_reminder_sent_at=None,
+                current_streak_days=new_streak_days,
             )
 
             BACKEND_EXERCISE_METRICS['sent'].labels(

@@ -59,6 +59,9 @@ class UserBotProfile(BaseModel):
     session_frozen_until: Optional[datetime] = Field(
         None, description='Timestamp until which the session is frozen'
     )
+    current_streak_days: int = Field(
+        default=0, description='Current number of consecutive days of activity'
+    )
 
     wants_session_reminders: Optional[bool] = Field(
         None,

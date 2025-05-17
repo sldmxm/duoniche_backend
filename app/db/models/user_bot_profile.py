@@ -68,6 +68,9 @@ class DBUserBotProfile(Base):
     session_frozen_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    current_streak_days: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False
+    )
 
     wants_session_reminders: Mapped[bool | None] = mapped_column(
         Boolean, default=None, nullable=True

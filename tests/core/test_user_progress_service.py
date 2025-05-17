@@ -161,6 +161,7 @@ async def test_get_next_action_returns_new_exercise(
         bot_id=BotID.BG,
         last_long_break_reminder_sent_at=None,
         last_long_break_reminder_type_sent=None,
+        current_streak_days=1,
     )
     assert result.action == UserAction.new_exercise
     assert result.exercise is not None

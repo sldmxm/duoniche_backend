@@ -25,6 +25,7 @@ from app.services.notification_producer import (
 logger = logging.getLogger(__name__)
 
 NOTIFICATION_SCHEDULER_INTERVAL_SECONDS = 60 * 5
+MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS = 47
 
 
 class NotificationScheduler:
@@ -118,6 +119,29 @@ class NotificationScheduler:
                 break
 
         if reminder_type:
+            if profile.last_long_break_reminder_sent_at:
+                min_cooldown_duration = timedelta(
+                    hours=MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS
+                )
+                time_since_last_long_break_sent = (
+                    now - profile.last_long_break_reminder_sent_at
+                )
+
+                if time_since_last_long_break_sent < min_cooldown_duration:
+                    time_since_last_long_break_sent_hours = (
+                        time_since_last_long_break_sent.total_seconds() / 3600
+                    )
+                    logger.info(
+                        f'User {user.user_id}, bot_id {profile.bot_id.value} '
+                        f"eligible for long break reminder '{reminder_type}',"
+                        f' but the previous one '
+                        f'was sent too recently at '
+                        f'{profile.last_long_break_reminder_sent_at} '
+                        f'({time_since_last_long_break_sent_hours:.2f} '
+                        f'hours ago). Skipping.'
+                    )
+                    return
+
             logger.info(
                 f'User {user.user_id}, bot_id {profile.bot_id.value} '
                 f'is inactive for {time_since_last_activity.days} days. '

@@ -18,6 +18,7 @@ from app.services.notification_producer import (
     NotificationType,
 )
 from app.workers.notification_scheduler import (
+    MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS,
     NOTIFICATION_SCHEDULER_INTERVAL_SECONDS,
     NotificationScheduler,
 )
@@ -162,31 +163,122 @@ async def test_process_long_break_no_last_exercise_at(
 
 @freeze_time('2023-01-15 12:00:00 UTC')
 @pytest.mark.parametrize(
-    'days_inactive, last_sent_type, expected_reminder_type, should_send',
+    'days_inactive, last_sent_type, hours_since_last_sent, '
+    'expected_reminder_type, should_send',
     [
-        (0, None, None, False),
-        (1, None, '1d', True),
-        (2, None, '1d', True),
-        (2, '1d', None, False),
-        (3, '1d', '3d', True),
-        (4, '1d', '3d', True),
-        (4, '3d', None, False),
-        (5, '3d', '5d', True),
-        (7, '5d', None, False),
-        (8, '5d', '8d', True),
-        (10, '5d', '8d', True),
-        (10, '8d', None, False),
-        (13, '8d', '13d', True),
-        (20, '13d', None, False),
-        (21, '13d', '21d', True),
-        (29, '21d', None, False),
-        (30, '21d', '30d', True),
-        (89, '30d', None, False),
-        (90, '30d', '90d', True),
-        (100, '30d', '90d', True),
-        (100, '90d', None, False),
-        (2, 'unknown_type', '1d', True),
-        (60, 'unknown_type', '30d', True),
+        # Стандартные сценарии без учета cooldown
+        # (предполагаем, что cooldown прошел)
+        (0, None, None, None, False),  # Неактивности нет
+        (1, None, None, '1d', True),  # 1 день неактивности, первое уведомление
+        (2, None, None, '1d', True),  # 2 дня неактивности, все еще '1d'
+        (
+            2,
+            '1d',
+            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            None,
+            False,
+        ),  # 2 дня неактивности, '1d' уже отправлен, следующее не время
+        (
+            3,
+            '1d',
+            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            '3d',
+            True,
+        ),  # 3 дня неактивности, следующее '3d'
+        (
+            8,
+            '5d',
+            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            '8d',
+            True,
+        ),
+        (
+            90,
+            '30d',
+            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            '90d',
+            True,
+        ),
+        (
+            100,
+            '90d',
+            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            None,
+            False,
+        ),  # После '90d' больше не шлем
+        # Сценарии с учетом cooldown
+        (
+            3,
+            '1d',
+            1,
+            '3d',
+            False,
+        ),  # Подходит '3d', но cooldown (1 час) еще не прошел
+        (
+            3,
+            '1d',
+            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS - 1,
+            '3d',
+            False,
+        ),  # Cooldown почти прошел, но еще нет
+        (
+            3,
+            '1d',
+            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS,
+            '3d',
+            True,
+        ),  # Cooldown ровно прошел
+        (
+            8,
+            '5d',
+            24,
+            '8d',
+            False,
+        ),  # Подходит '8d', но cooldown (24 часа) не прошел
+        (
+            8,
+            '5d',
+            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS,
+            '8d',
+            True,
+        ),  # Cooldown прошел
+        # Сценарий, который ты описывал: 12 дней 23 часа -> 8d,
+        # через час -> 13d
+        # 1. Отправка 8d (предполагаем,
+        # что до этого cooldown прошел или это первое)
+        (
+            12,
+            '5d',
+            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            '8d',
+            True,
+        ),  # Неактивен 12 дней, после 5d -> 8d
+        # 2. Проверяем через час (неактивность 13 дней),
+        # но cooldown после 8d еще не прошел
+        (
+            13,
+            '8d',
+            1,
+            '13d',
+            False,
+        ),  # Неактивен 13 дней, после 8d -> 13d, но cooldown 1 час
+        # 3. Проверяем, когда cooldown прошел
+        (
+            13,
+            '8d',
+            MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 1,
+            '13d',
+            True,
+        ),
+        # Неизвестный тип предыдущего уведомления
+        (2, 'unknown_type', None, '1d', True),
+        (
+            60,
+            'unknown_type',
+            None,
+            '30d',
+            True,
+        ),  # Начинаем последовательность заново, находим подходящий
     ],
 )
 async def test_process_long_break_reminders_scenarios(
@@ -198,15 +290,24 @@ async def test_process_long_break_reminders_scenarios(
     db_session: AsyncMock,
     days_inactive: int,
     last_sent_type: Optional[str],
+    hours_since_last_sent: Optional[int],
     expected_reminder_type: Optional[str],
     should_send: bool,
 ):
     now = datetime.now(timezone.utc)
     user_bot_profile.last_exercise_at = now - timedelta(days=days_inactive)
     user_bot_profile.last_long_break_reminder_type_sent = last_sent_type
-    user_bot_profile.last_long_break_reminder_sent_at = (
-        now - timedelta(days=1) if last_sent_type else None
-    )
+
+    if hours_since_last_sent is not None and last_sent_type is not None:
+        user_bot_profile.last_long_break_reminder_sent_at = now - timedelta(
+            hours=hours_since_last_sent
+        )
+    elif last_sent_type is not None:
+        user_bot_profile.last_long_break_reminder_sent_at = now - timedelta(
+            hours=MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS + 24
+        )  # Давно
+    else:
+        user_bot_profile.last_long_break_reminder_sent_at = None
 
     mock_repo_instance = mock_profile_repo_class.return_value
     mock_repo_instance.update.reset_mock()
@@ -225,11 +326,20 @@ async def test_process_long_break_reminders_scenarios(
         )
         mock_repo_instance.update.assert_awaited_once()
         updated_data_arg = mock_repo_instance.update.call_args[0][0]
+        assert isinstance(updated_data_arg, UserBotProfile)
         assert (
             updated_data_arg.last_long_break_reminder_type_sent
             == expected_reminder_type
         )
         assert updated_data_arg.last_long_break_reminder_sent_at is not None
+        assert (
+            abs(
+                (
+                    updated_data_arg.last_long_break_reminder_sent_at - now
+                ).total_seconds()
+            )
+            < 1
+        )
     else:
         mock_notification_producer_service.prepare_and_enqueue_long_break_reminder.assert_not_awaited()
         mock_repo_instance.update.assert_not_awaited()

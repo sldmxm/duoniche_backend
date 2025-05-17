@@ -251,7 +251,7 @@ class NotificationProducerService:
             '13d': Reminder.LONG_BREAK_13D,
             '21d': Reminder.LONG_BREAK_21D,
             '30d': Reminder.LONG_BREAK_30D,
-            '90d': Reminder.LONG_BREAK_90D,
+            '90d': Reminder.LONG_BREAK_FINAL,
         }
         text_key = reminder_key_map.get(reminder_type)
         kwargs_for_text = {}

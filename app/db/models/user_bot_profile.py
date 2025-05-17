@@ -14,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.core.consts import DEFAULT_LANGUAGE_LEVEL
+from app.config import settings
 from app.core.entities.user_bot_profile import BotID, UserStatusInBot
 from app.core.enums import LanguageLevel
 from app.db.base import Base
@@ -45,7 +45,7 @@ class DBUserBotProfile(Base):
             LanguageLevel, name='language_level_enum', create_type=True
         ),
         nullable=False,
-        default=DEFAULT_LANGUAGE_LEVEL,
+        default=settings.default_language_level,
     )
     status: Mapped[UserStatusInBot] = mapped_column(
         SQLAlchemyEnum(

@@ -5,7 +5,7 @@ from typing import Any, Callable, Coroutine, Generic, Optional, TypeVar
 from redis.asyncio import Redis as AsyncRedis
 from redis.exceptions import ConnectionError
 
-from app.core.consts import ASYNC_TASK_CACHE_TTL
+from app.config import settings
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
 
@@ -54,7 +54,7 @@ class AsyncTaskCache(Generic[T]):
         :return: The result of the task function (T).
         :raises: Exception if the task_func raises an exception.
         """
-        cache_ttl = ttl if ttl is not None else ASYNC_TASK_CACHE_TTL
+        cache_ttl = ttl if ttl is not None else settings.async_task_cache_ttl
 
         try:
             cached_data = await self.redis.get(key)

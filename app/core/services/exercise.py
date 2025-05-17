@@ -2,9 +2,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from app.core.consts import (
-    DEFAULT_LANGUAGE_LEVEL,
-)
+from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
@@ -53,7 +51,7 @@ class ExerciseService:
         user_language: str,
         exercise_type: ExerciseType = ExerciseType.FILL_IN_THE_BLANK,
         topic: ExerciseTopic = ExerciseTopic.GENERAL,
-        language_level: LanguageLevel = DEFAULT_LANGUAGE_LEVEL,
+        language_level: LanguageLevel = settings.default_language_level,
     ) -> Optional[Exercise]:
         return await self.exercise_getter.get_next_exercise(
             user_id=user_id,

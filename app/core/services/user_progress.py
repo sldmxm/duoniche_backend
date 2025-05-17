@@ -1,15 +1,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from app.core.consts import (
-    DEFAULT_LANGUAGE_LEVEL,
-    DEFAULT_USER_LANGUAGE,
-    DELTA_BETWEEN_SESSIONS,
-    EXERCISES_IN_SET,
-    MAX_SESSIONS_LENGTH,
-    RENEWING_SET_PERIOD,
-    SETS_IN_SESSION,
-)
+from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.next_action_result import NextAction
 from app.core.entities.user import User
@@ -78,8 +70,8 @@ class UserProgressService:
         ) = await self.user_bot_profile_service.get_or_create(
             user_id=user_id,
             bot_id=bot_id,
-            user_language=DEFAULT_USER_LANGUAGE,
-            language_level=DEFAULT_LANGUAGE_LEVEL,
+            user_language=settings.default_user_language,
+            language_level=settings.default_language_level,
         )
 
         if user_bot_profile.status == UserStatusInBot.BLOCKED:
@@ -147,16 +139,16 @@ class UserProgressService:
         else:
             current_session_time = now - user_bot_profile.session_started_at
 
-        if current_session_time > MAX_SESSIONS_LENGTH:
+        if current_session_time > settings.max_sessions_length:
             user_bot_profile = await _start_new_session()
             current_session_time = timedelta(0)
 
         renewed_sets = int(
             current_session_time.total_seconds()
-            // RENEWING_SET_PERIOD.total_seconds()
+            // settings.renewing_set_period.total_seconds()
         )
-        current_set_limit = max(SETS_IN_SESSION, renewed_sets)
-        current_exercises_limit = current_set_limit * EXERCISES_IN_SET
+        current_set_limit = max(settings.sets_in_session, renewed_sets)
+        current_exercises_limit = current_set_limit * settings.exercises_in_set
 
         if (
             current_exercises_limit - user_bot_profile.exercises_get_in_session
@@ -166,7 +158,7 @@ class UserProgressService:
                 await self.user_bot_profile_service.update_session(
                     user_id=user.user_id,
                     bot_id=bot_id,
-                    session_frozen_until=now + DELTA_BETWEEN_SESSIONS,
+                    session_frozen_until=now + settings.delta_between_sessions,
                 )
             )
 
@@ -184,12 +176,14 @@ class UserProgressService:
                     Messages.CONGRATULATIONS_AND_WAIT,
                     language_code=user_bot_profile.user_language,
                     exercise_num=user_bot_profile.exercises_get_in_session,
-                    pause_time=str(DELTA_BETWEEN_SESSIONS).split('.')[0],
+                    pause_time=str(settings.delta_between_sessions).split('.')[
+                        0
+                    ],
                 ),
-                pause=DELTA_BETWEEN_SESSIONS,
+                pause=settings.delta_between_sessions,
             )
 
-        if user_bot_profile.exercises_get_in_set < EXERCISES_IN_SET:
+        if user_bot_profile.exercises_get_in_set < settings.exercises_in_set:
             try:
                 next_exercise = await self._get_next_exercise(
                     user_id=user.user_id,

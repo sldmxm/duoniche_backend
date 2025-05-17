@@ -16,16 +16,11 @@ from app.db.repositories.user_bot_profile import (
     SQLAlchemyUserBotProfileRepository,
 )
 from app.services.notification_producer import (
-    LONG_BREAK_REMINDER_INTERVALS,
-    LONG_BREAK_REMINDER_SEQUENCE,
     NotificationProducerService,
     NotificationType,
 )
 
 logger = logging.getLogger(__name__)
-
-NOTIFICATION_SCHEDULER_INTERVAL_SECONDS = 60 * 5
-MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS = 47
 
 
 class NotificationScheduler:
@@ -55,7 +50,7 @@ class NotificationScheduler:
             return
 
         window_start_time = now - timedelta(
-            seconds=NOTIFICATION_SCHEDULER_INTERVAL_SECONDS
+            seconds=settings.notification_scheduler_interval_seconds
         )
         window_end_time = now
 
@@ -96,8 +91,8 @@ class NotificationScheduler:
 
         if last_sent_type:
             try:
-                last_sent_type_index = LONG_BREAK_REMINDER_SEQUENCE.index(
-                    last_sent_type
+                last_sent_type_index = (
+                    settings.long_break_reminder_sequence.index(last_sent_type)
                 )
             except ValueError:
                 logger.warning(
@@ -108,12 +103,14 @@ class NotificationScheduler:
                 )
 
         reminder_type = None
-        possible_reminders = LONG_BREAK_REMINDER_SEQUENCE[
+        possible_reminders = settings.long_break_reminder_sequence[
             last_sent_type_index + 1 :
         ]
 
         for reminder_key in possible_reminders[::-1]:
-            reminder_delta = LONG_BREAK_REMINDER_INTERVALS[reminder_key]
+            reminder_delta = settings.long_break_reminder_intervals[
+                reminder_key
+            ]
             if time_since_last_activity >= reminder_delta:
                 reminder_type = reminder_key
                 break
@@ -121,7 +118,7 @@ class NotificationScheduler:
         if reminder_type:
             if profile.last_long_break_reminder_sent_at:
                 min_cooldown_duration = timedelta(
-                    hours=MIN_COOLDOWN_BETWEEN_LONG_BREAK_REMINDERS_HOURS
+                    hours=settings.long_break_reminders_cooldown_hours
                 )
                 time_since_last_long_break_sent = (
                     now - profile.last_long_break_reminder_sent_at
@@ -220,7 +217,7 @@ class NotificationScheduler:
             profile_repo = self.profile_repo_class(session)
             profiles_for_unfreeze_notification = (
                 await profile_repo.get_unfrozen_for_reminder(
-                    NOTIFICATION_SCHEDULER_INTERVAL_SECONDS
+                    settings.notification_scheduler_interval_seconds
                 )
             )
             await self._process_user_profiles(
@@ -229,8 +226,8 @@ class NotificationScheduler:
                 session=session,
             )
 
-            first_reminder = LONG_BREAK_REMINDER_SEQUENCE[0]
-            min_break_duration = LONG_BREAK_REMINDER_INTERVALS.get(
+            first_reminder = settings.long_break_reminder_sequence[0]
+            min_break_duration = settings.long_break_reminder_intervals.get(
                 first_reminder
             )
             if min_break_duration:
@@ -274,7 +271,7 @@ class NotificationScheduler:
                 try:
                     await asyncio.wait_for(
                         self._stop_event.wait(),
-                        timeout=NOTIFICATION_SCHEDULER_INTERVAL_SECONDS,
+                        timeout=settings.notification_scheduler_interval_seconds,
                     )
                     logger.info(
                         'Notification scheduler: stop event received '

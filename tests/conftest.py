@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
 from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.services.async_task_cache import AsyncTaskCache
@@ -227,7 +226,7 @@ def user_data():
 @pytest.fixture
 def user(user_data):
     user = User(**user_data)
-    user.language_level = DEFAULT_LANGUAGE_LEVEL
+    user.language_level = settings.default_language_level
     return User(**user_data)
 
 
@@ -280,7 +279,7 @@ async def db_sample_exercise(db_session: AsyncSession, user):
     exercise = ExerciseModel(
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
         exercise_language=BotID.BG.value,
-        language_level=DEFAULT_LANGUAGE_LEVEL.value,
+        language_level=settings.default_language_level.value,
         topic=ExerciseTopic.GENERAL.value,
         exercise_text='Fill in the blank in the sentence.',
         data=exercise_data.model_dump(),

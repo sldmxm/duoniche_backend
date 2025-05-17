@@ -13,7 +13,7 @@ from app.api.schemas.user_status import (
     ReportBlockResponse,
     UserBlockReportPayload,
 )
-from app.core.consts import DEFAULT_LANGUAGE_LEVEL
+from app.config import settings
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
 from app.core.services.user import UserService
@@ -67,7 +67,7 @@ async def get_or_create_user(
                 user_id=user_from_service.user_id,
                 bot_id=bot_id,
                 user_language=user_data.user_language,
-                language_level=DEFAULT_LANGUAGE_LEVEL,
+                language_level=settings.default_language_level,
             )
         else:
             raise ValueError('User not found')

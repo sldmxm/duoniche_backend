@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
-from app.core.consts import DEFAULT_LANGUAGE_LEVEL, DEFAULT_USER_LANGUAGE
+from app.config import settings
 from app.core.entities.user_bot_profile import (
     BotID,
     UserBotProfile,
@@ -57,7 +57,7 @@ class UserBotProfileService:
         user_id: int,
         bot_id: BotID,
         user_language: str,
-        language_level: LanguageLevel = DEFAULT_LANGUAGE_LEVEL,
+        language_level: LanguageLevel = settings.default_language_level,
     ) -> Tuple[UserBotProfile, bool]:
         profile = await self._profile_repo.get(user_id, bot_id)
         if profile:
@@ -169,8 +169,8 @@ class UserBotProfileService:
         profile, is_created = await self.get_or_create(
             user_id=user_id,
             bot_id=bot_id,
-            user_language=DEFAULT_USER_LANGUAGE,
-            language_level=DEFAULT_LANGUAGE_LEVEL,
+            user_language=settings.default_user_language,
+            language_level=settings.default_language_level,
         )
 
         if is_created:
@@ -201,8 +201,8 @@ class UserBotProfileService:
         profile, _ = await self.get_or_create(
             user_id=user_id,
             bot_id=bot_id,
-            user_language=DEFAULT_USER_LANGUAGE,
-            language_level=DEFAULT_LANGUAGE_LEVEL,
+            user_language=settings.default_user_language,
+            language_level=settings.default_language_level,
         )
 
         if (

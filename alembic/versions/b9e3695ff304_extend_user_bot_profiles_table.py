@@ -10,7 +10,6 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-from app.core.consts import DEFAULT_LANGUAGE_LEVEL
 from app.core.entities.user_bot_profile import BotID
 from app.core.enums import LanguageLevel
 
@@ -32,7 +31,7 @@ def upgrade() -> None:
     op.add_column('user_bot_profiles', sa.Column('language_level',
                                                  language_level_enum,  # Use the created enum object
                                                  nullable=False,
-                                                 server_default=DEFAULT_LANGUAGE_LEVEL.value))
+                                                 server_default='A2'))
     op.add_column('user_bot_profiles',
                   sa.Column('exercises_get_in_session', sa.Integer(), nullable=False, server_default='0'))
     op.add_column('user_bot_profiles',
@@ -73,7 +72,7 @@ def upgrade() -> None:
     )
 
     default_user_language_from_users = 'bg'
-    default_language_level_str_from_users = DEFAULT_LANGUAGE_LEVEL.value
+    default_language_level_str_from_users = 'A2'
     default_exercises_val = 0
 
     language_level_value_to_cast = sa.func.coalesce(

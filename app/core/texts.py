@@ -2,7 +2,7 @@ import random
 from enum import Enum
 from typing import Any, Dict, List, Union, cast
 
-from app.core.consts import DEFAULT_BOT_MESSAGE_LANGUAGE
+from app.config import settings
 from app.core.enums import ExerciseType
 
 
@@ -287,7 +287,7 @@ def get_text(
 
     translations = dictionary[key]
     text_options = translations.get(language_code) or translations.get(
-        DEFAULT_BOT_MESSAGE_LANGUAGE
+        settings.default_bot_message_language
     )
 
     if text_options is None:
@@ -295,7 +295,7 @@ def get_text(
             f'No translation found for key '
             f"'{key.value if isinstance(key, Enum) else key}' "
             f"in language '{language_code}' "
-            f"or default '{DEFAULT_BOT_MESSAGE_LANGUAGE}'."
+            f"or default '{settings.default_bot_message_language}'."
         )
 
     if isinstance(text_options, list):

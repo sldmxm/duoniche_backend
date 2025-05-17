@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.config import settings
 from app.core.entities.user_bot_profile import (
     BotID,
     UserStatusInBot,
@@ -11,7 +12,6 @@ from app.core.enums import LanguageLevel
 from app.db.models import DBUserBotProfile
 from app.db.models import User as DBUser
 from app.workers.metrics_updater import (
-    SESSION_TTL_SINCE_LAST_EXERCISE,
     update_user_sessions_metrics,
 )
 
@@ -53,10 +53,13 @@ def mock_user_bot_profiles_data():
                 'language_level': LanguageLevel.B1,
                 'status': UserStatusInBot.ACTIVE,
                 'last_exercise_at': now
-                - (SESSION_TTL_SINCE_LAST_EXERCISE + timedelta(seconds=60)),
+                - (
+                    settings.session_ttl_since_last_exercise
+                    + timedelta(seconds=60)
+                ),
                 'session_started_at': now
                 - (
-                    SESSION_TTL_SINCE_LAST_EXERCISE
+                    settings.session_ttl_since_last_exercise
                     + timedelta(seconds=(60 + 120))
                 ),
                 'exercises_get_in_session': 5,

@@ -3,13 +3,7 @@ from unittest.mock import ANY, AsyncMock
 
 import pytest
 
-from app.core.consts import (
-    DELTA_BETWEEN_SESSIONS,
-    EXERCISES_IN_SESSION,
-    EXERCISES_IN_SET,
-    RENEWING_SET_PERIOD,
-    SETS_IN_SESSION,
-)
+from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.next_action_result import NextAction
 from app.core.entities.user import User
@@ -184,7 +178,7 @@ async def test_get_next_action_returns_praise_and_next_set_when_set_completed(
     # Arrange
     user_bot_profile.session_frozen_until = None
     user_bot_profile.exercises_get_in_session = 3
-    user_bot_profile.exercises_get_in_set = EXERCISES_IN_SET
+    user_bot_profile.exercises_get_in_set = settings.exercises_in_set
     user_bot_profile.errors_count_in_set = 1
     user_bot_profile.session_started_at = datetime.now(timezone.utc)
     mock_user_service.get_by_id.return_value = user
@@ -233,11 +227,11 @@ async def test_get_next_action_returns_congratulations_and_wait(
     """
     # Arrange
     user_bot_profile.session_frozen_until = None
-    user_bot_profile.exercises_get_in_session = EXERCISES_IN_SESSION
+    user_bot_profile.exercises_get_in_session = settings.exercises_in_session
     user_bot_profile.exercises_get_in_set = 0
     user_bot_profile.session_started_at = datetime.now(
         timezone.utc
-    ) - RENEWING_SET_PERIOD * (SETS_IN_SESSION - 1)
+    ) - settings.renewing_set_period * (settings.sets_in_session - 1)
     mock_user_service.get_by_id.return_value = user
     mock_user_bot_profile_service.get_or_create.return_value = (
         user_bot_profile,
@@ -263,11 +257,14 @@ async def test_get_next_action_returns_congratulations_and_wait(
     assert result.message == get_text(
         Messages.CONGRATULATIONS_AND_WAIT,
         language_code=user_bot_profile.user_language,
-        exercise_num=EXERCISES_IN_SESSION,
-        pause_time=str(DELTA_BETWEEN_SESSIONS).split('.')[0],
+        exercise_num=settings.exercises_in_session,
+        pause_time=str(settings.delta_between_sessions).split('.')[0],
     )
-    assert result.pause == DELTA_BETWEEN_SESSIONS
-    assert user_bot_profile.exercises_get_in_session == EXERCISES_IN_SESSION
+    assert result.pause == settings.delta_between_sessions
+    assert (
+        user_bot_profile.exercises_get_in_session
+        == settings.exercises_in_session
+    )
     assert user_bot_profile.exercises_get_in_set == 0
 
 

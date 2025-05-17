@@ -5,9 +5,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
-from app.core.consts import (
-    EXERCISE_FILL_IN_THE_BLANK_BLANKS,
-)
+from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.texts import get_text
@@ -26,7 +24,7 @@ class FillInTheBlankExerciseLLMOutput(BaseModel):
     text_with_blanks: str = Field(
         description='Sentence with one or more blanks.\n'
         'If sentence consists more than 11 words, make 2 blanks.\n'
-        f'Use "{EXERCISE_FILL_IN_THE_BLANK_BLANKS}" for blanks.\n'
+        f'Use "{settings.exercise_fill_in_the_blank_blanks}" for blanks.\n'
     )
     correct_words: list[str] = Field(
         description=(
@@ -99,7 +97,7 @@ class FillInTheBlankGenerator(ExerciseGenerator):
 
         text_with_blanks = re.sub(
             r'_{2,}',
-            EXERCISE_FILL_IN_THE_BLANK_BLANKS,
+            settings.exercise_fill_in_the_blank_blanks,
             llm_output.text_with_blanks,
         )
         words = llm_output.correct_words + llm_output.incorrect_options

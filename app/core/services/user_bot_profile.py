@@ -25,6 +25,7 @@ _ALLOWED_SESSION_UPDATE_FIELDS = {
     'wants_session_reminders',
     'last_long_break_reminder_type_sent',
     'last_long_break_reminder_sent_at',
+    'current_streak_days',
 }
 
 _ALLOWED_PROFILE_UPDATE_FIELDS = {

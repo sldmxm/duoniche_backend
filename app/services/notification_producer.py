@@ -185,16 +185,6 @@ class NotificationProducerService:
             ).inc()
             return False
 
-    def _get_session_reminder_text(self, user_profile: UserBotProfile) -> str:
-        # TODO: Реализовать получение текста из системы шаблонов
-        #  на основе user_profile.user_language
-        if user_profile.user_language.lower().startswith('ru'):
-            return 'Привет! Новая сессия упражнений ждет тебя. Начнем?'
-        return (
-            'Hello! A new exercise session is waiting for you. '
-            'Shall we start?'
-        )
-
     async def prepare_and_enqueue_session_reminder(
         self, user: User, user_profile: UserBotProfile
     ) -> bool:
@@ -264,10 +254,17 @@ class NotificationProducerService:
             '90d': Reminder.LONG_BREAK_90D,
         }
         text_key = reminder_key_map.get(reminder_type)
+        kwargs_for_text = {}
 
-        # TODO: Реализовать получение текста из системы шаблонов
-        # TODO: Добавить вариацию, если есть серия более N дней,
-        #  писать об этом пользователю
+        if reminder_type == '1d':
+            if user_profile.current_streak_days > 1:
+                text_key = Reminder.LONG_BREAK_1D_STREAK
+                kwargs_for_text['streak_days'] = (
+                    user_profile.current_streak_days
+                )
+            else:
+                text_key = Reminder.LONG_BREAK_1D
+
         if not text_key:
             logger.warning(
                 f"Unknown reminder_type '{reminder_type}' "
@@ -279,6 +276,7 @@ class NotificationProducerService:
         return get_text(
             key=text_key,
             language_code=user_profile.user_language,
+            **kwargs_for_text,
         )
 
     async def prepare_and_enqueue_long_break_reminder(

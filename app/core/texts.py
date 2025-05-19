@@ -310,6 +310,6 @@ def get_text(
         )
 
     if isinstance(key, Reminder):
-        text += '\n/next'
+        text += '\n\n/next'
 
     return text.format(**kwargs) if kwargs else text

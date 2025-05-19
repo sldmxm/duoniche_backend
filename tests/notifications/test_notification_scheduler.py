@@ -419,8 +419,16 @@ async def test_run_check_cycle_processes_both_reminder_types(
     expected_min_break_seconds = settings.long_break_reminder_intervals[
         first_reminder_key
     ].total_seconds()
+
+    now = datetime.now(timezone.utc)
+    window_half = settings.long_break_reminder_time_window_seconds // 2
+    expected_window_start_time = (now - timedelta(seconds=window_half)).time()
+    expected_window_end_time = (now + timedelta(seconds=window_half)).time()
+
     mock_repo_instance.get_with_long_break_for_reminder.assert_awaited_once_with(
-        min_break_duration_seconds=expected_min_break_seconds
+        min_break_duration_seconds=expected_min_break_seconds,
+        window_start_time=expected_window_start_time,
+        window_end_time=expected_window_end_time,
     )
 
     assert mock_process_profiles.call_count == 2

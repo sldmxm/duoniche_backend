@@ -1,7 +1,7 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import List
+from datetime import datetime, time, timedelta, timezone
+from typing import List, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -211,6 +211,39 @@ class NotificationScheduler:
         """
         Runs a single cycle of checking and enqueuing notifications.
         """
+
+        def _get_min_long_break_duration() -> int:
+            first_reminder = settings.long_break_reminder_sequence[0]
+            result = settings.long_break_reminder_intervals.get(first_reminder)
+            if result:
+                return int(result.total_seconds())
+            else:
+                return 0
+
+        def _get_long_reminder_window_time() -> Tuple[time, time]:
+            now = datetime.now(timezone.utc)
+            current_utc_time = now.time()
+            half_window_seconds = (
+                settings.long_break_reminder_time_window_seconds / 2
+            )
+            base_dt_for_window = datetime.combine(now.date(), current_utc_time)
+
+            calculated_window_start = (
+                base_dt_for_window - timedelta(seconds=half_window_seconds)
+            ).time()
+            calculated_window_end = (
+                base_dt_for_window + timedelta(seconds=half_window_seconds)
+            ).time()
+            logger.debug(
+                f'Scheduler: Preparing to fetch long break reminders. '
+                f'Current UTC time for window: {current_utc_time}. '
+                f'Configured window: '
+                f'{settings.long_break_reminder_time_window_seconds}. '
+                f'Calculated window: '
+                f'{calculated_window_start} - {calculated_window_end}'
+            )
+            return calculated_window_start, calculated_window_end
+
         logger.info('Notification scheduler: Starting check cycle.')
 
         async with async_session_maker() as session:
@@ -226,17 +259,15 @@ class NotificationScheduler:
                 session=session,
             )
 
-            first_reminder = settings.long_break_reminder_sequence[0]
-            min_break_duration = settings.long_break_reminder_intervals.get(
-                first_reminder
+            min_break_duration_seconds = _get_min_long_break_duration()
+            window_start_time, window_end_time = (
+                _get_long_reminder_window_time()
             )
-            if min_break_duration:
-                min_break_duration_seconds = min_break_duration.total_seconds()
-            else:
-                min_break_duration_seconds = 0
             profiles_for_long_break_notification = (
                 await profile_repo.get_with_long_break_for_reminder(
-                    min_break_duration_seconds=min_break_duration_seconds
+                    min_break_duration_seconds=min_break_duration_seconds,
+                    window_start_time=window_start_time,
+                    window_end_time=window_end_time,
                 )
             )
             await self._process_user_profiles(

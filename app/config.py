@@ -64,6 +64,7 @@ class Settings(BaseSettings):  # type: ignore
     notification_tasks_queue_name: str = 'notification_tasks_default'
     notification_scheduler_interval_seconds: int = 60 * 5
     long_break_reminders_cooldown_hours: int = 47
+    long_break_reminder_time_window_seconds: int = 30 * 60
     long_break_reminder_intervals: Dict[str, timedelta] = {
         '1d': timedelta(days=1),
         '3d': timedelta(days=3),

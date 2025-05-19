@@ -1,8 +1,8 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from typing import List, Optional, override
 
-from sqlalchemy import select
+from sqlalchemy import Time, cast, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -124,15 +124,23 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
         return list(db_user_bot_profiles)
 
     async def get_with_long_break_for_reminder(
-        self, min_break_duration_seconds: int
+        self,
+        min_break_duration_seconds: int,
+        window_start_time: time,
+        window_end_time: time,
     ) -> List[DBUserBotProfile]:
         now = datetime.now(timezone.utc)
         stmt = (
             select(DBUserBotProfile)
             .where(
                 DBUserBotProfile.status == UserStatusInBot.ACTIVE,
+                DBUserBotProfile.last_exercise_at.isnot(None),
                 DBUserBotProfile.last_exercise_at
                 <= now - timedelta(seconds=min_break_duration_seconds),
+                cast(DBUserBotProfile.last_exercise_at, Time)
+                >= window_start_time,
+                cast(DBUserBotProfile.last_exercise_at, Time)
+                <= window_end_time,
             )
             .options(joinedload(DBUserBotProfile.user))
         )

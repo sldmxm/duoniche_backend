@@ -19,6 +19,7 @@ from app.services.notification_producer import (
     NotificationProducerService,
     NotificationType,
 )
+from app.utils.ab_test import is_user_in_canary_group
 
 logger = logging.getLogger(__name__)
 
@@ -183,6 +184,19 @@ class NotificationScheduler:
                     f'data: {user_entity.user_id}'
                 )
                 continue
+
+            # TODO: Убрать после раскатки
+            if not is_user_in_canary_group(
+                user_id=user_entity.user_id, feature_percentage=10
+            ):
+                logger.info(
+                    f'User {user_entity.user_id} for '
+                    f'bot {profile.bot_id.value} '
+                    f'is not in canary group for long break reminders '
+                    f'(type: {reminder_type}). Skipping.'
+                )
+                continue
+
             try:
                 match reminder_type:
                     case NotificationType.SESSION_REMINDER:

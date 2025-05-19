@@ -21,6 +21,11 @@ scrape_configs:
         - meminfo
         - filesystem
 
+  - job_name: 'notifier'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['notifier:8000']
+
 #  - job_name: 'prometheus'
 #    static_configs:
 #      - targets: ['localhost:9090']

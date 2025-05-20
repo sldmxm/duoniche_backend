@@ -252,6 +252,7 @@ async def test_get_next_action_returns_congratulations_and_wait(
         user_id=user.user_id,
         bot_id=BotID.BG,
         session_frozen_until=ANY,
+        wants_session_reminders=None,
     )
     assert result.action == UserAction.congratulations_and_wait
     assert result.message == get_text(

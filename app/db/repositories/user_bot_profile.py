@@ -112,7 +112,7 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
             select(DBUserBotProfile)
             .where(
                 DBUserBotProfile.session_frozen_until.isnot(None),
-                DBUserBotProfile.wants_session_reminders.isnot(False),
+                DBUserBotProfile.wants_session_reminders,
                 DBUserBotProfile.status == UserStatusInBot.ACTIVE,
                 DBUserBotProfile.session_frozen_until > window_start_time,
                 DBUserBotProfile.session_frozen_until <= now,

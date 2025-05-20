@@ -22,15 +22,16 @@ _ALLOWED_SESSION_UPDATE_FIELDS = {
     'last_exercise_at',
     'session_started_at',
     'session_frozen_until',
-    'wants_session_reminders',
     'last_long_break_reminder_type_sent',
     'last_long_break_reminder_sent_at',
     'current_streak_days',
+    'wants_session_reminders',
 }
 
 _ALLOWED_PROFILE_UPDATE_FIELDS = {
     'user_language',
     'language_level',
+    'wants_session_reminders',
 }
 
 
@@ -147,7 +148,7 @@ class UserBotProfileService:
         self,
         user_id: int,
         bot_id: BotID,
-        **fields_to_update: Union[str, LanguageLevel],
+        **fields_to_update: Union[str, LanguageLevel, bool, None],
     ) -> UserBotProfile:
         profile = await self.get(user_id=user_id, bot_id=bot_id)
         if not profile:
@@ -166,15 +167,12 @@ class UserBotProfileService:
     async def mark_user_active(
         self, user_id: int, bot_id: BotID
     ) -> UserBotProfile:
-        profile, is_created = await self.get_or_create(
-            user_id=user_id,
-            bot_id=bot_id,
-            user_language=settings.default_user_language,
-            language_level=settings.default_language_level,
-        )
-
-        if is_created:
-            return profile
+        profile = await self.get(user_id=user_id, bot_id=bot_id)
+        if not profile:
+            raise ValueError(
+                f'Profile not found for user {user_id}, '
+                f'bot {bot_id} to update profile.'
+            )
 
         if (
             profile.status != UserStatusInBot.ACTIVE
@@ -198,12 +196,12 @@ class UserBotProfileService:
         bot_id: BotID,
         reason: Optional[str],
     ) -> UserBotProfile:
-        profile, _ = await self.get_or_create(
-            user_id=user_id,
-            bot_id=bot_id,
-            user_language=settings.default_user_language,
-            language_level=settings.default_language_level,
-        )
+        profile = await self.get(user_id=user_id, bot_id=bot_id)
+        if not profile:
+            raise ValueError(
+                f'Profile not found for user {user_id}, '
+                f'bot {bot_id} to update profile.'
+            )
 
         if (
             profile.status != UserStatusInBot.BLOCKED

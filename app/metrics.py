@@ -85,6 +85,12 @@ BACKEND_USER_METRICS = {
         'Total number of attempts to start exercises when frozen',
         labelnames=backend_user_metrics_label_names,
     ),
+    'set_session_reminder': Counter(
+        METRIC_PREFIX + 'set_session_reminder',
+        'Total number of attempts to start exercises when frozen',
+        labelnames=backend_user_metrics_label_names
+        + ['wants_session_reminders'],
+    ),
 }
 
 backend_llm_metrics_label_names = [

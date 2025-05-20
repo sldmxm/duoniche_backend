@@ -107,7 +107,7 @@ async def test_process_session_reminders_sends_when_conditions_met(
             -(settings.notification_scheduler_interval_seconds // 60 + 5),
             False,
         ),
-        (None, -1, True),
+        (None, -1, False),
         (True, None, False),
     ],
 )

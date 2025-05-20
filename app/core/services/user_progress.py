@@ -159,6 +159,7 @@ class UserProgressService:
                     user_id=user.user_id,
                     bot_id=bot_id,
                     session_frozen_until=now + settings.delta_between_sessions,
+                    wants_session_reminders=None,
                 )
             )
 

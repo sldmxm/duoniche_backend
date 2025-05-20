@@ -9,6 +9,10 @@ from app.api.dependencies import (
 )
 from app.api.errors import NotFoundError
 from app.api.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.api.schemas.user_preferences import (
+    SessionRemindersPreferenceResponse,
+    SessionRemindersPreferenceUpdate,
+)
 from app.api.schemas.user_status import (
     ReportBlockResponse,
     UserBlockReportPayload,
@@ -211,4 +215,72 @@ def _create_user_for_response(
         cohort=user.cohort,
         user_language=user_bot_profile.user_language,
         language_level=user_bot_profile.language_level.value,
+    )
+
+
+@router.put(
+    '/{user_id}/bots/{bot_id}/preferences/session_reminders',
+    response_model=SessionRemindersPreferenceResponse,
+    summary="Update user's session reminder preference for a bot",
+    status_code=status.HTTP_200_OK,
+)
+async def update_session_reminders_preference(
+    user_bot_profile_service: Annotated[
+        UserBotProfileService, Depends(get_user_bot_profile_service)
+    ],
+    user_service: Annotated[UserService, Depends(get_user_service)],
+    bot_id: Annotated[
+        BotID, Path(description='Bot ID (e.g., Bulgarian, English)')
+    ],
+    user_id: Annotated[int, Path(description='User ID', ge=1)],
+    preference_data: SessionRemindersPreferenceUpdate,
+):
+    user = await user_service.get_by_id(user_id)
+    if not user:
+        raise NotFoundError(detail=f'User with id {user_id} not found')
+
+    try:
+        updated_profile = await user_bot_profile_service.update_profile(
+            user_id=user_id,
+            bot_id=bot_id,
+            wants_session_reminders=preference_data.wants_reminders,
+        )
+    except ValueError as e:
+        logger.error(
+            f'Error updating session reminder preference for '
+            f'user {user_id}, bot {bot_id.value}: {e}'
+        )
+        raise NotFoundError(detail=str(e)) from e
+    except Exception as e:
+        logger.error(
+            f'Unexpected error updating session reminder '
+            f'preference for user {user_id}, bot {bot_id.value}: {e}',
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail='An unexpected error occurred while updating preferences.',
+        ) from e
+
+    wants_session_reminders = updated_profile.wants_session_reminders is True
+
+    logger.info(
+        f'Updated session reminders to '
+        f'{wants_session_reminders} preference '
+        f'for User {updated_profile.user_id}/{updated_profile.bot_id}'
+    )
+
+    BACKEND_USER_METRICS['set_session_reminder'].labels(
+        cohort=user.cohort,
+        plan=user.plan,
+        target_language=updated_profile.bot_id,
+        user_language=updated_profile.user_language,
+        language_level=updated_profile.language_level.value,
+        wants_session_reminders=wants_session_reminders,
+    ).inc()
+
+    return SessionRemindersPreferenceResponse(
+        user_id=updated_profile.user_id,
+        bot_id=updated_profile.bot_id,
+        wants_session_reminders=wants_session_reminders,
     )

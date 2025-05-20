@@ -64,13 +64,21 @@ class UserProgressService:
         user: User | None = await self.user_service.get_by_id(user_id)
         if not user or not user.user_id:
             raise ValueError('User with provided ID not found in the database')
+
+        if user.telegram_data:
+            user_language = user.telegram_data.get(
+                'language_code', settings.default_user_language
+            )
+        else:
+            user_language = settings.default_user_language
+
         (
             user_bot_profile,
             _,
         ) = await self.user_bot_profile_service.get_or_create(
             user_id=user_id,
             bot_id=bot_id,
-            user_language=settings.default_user_language,
+            user_language=user_language,
             language_level=settings.default_language_level,
         )
 

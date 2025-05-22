@@ -1,9 +1,14 @@
 import logging
+import random
 from datetime import datetime, timedelta, timezone
 
 from app.config import settings
 from app.core.entities.exercise import Exercise
-from app.core.entities.next_action_result import NextAction
+from app.core.entities.next_action_result import (
+    NextAction,
+    TelegramPayment,
+    TelegramPaymentItem,
+)
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import (
     BotID,
@@ -19,7 +24,7 @@ from app.core.enums import (
 from app.core.services.exercise import ExerciseService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
-from app.core.texts import Messages, get_text
+from app.core.texts import Messages, PaymentMessages, get_text
 from app.metrics import BACKEND_EXERCISE_METRICS, BACKEND_USER_METRICS
 
 logger = logging.getLogger(__name__)
@@ -38,22 +43,14 @@ class UserProgressService:
 
     async def get_next_action(self, user_id: int, bot_id: BotID) -> NextAction:
         async def _start_new_session() -> UserBotProfile:
-            if not user_bot_profile:
-                raise ValueError(
-                    'User with provided ID not found in the database'
+            updated_profile = await (
+                self.user_bot_profile_service.reset_and_start_new_session(
+                    user_id=user_bot_profile.user_id,
+                    bot_id=user_bot_profile.bot_id,
                 )
-            return await self.user_bot_profile_service.update_session(
-                user_id=user_bot_profile.user_id,
-                bot_id=user_bot_profile.bot_id,
-                exercises_get_in_session=0,
-                exercises_get_in_set=0,
-                errors_count_in_set=0,
-                session_started_at=now,
-                session_frozen_until=None,
-                wants_session_reminders=None,
-                last_long_break_reminder_type_sent=None,
-                last_long_break_reminder_sent_at=None,
             )
+            logger.info(f'New session started for user {user_id}/{bot_id}')
+            return updated_profile
 
         # TODO: разобраться, как собирать количество ошибок,
         #  возможно, просто в верификации брать и писать в бд пользователя
@@ -124,6 +121,9 @@ class UserProgressService:
                 delta_to_next_session = str(
                     user_bot_profile.session_frozen_until - now
                 ).split('.')[0]
+                payment_details = self._get_payment_details(
+                    user_language=user_bot_profile.user_language
+                )
 
                 return NextAction(
                     action=UserAction.limit_reached,
@@ -132,6 +132,7 @@ class UserProgressService:
                         language_code=user_bot_profile.user_language,
                         pause_time=delta_to_next_session,
                     ),
+                    payment_info=payment_details,
                 )
             else:
                 logger.info(
@@ -179,6 +180,12 @@ class UserProgressService:
                 language_level=user_bot_profile.language_level.value,
             ).inc()
 
+            logger.info(f'User {user_id} ended session and is frozen ')
+
+            payment_details = self._get_payment_details(
+                user_language=user_bot_profile.user_language
+            )
+
             return NextAction(
                 action=UserAction.congratulations_and_wait,
                 message=get_text(
@@ -190,6 +197,7 @@ class UserProgressService:
                     ],
                 ),
                 pause=settings.delta_between_sessions,
+                payment_info=payment_details,
             )
 
         if user_bot_profile.exercises_get_in_set < settings.exercises_in_set:
@@ -281,3 +289,38 @@ class UserProgressService:
                 'No suitable exercise found for the provided criteria'
             )
         return exercise
+
+    def _get_payment_details(self, user_language: str) -> TelegramPayment:
+        # TODO: сделать тексты сообщений с переводами
+        # TODO: Поменять на 50-200 перед выкатом на прод, перенести в settings
+        amount = random.randint(
+            settings.min_session_unlock_payment,
+            settings.max_session_unlock_payment,
+        )
+
+        payment_details = TelegramPayment(
+            button_text=get_text(PaymentMessages.BUTTON_TEXT, user_language),
+            title=get_text(PaymentMessages.TITLE, user_language),
+            description=get_text(PaymentMessages.DESCRIPTION, user_language),
+            currency='XTR',
+            prices=[
+                TelegramPaymentItem(
+                    label=get_text(PaymentMessages.ITEM_LABEL, user_language),
+                    amount=amount,
+                ),
+                # TODO: Это много писать надо: чтобы не показывать за 4 часа
+                #  до окончания суток, например, еще это где-то
+                #  хранить и проверять надо
+                # TelegramPaymentItem(
+                #     label=get_text(
+                #         PaymentMessages.ITEM_LABEL_END_OF_DAY,
+                #         user_language
+                #     ),
+                #     amount=settings.session_unlock_stars_price * 2
+                # ),
+            ],
+            thanks_answer=get_text(
+                PaymentMessages.THANKS_ANSWER, user_language
+            ),
+        )
+        return payment_details

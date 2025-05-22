@@ -55,6 +55,7 @@ async def _get_next_action(
             action=next_action.action,
             message=next_action.message,
             pause=next_action.pause,
+            payment_info=next_action.payment_info,
         )
         return output
 

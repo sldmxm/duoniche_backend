@@ -256,10 +256,64 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, str]] = {
 }
 
 
+class PaymentMessages(str, Enum):
+    BUTTON_TEXT = 'payment_button_text'
+    TITLE = 'payment_title'
+    DESCRIPTION = 'payment_description'
+    ITEM_LABEL = 'payment_item_label'
+    THANKS_ANSWER = 'payment_thanks_answer'
+
+
+PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
+    PaymentMessages.BUTTON_TEXT: {
+        'ru': '☕️ Поддержать и продолжить сейчас',
+        'en': '☕️ Support and continue now',
+        'bg': '☕️ Подкрепи и продължи сега',
+        'tr': '☕️ Destekle ve hemen devam et',
+        'uk': '☕️ Підтримати і продовжити зараз',
+    },
+    PaymentMessages.TITLE: {
+        'ru': '☕️ Поддержать',
+        'en': '☕️ Support',
+        'bg': '☕️ Подкрепа',
+        'tr': '☕️ Destek',
+        'uk': '☕️ Підтримка',
+    },
+    PaymentMessages.DESCRIPTION: {
+        'ru': 'Поддержите проект — и еще одна сессия '
+        'упражнений откроется сразу',
+        'en': 'Support the project — and the next '
+        'session will open immediately',
+        'bg': 'Подкрепете проекта — и следващата '
+        'сесия ще се отключи веднага',
+        'tr': 'Projeyi destekle — bir sonraki ' 'oturum hemen açılacak',
+        'uk': 'Підтримайте проєкт — і наступна ' 'сесія відкриється одразу',
+    },
+    PaymentMessages.ITEM_LABEL: {
+        'ru': 'Открыть одну сессию',
+        'en': 'Open one session',
+        'bg': 'Отвори една сесия',
+        'tr': 'Bir oturum aç',
+        'uk': 'Відкрити одну сесію',
+    },
+    PaymentMessages.THANKS_ANSWER: {
+        'en': 'Thank you for your support! ❤️',
+        'bg': 'Благодаря за подкрепата! ❤️',
+        'ru': 'Спасибо за поддержку! ❤️',
+        'tr': 'Desteğiniz için teşekkürler! ❤️',
+        'uk': 'Дякуємо за підтримку! ❤️',
+    },
+}
+
+
 def get_text(
-    key: Union[Messages, ExerciseType, Reminder], language_code: str, **kwargs
+    key: Union[Messages, ExerciseType, Reminder, PaymentMessages],
+    language_code: str,
+    **kwargs,
 ) -> str:
-    if not isinstance(key, Messages | ExerciseType | Reminder):
+    if not isinstance(
+        key, Messages | ExerciseType | Reminder | PaymentMessages
+    ):
         raise ValueError(f'Unknown key type: {type(key)}')
 
     dictionary: Dict[Any, Dict[str, Union[str, List[str]]]]
@@ -276,6 +330,10 @@ def get_text(
     elif isinstance(key, Reminder):
         dictionary = cast(
             Dict[Any, Dict[str, Union[str, List[str]]]], REMINDERS_TRANSLATIONS
+        )
+    elif isinstance(key, PaymentMessages):
+        dictionary = cast(
+            Dict[Any, Dict[str, Union[str, List[str]]]], PAYMENT_TRANSLATIONS
         )
     else:
         raise ValueError(

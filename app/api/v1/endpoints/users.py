@@ -8,6 +8,10 @@ from app.api.dependencies import (
     get_user_service,
 )
 from app.api.errors import NotFoundError
+from app.api.schemas.payments import (
+    PaymentSessionUnlockRequest,
+    PaymentSessionUnlockResponse,
+)
 from app.api.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.api.schemas.user_preferences import (
     SessionRemindersPreferenceResponse,
@@ -283,4 +287,94 @@ async def update_session_reminders_preference(
         user_id=updated_profile.user_id,
         bot_id=updated_profile.bot_id,
         wants_session_reminders=wants_session_reminders,
+    )
+
+
+@router.post(
+    '/{user_id}/bots/{bot_id}/payments/unlock-session',
+    response_model=PaymentSessionUnlockResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Unlock user's session after a successful payment",
+    tags=['users', 'payments'],
+)
+async def process_payment_unlock_session(
+    user_bot_profile_service: Annotated[
+        UserBotProfileService, Depends(get_user_bot_profile_service)
+    ],
+    user_id: Annotated[
+        int, Path(description='User ID from your database', ge=1)
+    ],
+    bot_id_str: Annotated[
+        str,
+        Path(alias='bot_id', description='Bot ID (e.g., Bulgarian, English)'),
+    ],
+    donation_data: PaymentSessionUnlockRequest,
+):
+    """
+    Processes a successful payment to unlock the user's next
+    session immediately.
+    The bot should call this endpoint after receiving
+    a SuccessfulPayment from Telegram.
+    """
+    try:
+        bot_id = BotID(bot_id_str)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"Invalid bot_id in path: '{bot_id_str}'. "
+                f'Valid values are: {[member.value for member in BotID]}'
+            ),
+        ) from e
+
+    # TODO: Логика сохранения информации о платеже в базу данных + метрики
+    # Это может быть отдельный сервис и репозиторий для донатов.
+    # Например:
+    # await donation_service.record_donation(
+    #     user_id=user_id,
+    #     bot_id=bot_id,
+    #     charge_id=donation_data.telegram_payment_charge_id,
+    #     amount=donation_data.amount,
+    #     payload=donation_data.invoice_payload,
+    # )
+    logger.info(
+        f'Received payment to unlock session for user_id: {user_id}, '
+        f'bot_id: {bot_id.value}. '
+        f'Charge ID: {donation_data.telegram_payment_charge_id}, '
+        f'Amount: {donation_data.amount}{donation_data.currency}, '
+    )
+
+    try:
+        updated_profile = (
+            await user_bot_profile_service.reset_and_start_new_session(
+                user_id=user_id, bot_id=bot_id
+            )
+        )
+    except ValueError as e:
+        logger.error(
+            f'Failed to unlock session for user {user_id}, '
+            f'bot {bot_id.value}: {e}'
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f'Could not unlock session for user {user_id}, '
+            f'bot {bot_id.value}. Profile might not exist '
+            f'or update failed.',
+        ) from e
+    except Exception as e:
+        logger.exception(
+            f'Unexpected error unlocking session for user '
+            f'{user_id}, bot {bot_id.value} after donation.'
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail='An unexpected error occurred while unlocking '
+            'the session.',
+        ) from e
+
+    return PaymentSessionUnlockResponse(
+        user_id=updated_profile.user_id,
+        bot_id=updated_profile.bot_id,
+        message=f'New session for user {user_id}, bot {bot_id.value} '
+        f'started successfully after payment.',
     )

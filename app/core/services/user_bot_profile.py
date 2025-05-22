@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from app.config import settings
@@ -217,3 +217,35 @@ class UserBotProfileService:
                 raise
         else:
             return profile
+
+    async def reset_and_start_new_session(
+        self, user_id: int, bot_id: BotID
+    ) -> UserBotProfile:
+        """
+        Resets all session-related counters and starts
+        a new session for the user.
+        Sets session_frozen_until to None.
+        """
+        now = datetime.now(timezone.utc)
+        updated_profile = await self.update_session(
+            user_id=user_id,
+            bot_id=bot_id,
+            exercises_get_in_session=0,
+            exercises_get_in_set=0,
+            errors_count_in_set=0,
+            session_started_at=now,
+            session_frozen_until=None,
+            wants_session_reminders=None,
+            last_long_break_reminder_type_sent=None,
+            last_long_break_reminder_sent_at=None,
+        )
+        if not updated_profile:
+            raise ValueError(
+                f'Failed to update profile for user '
+                f'{user_id}, bot {bot_id} to unlock session.'
+            )
+        logger.info(
+            f'Session unlocked for user {user_id}, '
+            f'bot {bot_id.value} after donation.'
+        )
+        return updated_profile

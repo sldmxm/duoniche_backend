@@ -102,9 +102,11 @@ def get_user_progress_service(
     exercise_service: Annotated[
         ExerciseService, Depends(get_exercise_service)
     ],
+    payment_service: Annotated[PaymentService, Depends(get_payment_service)],
 ) -> UserProgressService:
     return UserProgressService(
         user_service=user_service,
         user_bot_profile_service=user_bot_profile_service,
         exercise_service=exercise_service,
+        payment_service=payment_service,
     )

@@ -2,9 +2,15 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+from app.config import settings
+from app.core.entities.next_action_result import (
+    TelegramPayment,
+    TelegramPaymentItem,
+)
 from app.core.entities.payment import Payment
 from app.core.entities.user_bot_profile import BotID
 from app.core.repositories.payment import PaymentRepository
+from app.core.texts import PaymentMessages, get_text
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +29,49 @@ class DuplicatePaymentError(ValueError):
 class PaymentService:
     def __init__(self, payment_repository: PaymentRepository):
         self._payment_repository = payment_repository
+
+    def get_payment_unlock_details(
+        self, user_language: str
+    ) -> TelegramPayment:
+        payment_tiers = [
+            (20, PaymentMessages.ITEM_LABEL_TIER_1),
+            (50, PaymentMessages.ITEM_LABEL_TIER_2),
+            (100, PaymentMessages.ITEM_LABEL_TIER_3),
+            (200, PaymentMessages.ITEM_LABEL_TIER_4),
+            (500, PaymentMessages.ITEM_LABEL_TIER_5),
+            (1000, PaymentMessages.ITEM_LABEL_TIER_6),
+        ]
+        prices = []
+        for amount, label_key in payment_tiers:
+            prices.append(
+                TelegramPaymentItem(
+                    label=get_text(label_key, user_language),
+                    amount=amount,
+                )
+            )
+        if not prices:
+            logger.warning(
+                'No payment tiers available after filtering, '
+                'adding a default.'
+            )
+            prices.append(
+                TelegramPaymentItem(
+                    label=get_text(PaymentMessages.ITEM_LABEL, user_language),
+                    amount=settings.min_session_unlock_payment,
+                )
+            )
+
+        payment_details = TelegramPayment(
+            button_text=get_text(PaymentMessages.BUTTON_TEXT, user_language),
+            title=get_text(PaymentMessages.TITLE, user_language),
+            description=get_text(PaymentMessages.DESCRIPTION, user_language),
+            currency='XTR',
+            prices=prices,
+            thanks_answer=get_text(
+                PaymentMessages.THANKS_ANSWER, user_language
+            ),
+        )
+        return payment_details
 
     async def record_successful_payment(
         self,

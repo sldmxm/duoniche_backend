@@ -110,11 +110,19 @@ async def get_or_create_user(
 async def get_user_by_telegram_id(
     telegram_id: str,
     user_service: Annotated[UserService, Depends(get_user_service)],
+    # user_bot_profile_service: Annotated[
+    #     UserBotProfileService, Depends(get_user_bot_profile_service)
+    # ],
 ) -> User:
     """
     Get user by telegram_id.
     """
+
+    # TODO: Проблема со сбросом языка здесь!!!!
+    #  Надо брать язык пользователя из ЛЮБОГО профиля.
+    #  И собирать нормально через _create_user_for_response
     user = await user_service.get_by_telegram_id(telegram_id)
+
     if not user:
         raise NotFoundError(detail='User not found')
     return user

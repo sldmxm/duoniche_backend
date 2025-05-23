@@ -1,21 +1,35 @@
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from freezegun import freeze_time
 
 from app.config import settings
-from app.core.entities.next_action_result import TelegramPayment
+from app.core.entities.next_action_result import (
+    TelegramPayment,
+    TelegramPaymentItem,
+)
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
 from app.core.enums import LanguageLevel, UserAction
+from app.core.services.payment import PaymentService
 from app.core.services.user_progress import UserProgressService
 from app.core.texts import Messages, PaymentMessages, get_text
 
 
 @pytest.fixture
 def mock_user_service():
-    return AsyncMock()
+    service = AsyncMock()
+    service.get_by_id.return_value = User(
+        user_id=1,
+        telegram_id='12345',
+        username='testuser',
+        name='Test User',
+        telegram_data={'language_code': 'en'},
+        cohort='2023-01-01',
+        plan='free',
+    )
+    return service
 
 
 @pytest.fixture
@@ -25,82 +39,122 @@ def mock_exercise_service():
 
 @pytest.fixture
 def mock_user_bot_profile_service():
-    return AsyncMock()
+    service = AsyncMock()
+    service.get_or_create.return_value = (
+        UserBotProfile(
+            user_id=1,
+            bot_id=BotID.BG,
+            user_language='en',
+            language_level=LanguageLevel.A1,
+            exercises_get_in_session=0,
+            exercises_get_in_set=0,
+            errors_count_in_set=0,
+            session_started_at=datetime.now(timezone.utc)
+            - timedelta(minutes=10),
+            last_exercise_at=datetime.now(timezone.utc) - timedelta(minutes=5),
+            session_frozen_until=None,
+            wants_session_reminders=None,
+            last_long_break_reminder_type_sent=None,
+            last_long_break_reminder_sent_at=None,
+        ),
+        False,
+    )
+    return service
+
+
+@pytest.fixture
+def mock_payment_service():
+    service = AsyncMock(spec=PaymentService)
+
+    def _get_mock_payment_details(user_language: str):
+        payment_tiers_config = [
+            (20, PaymentMessages.ITEM_LABEL_TIER_1),
+            (50, PaymentMessages.ITEM_LABEL_TIER_2),
+            (100, PaymentMessages.ITEM_LABEL_TIER_3),
+            (200, PaymentMessages.ITEM_LABEL_TIER_4),
+            (500, PaymentMessages.ITEM_LABEL_TIER_5),
+            (1000, PaymentMessages.ITEM_LABEL_TIER_6),
+        ]
+        prices = []
+        for amount, label_key in payment_tiers_config:
+            prices.append(
+                TelegramPaymentItem(
+                    label=get_text(label_key, user_language),
+                    amount=amount,
+                )
+            )
+        if not prices:
+            prices.append(
+                TelegramPaymentItem(
+                    label=get_text(PaymentMessages.ITEM_LABEL, user_language),
+                    amount=5,
+                )
+            )
+
+        return TelegramPayment(
+            button_text=get_text(PaymentMessages.BUTTON_TEXT, user_language),
+            title=get_text(PaymentMessages.TITLE, user_language),
+            description=get_text(PaymentMessages.DESCRIPTION, user_language),
+            currency='XTR',
+            prices=prices,
+            thanks_answer=get_text(
+                PaymentMessages.THANKS_ANSWER, user_language
+            ),
+        )
+
+    service.get_payment_unlock_details.side_effect = _get_mock_payment_details
+    return service
+
+
+@pytest.fixture
+def sample_user(mock_user_service: AsyncMock):
+    return mock_user_service.get_by_id.return_value
+
+
+@pytest.fixture
+def sample_user_bot_profile(mock_user_bot_profile_service: AsyncMock):
+    return mock_user_bot_profile_service.get_or_create.return_value[0]
 
 
 @pytest.fixture
 def user_progress_service(
-    mock_user_service, mock_exercise_service, mock_user_bot_profile_service
+    mock_user_service: AsyncMock,
+    mock_exercise_service: AsyncMock,
+    mock_user_bot_profile_service: AsyncMock,
+    mock_payment_service: AsyncMock,
 ):
     return UserProgressService(
         user_service=mock_user_service,
         exercise_service=mock_exercise_service,
         user_bot_profile_service=mock_user_bot_profile_service,
-    )
-
-
-@pytest.fixture
-def sample_user():
-    return User(
-        user_id=1,
-        telegram_id='12345',
-        username='testuser',
-        name='Test User',
-        telegram_data={'language_code': 'en'},
-        cohort='2023-01-01',
-        plan='free',
-    )
-
-
-@pytest.fixture
-def sample_user_bot_profile():
-    return UserBotProfile(
-        user_id=1,
-        bot_id=BotID.BG,
-        user_language='en',
-        language_level=LanguageLevel.A1,
-        exercises_get_in_session=0,
-        exercises_get_in_set=0,
-        errors_count_in_set=0,
-        session_started_at=datetime.now(timezone.utc) - timedelta(minutes=10),
-        last_exercise_at=datetime.now(timezone.utc) - timedelta(minutes=5),
-        session_frozen_until=None,
-        wants_session_reminders=None,
-        last_long_break_reminder_type_sent=None,
-        last_long_break_reminder_sent_at=None,
+        payment_service=mock_payment_service,
     )
 
 
 @freeze_time('2023-01-15 12:00:00 UTC')
 @pytest.mark.asyncio
-@patch('app.core.services.user_progress.random.randint')
 async def test_get_next_action_when_frozen_offers_payment(
-    mock_randint,
     user_progress_service: UserProgressService,
     sample_user: User,
     sample_user_bot_profile: UserBotProfile,
-    mock_user_service: AsyncMock,
-    mock_user_bot_profile_service: AsyncMock,
 ):
-    # Arrange
     now = datetime.now(timezone.utc)
     sample_user_bot_profile.session_frozen_until = now + timedelta(hours=1)
     user_language = sample_user_bot_profile.user_language
-    expected_mocked_amount = 5
-    mock_randint.return_value = expected_mocked_amount
+    expected_payment_amount = 20
+    expected_item_label_key = PaymentMessages.ITEM_LABEL_TIER_1
 
-    mock_user_service.get_by_id.return_value = sample_user
-    mock_user_bot_profile_service.get_or_create.return_value = (
+    user_progress_service.user_service.get_by_id.return_value = sample_user
+    service = user_progress_service.user_bot_profile_service
+    service.get_or_create.return_value = (
         sample_user_bot_profile,
         False,
     )
 
-    # Act
     next_action = await user_progress_service.get_next_action(
         user_id=sample_user.user_id, bot_id=sample_user_bot_profile.bot_id
     )
 
-    # Assert
     assert next_action.action == UserAction.limit_reached
     assert next_action.payment_info is not None
     assert isinstance(next_action.payment_info, TelegramPayment)
@@ -112,13 +166,9 @@ async def test_get_next_action_when_frozen_offers_payment(
         PaymentMessages.TITLE, user_language
     )
     assert next_action.payment_info.prices[0].label == get_text(
-        PaymentMessages.ITEM_LABEL, user_language
+        expected_item_label_key, user_language
     )
-    assert next_action.payment_info.prices[0].amount == expected_mocked_amount
-    mock_randint.assert_called_once_with(
-        settings.min_session_unlock_payment,
-        settings.max_session_unlock_payment,
-    )
+    assert next_action.payment_info.prices[0].amount == expected_payment_amount
 
     expected_message_key = Messages.LIMIT_REACHED
     delta_to_next_session = str(
@@ -133,43 +183,32 @@ async def test_get_next_action_when_frozen_offers_payment(
 
 
 @pytest.mark.asyncio
-@patch('app.core.services.user_progress.random.randint')
 async def test_get_next_action_when_session_limit_reached_offers_payment(
-    mock_randint,
     user_progress_service: UserProgressService,
     sample_user: User,
     sample_user_bot_profile: UserBotProfile,
-    mock_user_service: AsyncMock,
-    mock_user_bot_profile_service: AsyncMock,
 ):
-    # Arrange
-    # Имитируем, что пользователь достиг лимита упражнений в сессии
     sample_user_bot_profile.exercises_get_in_session = (
         settings.exercises_in_set * settings.sets_in_session
     )
-    sample_user_bot_profile.session_frozen_until = (
-        None  # Сессия еще не заморожена
-    )
+    sample_user_bot_profile.session_frozen_until = None
     user_language = sample_user_bot_profile.user_language
-    expected_mocked_amount = 10
-    mock_randint.return_value = expected_mocked_amount
+    expected_payment_amount = 20
+    expected_item_label_key = PaymentMessages.ITEM_LABEL_TIER_1
 
-    mock_user_service.get_by_id.return_value = sample_user
-    mock_user_bot_profile_service.get_or_create.return_value = (
+    user_progress_service.user_service.get_by_id.return_value = sample_user
+    service = user_progress_service.user_bot_profile_service
+    service.get_or_create.return_value = (
         sample_user_bot_profile,
         False,
     )
-    # Мокаем update_session, который вызывается для заморозки сессии
-    mock_user_bot_profile_service.update_session.return_value = (
-        sample_user_bot_profile
-    )
+    service = user_progress_service.user_bot_profile_service
+    service.update_session.return_value = sample_user_bot_profile
 
-    # Act
     next_action = await user_progress_service.get_next_action(
         user_id=sample_user.user_id, bot_id=sample_user_bot_profile.bot_id
     )
 
-    # Assert
     assert next_action.action == UserAction.congratulations_and_wait
     assert next_action.payment_info is not None
     assert isinstance(next_action.payment_info, TelegramPayment)
@@ -177,11 +216,10 @@ async def test_get_next_action_when_session_limit_reached_offers_payment(
     assert next_action.payment_info.button_text == get_text(
         PaymentMessages.BUTTON_TEXT, user_language
     )
-    assert next_action.payment_info.prices[0].amount == expected_mocked_amount
-    mock_randint.assert_called_once_with(
-        settings.min_session_unlock_payment,
-        settings.max_session_unlock_payment,
+    assert next_action.payment_info.prices[0].label == get_text(
+        expected_item_label_key, user_language
     )
+    assert next_action.payment_info.prices[0].amount == expected_payment_amount
 
     expected_message_key = Messages.CONGRATULATIONS_AND_WAIT
     expected_message = get_text(
@@ -193,9 +231,9 @@ async def test_get_next_action_when_session_limit_reached_offers_payment(
     assert next_action.message == expected_message
     assert next_action.pause == settings.delta_between_sessions
 
-    # Проверяем, что сессия была заморожена
-    mock_user_bot_profile_service.update_session.assert_called_once()
-    call_args = mock_user_bot_profile_service.update_session.call_args[1]
+    user_progress_service.user_bot_profile_service.update_session.assert_called_once()
+    service = user_progress_service.user_bot_profile_service
+    call_args = service.update_session.call_args[1]
     assert call_args['user_id'] == sample_user.user_id
     assert call_args['bot_id'] == sample_user_bot_profile.bot_id
     assert 'session_frozen_until' in call_args

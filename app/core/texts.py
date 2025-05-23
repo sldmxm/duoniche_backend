@@ -221,7 +221,7 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'bg': '⌛Знаем, че времето не стига и езикът не е на първо място '
         '— но и няколко минути са важни за напредък.',
         'ru': '⌛Понимаем — времени ни на что не хватает, язык '
-        '— не на первом месте. Но даже пару минут помогут '
+        '— не на первом месте. Но даже пара минут помогут '
         'не остановиться.',
         'tr': '⌛Zamanın dar olduğunu ve dilin öncelikli olmadığını '
         'biliyoruz — ama birkaç dakika bile ilerlemeni sağlar.',
@@ -262,6 +262,12 @@ class PaymentMessages(str, Enum):
     DESCRIPTION = 'payment_description'
     ITEM_LABEL = 'payment_item_label'
     THANKS_ANSWER = 'payment_thanks_answer'
+    ITEM_LABEL_TIER_1 = 'payment_item_label_tier_1'
+    ITEM_LABEL_TIER_2 = 'payment_item_label_tier_2'
+    ITEM_LABEL_TIER_3 = 'payment_item_label_tier_3'
+    ITEM_LABEL_TIER_4 = 'payment_item_label_tier_4'
+    ITEM_LABEL_TIER_5 = 'payment_item_label_tier_5'
+    ITEM_LABEL_TIER_6 = 'payment_item_label_tier_6'
 
 
 PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
@@ -302,6 +308,48 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'ru': 'Спасибо за поддержку! ❤️',
         'tr': 'Desteğiniz için teşekkürler! ❤️',
         'uk': 'Дякуємо за підтримку! ❤️',
+    },
+    PaymentMessages.ITEM_LABEL_TIER_1: {
+        'ru': '💧 Капля поддержки',
+        'en': '💧 A drop of support',
+        'bg': '💧 Капка подкрепа',
+        'tr': '💧 Bir damla destek',
+        'uk': '💧 Крапля підтримки',
+    },
+    PaymentMessages.ITEM_LABEL_TIER_2: {
+        'ru': '☕ Чашка кофе',
+        'en': '☕ A cup of coffee',
+        'bg': '☕ Чаша кафе',
+        'tr': '☕ Bir fincan kahve',
+        'uk': '☕ Чашка кави',
+    },
+    PaymentMessages.ITEM_LABEL_TIER_3: {
+        'ru': '🏃‍♂️ Двигаемся дальше',
+        'en': '🏃‍♂️ Keep it going',
+        'bg': '🏃‍♂️ Продължаваме напред',
+        'tr': '🏃‍♂️ Devam edelim',
+        'uk': '🏃‍♂️ Рухаємось далі',
+    },
+    PaymentMessages.ITEM_LABEL_TIER_4: {
+        'ru': '💡 Верю в идею',
+        'en': '💡 Believe in the idea',
+        'bg': '💡 Вярвам в идеята',
+        'tr': '💡 Fikre inanıyorum',
+        'uk': '💡 Вірю в ідею',
+    },
+    PaymentMessages.ITEM_LABEL_TIER_5: {
+        'ru': '🚀 В развитие проекта',
+        'en': '🚀 Help with growth',
+        'bg': '🚀 За развитието на проекта',
+        'tr': '🚀 Projeye katkı',
+        'uk': '🚀 У розвиток проєкту',
+    },
+    PaymentMessages.ITEM_LABEL_TIER_6: {
+        'ru': '👑 Легендарная поддержка',
+        'en': '👑 Legendary support',
+        'bg': '👑 Легендарна подкрепа',
+        'tr': '👑 Efsanevi destek',
+        'uk': '👑 Легендарна підтримка',
     },
 }
 

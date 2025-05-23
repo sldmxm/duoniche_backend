@@ -1,13 +1,10 @@
 import logging
-import random
 from datetime import datetime, timedelta, timezone
 
 from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.next_action_result import (
     NextAction,
-    TelegramPayment,
-    TelegramPaymentItem,
 )
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import (
@@ -22,9 +19,10 @@ from app.core.enums import (
     UserAction,
 )
 from app.core.services.exercise import ExerciseService
+from app.core.services.payment import PaymentService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
-from app.core.texts import Messages, PaymentMessages, get_text
+from app.core.texts import Messages, get_text
 from app.metrics import BACKEND_EXERCISE_METRICS, BACKEND_USER_METRICS
 
 logger = logging.getLogger(__name__)
@@ -36,10 +34,12 @@ class UserProgressService:
         user_service: UserService,
         exercise_service: ExerciseService,
         user_bot_profile_service: UserBotProfileService,
+        payment_service: PaymentService,
     ):
         self.user_service = user_service
         self.exercise_service = exercise_service
         self.user_bot_profile_service = user_bot_profile_service
+        self.payment_service = payment_service
 
     async def get_next_action(self, user_id: int, bot_id: BotID) -> NextAction:
         async def _start_new_session() -> UserBotProfile:
@@ -121,8 +121,10 @@ class UserProgressService:
                 delta_to_next_session = str(
                     user_bot_profile.session_frozen_until - now
                 ).split('.')[0]
-                payment_details = self._get_payment_details(
-                    user_language=user_bot_profile.user_language
+                payment_details = (
+                    self.payment_service.get_payment_unlock_details(
+                        user_language=user_bot_profile.user_language
+                    )
                 )
 
                 return NextAction(
@@ -182,7 +184,7 @@ class UserProgressService:
 
             logger.info(f'User {user_id} ended session and is frozen ')
 
-            payment_details = self._get_payment_details(
+            payment_details = self.payment_service.get_payment_unlock_details(
                 user_language=user_bot_profile.user_language
             )
 
@@ -289,37 +291,3 @@ class UserProgressService:
                 'No suitable exercise found for the provided criteria'
             )
         return exercise
-
-    def _get_payment_details(self, user_language: str) -> TelegramPayment:
-        # TODO: перенести в PaymentService
-        amount = random.randint(
-            settings.min_session_unlock_payment,
-            settings.max_session_unlock_payment,
-        )
-
-        payment_details = TelegramPayment(
-            button_text=get_text(PaymentMessages.BUTTON_TEXT, user_language),
-            title=get_text(PaymentMessages.TITLE, user_language),
-            description=get_text(PaymentMessages.DESCRIPTION, user_language),
-            currency='XTR',
-            prices=[
-                TelegramPaymentItem(
-                    label=get_text(PaymentMessages.ITEM_LABEL, user_language),
-                    amount=amount,
-                ),
-                # TODO: Это много писать надо: чтобы не показывать за 4 часа
-                #  до окончания суток, например, еще это где-то
-                #  хранить и проверять надо
-                # TelegramPaymentItem(
-                #     label=get_text(
-                #         PaymentMessages.ITEM_LABEL_END_OF_DAY,
-                #         user_language
-                #     ),
-                #     amount=settings.session_unlock_stars_price * 2
-                # ),
-            ],
-            thanks_answer=get_text(
-                PaymentMessages.THANKS_ANSWER, user_language
-            ),
-        )
-        return payment_details

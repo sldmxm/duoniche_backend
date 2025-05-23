@@ -35,7 +35,6 @@ class UserResponse(BaseModel):
     name: Optional[str] = Field(description='Name')
     user_language: str = Field(
         description='User language',
-        default=settings.default_user_language,
     )
     telegram_data: Optional[dict] = Field(description='Telegram data')
     language_level: Optional[str] = Field(

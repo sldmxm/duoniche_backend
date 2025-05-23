@@ -19,10 +19,12 @@ from app.core.entities.user_bot_profile import BotID, UserBotProfile
 from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.services.async_task_cache import AsyncTaskCache
 from app.core.services.exercise import ExerciseService
+from app.core.services.payment import PaymentService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_progress import UserProgressService
 from app.db.models import DBUserBotProfile
+from app.db.repositories.payment import SQLAlchemyPaymentRepository
 from app.db.repositories.user import SQLAlchemyUserRepository
 from app.db.repositories.user_bot_profile import (
     SQLAlchemyUserBotProfileRepository,
@@ -151,14 +153,28 @@ async def user_bot_profile_service(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture(scope='function')
+async def payment_service(db_session: AsyncSession):
+    """Create UserBotProfileService with test repositories"""
+    return PaymentService(
+        payment_repository=SQLAlchemyPaymentRepository(db_session)
+    )
+
+
+@pytest_asyncio.fixture(scope='function')
 async def user_progress_service(
-    db_session, redis, user_service, exercise_service, user_bot_profile_service
+    db_session,
+    redis,
+    user_service,
+    exercise_service,
+    user_bot_profile_service,
+    payment_service,
 ):
     """Create ExerciseService with test repositories"""
     return UserProgressService(
         user_service=user_service,
         exercise_service=exercise_service,
         user_bot_profile_service=user_bot_profile_service,
+        payment_service=payment_service,
     )
 
 
@@ -378,6 +394,39 @@ async def fill_sample_exercises(
                 text_with_blanks='The manuscript ____ to have '
                 'been written in the 15th century.',
                 words=['is believed'],
+            ).model_dump(),
+        ),
+        ExerciseModel(
+            exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+            exercise_language=BotID.BG.value,  # Bulgarian
+            language_level=LanguageLevel.A1.value,
+            topic=ExerciseTopic.GENERAL.value,
+            exercise_text='Попълнете празното място в изречението.',
+            data=FillInTheBlankExerciseData(
+                text_with_blanks='Аз ____ до магазина вчера.',
+                words=['отидох'],
+            ).model_dump(),
+        ),
+        ExerciseModel(
+            exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+            exercise_language=BotID.BG.value,  # Bulgarian
+            language_level=LanguageLevel.A2.value,
+            topic=ExerciseTopic.GENERAL.value,
+            exercise_text='Попълнете празното място в изречението.',
+            data=FillInTheBlankExerciseData(
+                text_with_blanks='Тя ____ от три часа.',
+                words=['учи'],  # Пример
+            ).model_dump(),
+        ),
+        ExerciseModel(
+            exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
+            exercise_language=BotID.BG.value,  # Bulgarian
+            language_level=LanguageLevel.B1.value,
+            topic=ExerciseTopic.GENERAL.value,
+            exercise_text='Попълнете празното място в изречението.',
+            data=FillInTheBlankExerciseData(
+                text_with_blanks='Ако ____ повече време, щях да ти помогна.',
+                words=['имах'],
             ).model_dump(),
         ),
     ]

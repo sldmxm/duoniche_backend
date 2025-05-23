@@ -59,7 +59,6 @@ class Settings(BaseSettings):  # type: ignore
     )
 
     min_session_unlock_payment: int = 50
-    max_session_unlock_payment: int = 200
 
     update_user_metrics_interval: int = 60
     session_ttl_since_last_exercise: timedelta = timedelta(minutes=5)

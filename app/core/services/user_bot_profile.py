@@ -62,6 +62,8 @@ class UserBotProfileService:
     ) -> Tuple[UserBotProfile, bool]:
         profile = await self._profile_repo.get(user_id, bot_id)
         if profile:
+            logger.info(f'Bot profile already exists for user {user_id}')
+
             is_created = False
             return profile, is_created
 

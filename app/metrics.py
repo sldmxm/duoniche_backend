@@ -91,6 +91,23 @@ BACKEND_USER_METRICS = {
         labelnames=backend_user_metrics_label_names
         + ['wants_session_reminders'],
     ),
+    'session_unlocked_by_payment': Counter(
+        METRIC_PREFIX + 'session_unlocked_by_payment_total',
+        'Total number of sessions unlocked by payment',
+        labelnames=backend_user_metrics_label_names,
+    ),
+}
+
+backend_payment_label_names = backend_user_metrics_label_names + [
+    'currency',
+]
+
+BACKEND_PAYMENT_METRICS = {
+    'amount_total': Counter(
+        METRIC_PREFIX + 'payment_amount_total',
+        'Total amount of payments received',
+        labelnames=backend_payment_label_names,
+    ),
 }
 
 backend_llm_metrics_label_names = [

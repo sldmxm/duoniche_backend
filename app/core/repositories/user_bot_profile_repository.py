@@ -1,14 +1,13 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import List, Optional
 
 from app.core.entities.user_bot_profile import (
     BotID,
     UserBotProfile,
 )
-from app.core.repositories.base import AsyncRepository
 
 
-class UserBotProfileRepository(AsyncRepository[UserBotProfile]):
+class UserBotProfileRepository(ABC):
     @abstractmethod
     async def get_all_by_user_id(
         self, user_id: int

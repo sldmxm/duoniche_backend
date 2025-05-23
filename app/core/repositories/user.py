@@ -1,11 +1,10 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import List, Optional
 
 from app.core.entities.user import User
-from app.core.repositories.base import AsyncRepository
 
 
-class UserRepository(AsyncRepository[User]):
+class UserRepository(ABC):
     @abstractmethod
     async def get_by_id(self, user_id: int) -> Optional[User]:
         raise NotImplementedError

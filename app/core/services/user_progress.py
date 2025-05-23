@@ -291,8 +291,7 @@ class UserProgressService:
         return exercise
 
     def _get_payment_details(self, user_language: str) -> TelegramPayment:
-        # TODO: сделать тексты сообщений с переводами
-        # TODO: Поменять на 50-200 перед выкатом на прод, перенести в settings
+        # TODO: перенести в PaymentService
         amount = random.randint(
             settings.min_session_unlock_payment,
             settings.max_session_unlock_payment,

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.services.async_task_cache import AsyncTaskCache
 from app.core.services.exercise import ExerciseService
+from app.core.services.payment import PaymentService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_progress import UserProgressService
@@ -17,6 +18,7 @@ from app.db.repositories.exercise_answers import (
 from app.db.repositories.exercise_attempt import (
     SQLAlchemyExerciseAttemptRepository,
 )
+from app.db.repositories.payment import SQLAlchemyPaymentRepository
 from app.db.repositories.user import SQLAlchemyUserRepository
 from app.db.repositories.user_bot_profile import (
     SQLAlchemyUserBotProfileRepository,
@@ -35,6 +37,13 @@ def get_user_bot_profile_service(
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> UserBotProfileService:
     return UserBotProfileService(SQLAlchemyUserBotProfileRepository(session))
+
+
+def get_payment_service(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+) -> PaymentService:
+    """Dependency to get the payment service."""
+    return PaymentService(SQLAlchemyPaymentRepository(session))
 
 
 async def get_redis_dependency(request: Request) -> AsyncRedis:

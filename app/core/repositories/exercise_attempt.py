@@ -1,11 +1,10 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import List, Optional
 
 from app.core.entities.exercise_attempt import ExerciseAttempt
-from app.core.repositories.base import AsyncRepository
 
 
-class ExerciseAttemptRepository(AsyncRepository[ExerciseAttempt]):
+class ExerciseAttemptRepository(ABC):
     @abstractmethod
     async def get_by_id(self, attempt_id: int) -> Optional[ExerciseAttempt]:
         raise NotImplementedError

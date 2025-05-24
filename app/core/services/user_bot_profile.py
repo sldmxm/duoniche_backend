@@ -62,8 +62,6 @@ class UserBotProfileService:
     ) -> Tuple[UserBotProfile, bool]:
         profile = await self._profile_repo.get(user_id, bot_id)
         if profile:
-            logger.info(f'Bot profile already exists for user {user_id}')
-
             is_created = False
             return profile, is_created
 
@@ -247,7 +245,6 @@ class UserBotProfileService:
                 f'{user_id}, bot {bot_id} to unlock session.'
             )
         logger.info(
-            f'Session unlocked for user {user_id}, '
-            f'bot {bot_id.value} after donation.'
+            f'Session unlocked for user {user_id}, ' f'bot {bot_id.value}.'
         )
         return updated_profile

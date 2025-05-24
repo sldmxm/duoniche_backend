@@ -1,7 +1,7 @@
 import logging
-from typing import Annotated
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from app.api.dependencies import (
     get_payment_service,
@@ -110,22 +110,57 @@ async def get_or_create_user(
 async def get_user_by_telegram_id(
     telegram_id: str,
     user_service: Annotated[UserService, Depends(get_user_service)],
-    # user_bot_profile_service: Annotated[
-    #     UserBotProfileService, Depends(get_user_bot_profile_service)
-    # ],
-) -> User:
+    user_bot_profile_service: Annotated[
+        UserBotProfileService, Depends(get_user_bot_profile_service)
+    ],
+    bot_id_str: Annotated[Optional[str], Query(alias='bot_id')] = None,
+) -> UserResponse:
     """
-    Get user by telegram_id.
+    Get user by telegram_id, optionally for a specific bot_id.
+    If bot_id is not provided, tries to find any existing bot profile.
     """
-
-    # TODO: Проблема со сбросом языка здесь!!!!
-    #  Надо брать язык пользователя из ЛЮБОГО профиля.
-    #  И собирать нормально через _create_user_for_response
     user = await user_service.get_by_telegram_id(telegram_id)
-
-    if not user:
+    if not user or not user.user_id:
         raise NotFoundError(detail='User not found')
-    return user
+
+    if bot_id_str:
+        try:
+            bot_id = BotID(bot_id_str)
+            user_bot_profile = await user_bot_profile_service.get(
+                user.user_id, bot_id
+            )
+            if not user_bot_profile:
+                raise NotFoundError(
+                    detail=f'Bot profile for bot_id {bot_id_str} '
+                    f'not found for user {telegram_id}'
+                )
+        except ValueError as e:
+            valid_bot_ids = [member.value for member in BotID]
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid bot_id: '{bot_id_str}'. "
+                f'Valid values are: {valid_bot_ids}',
+            ) from e
+    else:
+        profiles = await user_bot_profile_service.get_all_by_user_id(
+            user.user_id
+        )
+        if profiles and profiles[0]:
+            user_bot_profile = profiles[0]
+        else:
+            raise NotFoundError(
+                detail=f'No bot profiles found for user {telegram_id}. '
+                f'Please specify a bot_id or ensure a profile exists.'
+            )
+
+    if not user_bot_profile:
+        raise NotFoundError(
+            detail=f'Could not determine bot profile for user {telegram_id}.'
+        )
+
+    return _create_user_for_response(
+        user=user, user_bot_profile=user_bot_profile
+    )
 
 
 @router.put(

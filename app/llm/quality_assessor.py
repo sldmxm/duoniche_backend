@@ -48,11 +48,32 @@ class ExerciseQualityAssessor(BaseLLMService):
     async def assess(
         self, exercise: ExerciseForAssessor, user_language, target_language
     ) -> None:
-        # TODO: Если может исправить, исправлять и присылать новый вариант,
-        #  если не может, откидывать
         if self._has_duplicate_options(exercise):
+            BACKEND_LLM_METRICS['exercises_rejected'].labels(
+                exercise_type=exercise.exercise_type.value,
+                level=exercise.language_level.value,
+                user_language=user_language,
+                target_language=target_language,
+                llm_model=self.model.model_name,
+            ).inc()
             message = (
                 f'Exercise rejected: duplicate options in answers. '
+                f'Exercise: {exercise}'
+            )
+            raise ValueError(message)
+
+        if exercise.exercise_type in (
+            ExerciseType.FILL_IN_THE_BLANK,
+        ) and self._has_too_long_options(exercise):
+            BACKEND_LLM_METRICS['exercises_rejected'].labels(
+                exercise_type=exercise.exercise_type.value,
+                level=exercise.language_level.value,
+                user_language=user_language,
+                target_language=target_language,
+                llm_model=self.model.model_name,
+            ).inc()
+            message = (
+                f'Exercise rejected: too long options. '
                 f'Exercise: {exercise}'
             )
             raise ValueError(message)
@@ -81,6 +102,14 @@ class ExerciseQualityAssessor(BaseLLMService):
     @staticmethod
     def _has_duplicate_options(exercise: ExerciseForAssessor) -> bool:
         return len(set(exercise.options)) < len(exercise.options)
+
+    @staticmethod
+    def _has_too_long_options(exercise: ExerciseForAssessor) -> bool:
+        TELEGRAM_BUTTON_MAX_LENGTH = 64
+        for option in exercise.options:
+            if len(option.encode('utf-8')) > TELEGRAM_BUTTON_MAX_LENGTH:
+                return True
+        return False
 
     async def _run_llm_check(
         self, exercise: ExerciseForAssessor, user_language, target_language

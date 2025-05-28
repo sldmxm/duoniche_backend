@@ -32,7 +32,7 @@ async def generate_and_save_exercise(
     exercise_type: ExerciseType,
     llm_service: LLMService,
     choose_accent_generator: ChooseAccentGenerator,
-) -> None:
+) -> bool:
     try:
         async with exercise_generation_semaphore:
             language_level = LanguageLevel.get_next_exercise_level(
@@ -42,25 +42,17 @@ async def generate_and_save_exercise(
 
             if exercise_type == ExerciseType.CHOOSE_ACCENT:
                 if target_language == BotID.BG.value:
-                    try:
-                        (
-                            exercise,
-                            answer,
-                        ) = await choose_accent_generator.generate(
-                            user_language=settings.default_user_language
-                        )
-                        created_by = 'scrapper'
-                    except ChooseAccentGenerationError as e:
-                        logger.warning(
-                            f'Failed to generate CHOOSE_ACCENT exercise: {e}'
-                        )
-                        return
+                    generator = choose_accent_generator
+                    exercise, answer = await generator.generate(
+                        user_language=settings.default_user_language
+                    )
+                    created_by = 'scrapper'
                 else:
                     logger.warning(
                         f'Skipping CHOOSE_ACCENT generation for non-BG '
                         f'language: {target_language}'
                     )
-                    return
+                    return False
             else:
                 exercise, answer = await llm_service.generate_exercise(
                     user_language=user_language,
@@ -91,6 +83,7 @@ async def generate_and_save_exercise(
                         )
                         await exercise_answer_repository.create(right_answer)
                     await session.commit()
+                return True
             else:
                 logger.warning(
                     f'Skipping save for exercise type '
@@ -98,6 +91,11 @@ async def generate_and_save_exercise(
                     f'as it was not generated (exercise_data '
                     f'or answer_data is None).'
                 )
+                return False
+
+    except ChooseAccentGenerationError as e:
+        logger.warning(f'Failed to generate CHOOSE_ACCENT exercise: {e}')
+        return False
 
     except Exception as e:
         logger.error(
@@ -105,6 +103,7 @@ async def generate_and_save_exercise(
             f'and saving ({exercise_type}): {e}',
             exc_info=True,
         )
+        return False
 
 
 async def exercise_stock_refill(
@@ -173,7 +172,7 @@ async def exercise_stock_refill(
                             f'resulted in an error (see previous logs): '
                             f'{type(result).__name__}'
                         )
-                    elif result is not None:
+                    elif result is True:
                         successful_generations += 1
                 logger.info(
                     f'Finished generation batch. Successful: '

@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Tuple
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -7,29 +7,30 @@ from pydantic import BaseModel, Field
 from app.core.entities.exercise import Exercise
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.texts import get_text
-from app.core.value_objects.answer import ChooseSentenceAnswer
-from app.core.value_objects.exercise import ChooseSentenceExerciseData
+from app.core.value_objects.answer import StoryComprehensionAnswer
+from app.core.value_objects.exercise import StoryComprehensionExerciseData
 from app.llm.assessors.quality_assessor import ExerciseForAssessor
 from app.llm.generators.prompt_templates import (
     BASE_SYSTEM_PROMPT_FOR_GENERATION,
-    CHOOSE_SENTENCE_GENERATION_INSTRUCTIONS,
+    STORY_COMPREHENSION_GENERATION_INSTRUCTIONS,
 )
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
 from app.llm.llm_base import BaseLLMService
 
 
-class ChooseSentenceExerciseLLMOutput(BaseModel):
-    correct_sentence: str = Field(
-        description='The single, grammatically correct sentence.'
+class StoryComprehensionLLMOutput(BaseModel):
+    story_text: str = Field(description='The short story.')
+    correct_statement: str = Field(
+        description='The statement that accurately reflects '
+        'information from the story.'
     )
-    incorrect_sentences: list[str] = Field(
-        description='A list of exactly 2 incorrect sentences. '
-        'Each should be very similar to the correct one '
-        'but contain a clear grammatical error.'
+    incorrect_statements: List[str] = Field(
+        description='A list of two plausible but clearly '
+        'false statements about the story.'
     )
 
 
-class ChooseSentenceGenerator(ExerciseGenerator):
+class StoryComprehensionGenerator(ExerciseGenerator):
     def __init__(self, llm_service: BaseLLMService):
         self.llm_service = llm_service
 
@@ -40,19 +41,19 @@ class ChooseSentenceGenerator(ExerciseGenerator):
         target_language: str,
         language_level: LanguageLevel,
         topic: ExerciseTopic,
-    ) -> Tuple[Exercise, ChooseSentenceAnswer, ExerciseForAssessor]:
+    ) -> Tuple[Exercise, StoryComprehensionAnswer, ExerciseForAssessor]:
         """Generate a choose-the-sentence exercise."""
         parser = PydanticOutputParser(
-            pydantic_object=ChooseSentenceExerciseLLMOutput
+            pydantic_object=StoryComprehensionLLMOutput
         )
 
         system_prompt_template = BASE_SYSTEM_PROMPT_FOR_GENERATION.replace(
             '{specific_exercise_generation_instructions}',
-            CHOOSE_SENTENCE_GENERATION_INSTRUCTIONS,
+            STORY_COMPREHENSION_GENERATION_INSTRUCTIONS,
         )
 
         user_prompt_template = (
-            "Please generate the 'choose the correct sentence' exercise now, "
+            "Please generate the 'Story Comprehension' exercise now, "
             'following all system instructions.'
         )
 
@@ -75,7 +76,7 @@ class ChooseSentenceGenerator(ExerciseGenerator):
             'format_instructions': parser.get_format_instructions(),
         }
 
-        llm_output: ChooseSentenceExerciseLLMOutput = (
+        llm_output: StoryComprehensionLLMOutput = (
             await self.llm_service.run_llm_chain(
                 chain=chain,
                 input_data=request_data,
@@ -83,32 +84,35 @@ class ChooseSentenceGenerator(ExerciseGenerator):
         )
 
         options = [
-            llm_output.correct_sentence
-        ] + llm_output.incorrect_sentences
+            llm_output.correct_statement
+        ] + llm_output.incorrect_statements
 
         exercise = Exercise(
             exercise_id=None,
-            exercise_type=ExerciseType.CHOOSE_SENTENCE,
+            exercise_type=ExerciseType.STORY_COMPREHENSION,
             exercise_language=target_language,
             language_level=language_level,
             topic=topic,
             exercise_text=get_text(
-                ExerciseType.CHOOSE_SENTENCE, user_language_code
+                ExerciseType.STORY_COMPREHENSION, user_language_code
             ),
-            data=ChooseSentenceExerciseData(
+            data=StoryComprehensionExerciseData(
+                story_audio_url='',
+                story_text=llm_output.story_text,
                 options=options,
             ),
         )
 
-        correct_answer_obj = ChooseSentenceAnswer(
-            answer=llm_output.correct_sentence
+        correct_answer_obj = StoryComprehensionAnswer(
+            answer=llm_output.correct_statement
         )
 
         exercise_for_quality_assessor = ExerciseForAssessor(
-            text=exercise.exercise_text,
+            text=f'Story:\n{llm_output.story_text}\n\n'
+            f'Task: {exercise.exercise_text}',
             options=options,
-            correct_answer=llm_output.correct_sentence,
-            exercise_type=ExerciseType.CHOOSE_SENTENCE,
+            correct_answer=llm_output.correct_statement,
+            exercise_type=ExerciseType.STORY_COMPREHENSION,
             language_level=language_level,
         )
 

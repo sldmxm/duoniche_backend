@@ -15,6 +15,7 @@ from app.core.value_objects.exercise import (
     FillInTheBlankExerciseData,
     MultipleChoiceExerciseData,
     SentenceConstructionExerciseData,
+    StoryComprehensionExerciseData,
     TranslationExerciseData,
     create_exercise_data_model_validate,
 )
@@ -33,6 +34,7 @@ class Exercise(BaseModel):
         FillInTheBlankExerciseData,
         ChooseSentenceExerciseData,
         ChooseAccentExerciseData,
+        StoryComprehensionExerciseData,
         SentenceConstructionExerciseData,
         MultipleChoiceExerciseData,
         TranslationExerciseData,

@@ -7,9 +7,7 @@ class ExerciseType(Enum):
     FILL_IN_THE_BLANK = 'fill_in_the_blank'
     CHOOSE_SENTENCE = 'choose_sentence'
     CHOOSE_ACCENT = 'choose_accent'
-    # SENTENCE_CONSTRUCTION = 'sentence_construction'
-    # MULTIPLE_CHOICE = 'multiple_choice'
-    # TRANSLATION = 'translation'
+    STORY_COMPREHENSION = 'story_comprehension'
 
     @classmethod
     def get_next_type(cls) -> 'ExerciseType':
@@ -19,11 +17,19 @@ class ExerciseType(Enum):
                 0,
                 1,
                 2,
+                3,
             ],
+            # weights=[
+            #     0.50,
+            #     0.30,
+            #     0.10,
+            #     0.10,
+            # ],
             weights=[
-                0.60,
-                0.30,
-                0.10,
+                0,
+                0,
+                0,
+                1.0,
             ],
         )[0]
         return types[choice]

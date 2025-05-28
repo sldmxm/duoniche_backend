@@ -126,3 +126,42 @@ CHOOSE_SENTENCE_GENERATION_INSTRUCTIONS = (
     '4.  **Final Output:** Provide the `correct_sentence` and '
     'a list of two `incorrect_sentences`.'
 )
+
+STORY_COMPREHENSION_GENERATION_INSTRUCTIONS = (
+    "Your task is to generate a 'Story Comprehension' exercise.\n"
+    'Follow these steps:\n'
+    '\n'
+    '1. **Story Generation:**\n'
+    '   - Create a short, coherent story (3–5 sentences) in '
+    '{exercise_language}.\n'
+    '   - The story should be appropriate for the {language_level} '
+    'and the topic: {topic}.\n'
+    '   - Use natural, grammatically correct language suitable for '
+    'a learner.\n'
+    '   - Ensure the story is grammatically correct and uses natural'
+    ' language.\n'
+    '\n'
+    '2. **Statements Generation:**\n'
+    '   - Based on the story, generate three distinct statements:\n'
+    '     a. `correct_statement`: a statement that accurately reflects '
+    "the story's content.\n"
+    '     b. `incorrect_statements` (2 items): false statements that '
+    'are **plausible**, not obviously wrong.\n'
+    '        - Use realistic alterations (e.g., change a character, '
+    'time, place, quantity, or action).\n'
+    '        - Reuse meaningful words from the story to make incorrect '
+    'statements sound believable.\n'
+    '        - Avoid statements that are clearly irrelevant, absurd, '
+    'or grammatically incorrect.\n'
+    '        - Do not create incorrect statements by simply negating '
+    'the correct one.\n'
+    '\n'
+    '3. **Common Patterns for Incorrect Statements:**\n'
+    '   - Switch the order of events\n'
+    '   - Change details (e.g., number of people, colors, size)\n'
+    '   - Replace subjects or objects with others mentioned in the story\n'
+    '   - Introduce false but reasonable motivations or consequences\n'
+    '\n'
+    "The goal is to challenge the learner's attention to detail and memory, "
+    'not to trick them with absurdities.'
+)

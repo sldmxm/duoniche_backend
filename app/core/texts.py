@@ -112,6 +112,11 @@ EXERCISES_TASKS_TRANSLATIONS: Dict[
         'tr': 'Doğru aksanı seçin',
         'uk': 'Виберіть правильний акцент',
     },
+    ExerciseType.STORY_COMPREHENSION: {
+        'ru': 'Послушай текст и выбери верное утверждение',
+        'en': 'Listen to the text and choose the correct statement',
+        # TODO: уточнить формулировки и перевести
+    },
 }
 
 

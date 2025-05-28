@@ -4,12 +4,12 @@ from app.core.entities.exercise import Exercise
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.value_objects.answer import Answer
+from app.llm.assessors.quality_assessor import ExerciseQualityAssessor
 from app.llm.factories import (
     ExerciseGeneratorFactory,
     ExerciseValidatorFactory,
 )
 from app.llm.llm_base import BaseLLMService
-from app.llm.quality_assessor import ExerciseQualityAssessor
 from app.metrics import BACKEND_LLM_METRICS
 from app.utils.language_code_converter import (
     convert_iso639_language_code_to_full_name,

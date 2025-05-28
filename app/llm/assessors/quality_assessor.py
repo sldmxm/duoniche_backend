@@ -1,6 +1,7 @@
 import logging
 
 from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from app.config import settings
@@ -112,39 +113,86 @@ class ExerciseQualityAssessor(BaseLLMService):
         return False
 
     async def _run_llm_check(
-        self, exercise: ExerciseForAssessor, user_language, target_language
+        self,
+        exercise: ExerciseForAssessor,
+        user_language: str,
+        target_language: str,
     ) -> LLMExerciseReview:
         parser = PydanticOutputParser(pydantic_object=LLMExerciseReview)
-        prompt_template = (
-            'Analyze the following exercise and answer '
-            'for {user_language}-speaking learner '
-            'of {target_language} language.\n'
-            'Task of the exercise must be in {user_language}.\n'
-            '`is_valid` should be true only if the exercise is correct, '
-            'educational, free of grammatical or logical errors, '
-            'sounds natural and common in {target_language} '
-            'and if the incorrect options are truly incorrect.\n\n'
-            'Exercise type: {exercise_type}\n'
-            'Exercise: {text}\n'
-            'Options: {options}\n'
-            'Correct answer: {correct_answer}\n'
+
+        system_prompt_template = (
+            'You are an expert language learning exercise assessor. '
+            'Your task is to evaluate the quality and correctness '
+            'of an exercise '
+            'designed for a learner of the {target_language} language.\n'
+            'The exercise task description (if provided within the '
+            "'Exercise Text') should be in {user_language}.\n"
+            'Carefully analyze all aspects of the exercise: the main '
+            'text/question, the provided options (if any), and the '
+            'designated correct answer.\n'
+            'Set `is_valid` to true ONLY if the exercise meets ALL the '
+            'following criteria:\n'
+            '1.  **Correctness:** The exercise itself (question/text) '
+            'and the designated `correct_answer` are grammatically and '
+            'factually correct in {target_language}.\n'
+            '2.  **Educational Value:** The exercise is useful for learning '
+            '{target_language} at the specified level.\n'
+            '3.  **Clarity & Naturalness:** The exercise text and correct '
+            'answer sound natural and are common usage in {target_language}. '
+            'Avoid awkward or overly artificial phrasing.\n'
+            '4.  **Unambiguity:** The task is clear, and the correct answer '
+            'is unambiguously the best option among the provided `options`.\n'
+            '5.  **Incorrect Options (if applicable):** All other `options` '
+            'must be clearly and definitively incorrect. They should not be '
+            'subtly wrong, alternative grammatically correct and '
+            'semantically plausible sentences, or merely stylistically '
+            'different. '
+            'Incorrect options should lead to grammatical errors or clear '
+            'semantic absurdity.\n'
+            'If any of these criteria are not met, set `is_valid` to false.'
+        )
+
+        user_prompt_template = (
+            'Please assess the following exercise:\n'
+            'Target Language: {target_language}\n'
+            "Learner's Native Language: {user_language}\n"
+            'Exercise Type: {exercise_type}\n'
+            'Language Level: {language_level}\n'
+            'Exercise Text/Question: {text}\n'
+            'Provided Options: {options_formatted}\n'
+            'Designated Correct Answer: {correct_answer}\n\n'
+            'Based on the system instructions, provide your assessment.\n'
             '{format_instructions}'
         )
 
+        chat_prompt = ChatPromptTemplate.from_messages(
+            [
+                ('system', system_prompt_template),
+                ('user', user_prompt_template),
+            ]
+        )
         chain = await self.create_llm_chain(
-            prompt_template, parser, is_chat_prompt=False
+            chat_prompt, parser, is_chat_prompt=True
+        )
+
+        options_formatted_str = (
+            ', '.join(f"'{opt}'" for opt in exercise.options)
+            if exercise.options
+            else 'N/A'
         )
 
         request_data = {
             'user_language': user_language,
             'target_language': target_language,
             'text': exercise.text,
-            'exercise_type': exercise.exercise_type,
-            'options': exercise.options,
+            'exercise_type': exercise.exercise_type.value,
+            'language_level': exercise.language_level.value,
+            'options_formatted': options_formatted_str,
             'correct_answer': exercise.correct_answer,
+            'format_instructions': parser.get_format_instructions(),
         }
 
-        review = await self.run_llm_chain(
+        review: LLMExerciseReview = await self.run_llm_chain(
             chain=chain,
             input_data=request_data,
         )
@@ -154,5 +202,5 @@ class ExerciseQualityAssessor(BaseLLMService):
 
 class ValidateAttemptQualityAssessor(BaseLLMService):
     # TODO: проверять качество ответа,
-    #  если не очень, менять на вариант ассессора
+    #  если не очень, поднимать исключение, его поймает Core
     ...

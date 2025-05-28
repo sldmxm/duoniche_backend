@@ -7,14 +7,14 @@ from app.core.entities.user import User
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
+from app.llm.assessors.quality_assessor import (
+    ExerciseForAssessor,
+    ExerciseQualityAssessor,
+)
 from app.llm.generators.fill_in_blank_generator import (
     FillInTheBlankGenerator,
 )
 from app.llm.llm_service import LLMService
-from app.llm.quality_assessor import (
-    ExerciseForAssessor,
-    ExerciseQualityAssessor,
-)
 from app.utils.language_code_converter import (
     convert_iso639_language_code_to_full_name,
 )

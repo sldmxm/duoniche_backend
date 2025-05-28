@@ -290,4 +290,9 @@ class UserProgressService:
             raise ValueError(
                 'No suitable exercise found for the provided criteria'
             )
+
+        # TODO: Временно, потом надо будет обрабатывать на стороне бота
+        if exercise.exercise_type == ExerciseType.STORY_COMPREHENSION:
+            exercise.exercise_text += '\n\n' + exercise.data.story_text  # type: ignore
+
         return exercise

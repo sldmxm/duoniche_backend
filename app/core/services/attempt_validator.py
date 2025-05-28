@@ -136,14 +136,18 @@ class AttemptValidator:
             )
             logger.debug(f'Pre saved user attempt {pre_saved_attempt}')
 
-            if exercise.exercise_type == ExerciseType.CHOOSE_ACCENT:
+            if exercise.exercise_type in (
+                ExerciseType.CHOOSE_ACCENT,
+                ExerciseType.STORY_COMPREHENSION,
+            ):
                 repo = self.exercise_answer_repository
                 correct_answers = (
                     await repo.get_correct_answers_by_exercise_id(
                         exercise.exercise_id
                     )
                 )
-                feedback = ', '.join(
+                feedback = '✅'
+                feedback += ', '.join(
                     [a.answer.get_answer_text() for a in correct_answers]
                 )
                 incorrect_answer = ExerciseAnswer(

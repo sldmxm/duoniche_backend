@@ -5,9 +5,9 @@ from pydantic import BaseModel, Field
 from app.core.entities.exercise import Exercise
 from app.core.enums import ExerciseTopic, LanguageLevel
 from app.core.value_objects.answer import ChooseAccentAnswer
+from app.llm.assessors.quality_assessor import ExerciseForAssessor
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
 from app.llm.llm_base import BaseLLMService
-from app.llm.quality_assessor import ExerciseForAssessor
 
 
 class ChooseAccentExerciseDataParsed(BaseModel):

@@ -11,13 +11,13 @@ from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.texts import get_text
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
+from app.llm.assessors.quality_assessor import ExerciseForAssessor
 from app.llm.generators.prompt_templates import (
     BASE_SYSTEM_PROMPT_FOR_GENERATION,
     FILL_IN_THE_BLANK_GENERATION_INSTRUCTIONS,
 )
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
 from app.llm.llm_base import BaseLLMService
-from app.llm.quality_assessor import ExerciseForAssessor
 
 
 class FillInTheBlankExerciseLLMOutput(BaseModel):

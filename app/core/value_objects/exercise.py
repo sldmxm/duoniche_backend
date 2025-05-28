@@ -11,6 +11,7 @@ from app.core.value_objects.answer import (
     ChooseAccentAnswer,
     ChooseSentenceAnswer,
     FillInTheBlankAnswer,
+    StoryComprehensionAnswer,
 )
 
 
@@ -80,6 +81,19 @@ class ChooseAccentExerciseData(ExerciseData):
         return answer.answer
 
 
+class StoryComprehensionExerciseData(ExerciseData):
+    story_text: str = Field(description='The full story text')
+    story_audio_url: str = Field(description='The full story audio url')
+    options: List[str] = Field(
+        description='List of statements, one is correct'
+    )
+
+    def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
+        if not isinstance(answer, StoryComprehensionAnswer):
+            raise ValueError('Answer must be StoryComprehensionAnswer')
+        return answer.answer
+
+
 class SentenceConstructionExerciseData(ExerciseData):
     words: List[str] = Field(description='List of words')
 
@@ -110,6 +124,7 @@ def create_exercise_data_model_validate(data: Dict[str, Any]) -> ExerciseData:
         'FillInTheBlankExerciseData': FillInTheBlankExerciseData,
         'ChooseSentenceExerciseData': ChooseSentenceExerciseData,
         'ChooseAccentExerciseData': ChooseAccentExerciseData,
+        'StoryComprehensionExerciseData': StoryComprehensionExerciseData,
         'SentenceConstructionExerciseData': SentenceConstructionExerciseData,
         'MultipleChoiceExerciseData': MultipleChoiceExerciseData,
         'TranslationExerciseData': TranslationExerciseData,

@@ -34,18 +34,23 @@ class FillInTheBlankAnswer(Answer):
         return ';'.join(self.words)
 
 
-class ChooseSentenceAnswer(Answer):
+class ChooseOneAnswer(Answer):
+    answer: str = Field(description='Chosen answer')
+
+    def get_answer_text(self) -> str:
+        return self.answer
+
+
+class ChooseSentenceAnswer(ChooseOneAnswer):
     answer: str = Field(description='Chosen sentence')
 
-    def get_answer_text(self) -> str:
-        return self.answer
 
-
-class ChooseAccentAnswer(Answer):
+class ChooseAccentAnswer(ChooseOneAnswer):
     answer: str = Field(description='Chosen accent')
 
-    def get_answer_text(self) -> str:
-        return self.answer
+
+class StoryComprehensionAnswer(ChooseOneAnswer):
+    answer: str = Field(description='Chosen statement about the story')
 
 
 class SentenceConstructionAnswer(Answer):
@@ -77,6 +82,7 @@ def create_answer_model_validate(data: Dict[str, Any]) -> Answer:
             'fill_in_the_blank': 'FillInTheBlankAnswer',
             'choose_sentence': 'ChooseSentenceAnswer',
             'choose_accent': 'ChooseAccentAnswer',
+            'story_comprehension': 'StoryComprehensionAnswer',
         }
         exercise_type = data.get('exercise_type')
         if exercise_type is not None:
@@ -93,6 +99,7 @@ def create_answer_model_validate(data: Dict[str, Any]) -> Answer:
         'FillInTheBlankAnswer': FillInTheBlankAnswer,
         'ChooseSentenceAnswer': ChooseSentenceAnswer,
         'ChooseAccentAnswer': ChooseAccentAnswer,
+        'StoryComprehensionAnswer': StoryComprehensionAnswer,
         'SentenceConstructionAnswer': SentenceConstructionAnswer,
         'MultipleChoiceAnswer': MultipleChoiceAnswer,
         'TranslationAnswer': TranslationAnswer,

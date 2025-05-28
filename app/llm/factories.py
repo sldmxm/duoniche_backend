@@ -4,6 +4,9 @@ from app.llm.generators.choose_sentence_generator import (
     ChooseSentenceGenerator,
 )
 from app.llm.generators.fill_in_blank_generator import FillInTheBlankGenerator
+from app.llm.generators.story_comprehension_generator import (
+    StoryComprehensionGenerator,
+)
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
 from app.llm.interfaces.exercise_validator import ExerciseValidator
 from app.llm.llm_base import BaseLLMService
@@ -24,6 +27,7 @@ class ExerciseGeneratorFactory:
             ExerciseType.FILL_IN_THE_BLANK: FillInTheBlankGenerator,
             ExerciseType.CHOOSE_SENTENCE: ChooseSentenceGenerator,
             ExerciseType.CHOOSE_ACCENT: ChooseAccentGenerator,
+            ExerciseType.STORY_COMPREHENSION: StoryComprehensionGenerator,
             # Add new exercise types here
         }
 

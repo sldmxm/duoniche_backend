@@ -4,7 +4,7 @@ from typing import Tuple
 from app.core.entities.exercise import Exercise
 from app.core.enums import ExerciseTopic, LanguageLevel
 from app.core.value_objects.answer import Answer
-from app.llm.quality_assessor import ExerciseForAssessor
+from app.llm.assessors.quality_assessor import ExerciseForAssessor
 
 
 class ExerciseGenerator(ABC):

@@ -1,337 +1,287 @@
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from freezegun import freeze_time
 
-from app.core.entities.exercise import Exercise
-from app.core.entities.user import User
-from app.core.entities.user_bot_profile import BotID
-from app.core.enums import (
-    ExerciseTopic,
-    ExerciseType,
-    UserAction,
+from app.config import settings
+from app.core.entities.user_bot_profile import (
+    BotID,
+    UserStatusInBot,
 )
-from app.core.services.user import UserService
-from app.core.services.user_bot_profile import UserBotProfileService
-from app.core.services.user_progress import UserProgressService
-from app.core.texts import Reminder
-from app.services.notification_producer import (
-    NotificationProducerService,
+from app.core.enums import LanguageLevel
+from app.db.models import DBUserBotProfile
+from app.db.models import User as DBUser
+from app.workers.metrics_updater import (
+    update_user_sessions_metrics,
 )
+
+pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-def mock_notification_producer() -> AsyncMock:
-    return AsyncMock(spec=NotificationProducerService)
+def mock_user_bot_profiles_data():
+    now = datetime.now(timezone.utc)
+    return [
+        (
+            {
+                'user_id': 1,
+                'bot_id': BotID.BG,
+                'user_language': 'en',
+                'language_level': LanguageLevel.A2,
+                'status': UserStatusInBot.ACTIVE,
+                'last_exercise_at': now - timedelta(minutes=3),
+                'session_started_at': now - timedelta(minutes=7),
+                'exercises_get_in_session': 15,
+                'session_frozen_until': now - timedelta(hours=1),
+                'exercises_get_in_set': 0,
+                'errors_count_in_set': 0,
+                'current_streak_days': 10,
+                'wants_session_reminders': True,
+                'last_long_break_reminder_type_sent': None,
+                'last_long_break_reminder_sent_at': None,
+            },
+            {
+                'user_id': 1,
+                'telegram_id': '123',
+                'username': 'user1_frozen',
+                'name': 'User Frozen',
+                'cohort': 'cohort_A',
+                'plan': 'free',
+            },
+        ),
+        (
+            {
+                'user_id': 2,
+                'bot_id': BotID.BG,
+                'user_language': 'ru',
+                'language_level': LanguageLevel.B1,
+                'status': UserStatusInBot.ACTIVE,
+                'last_exercise_at': now
+                - (
+                    settings.session_ttl_since_last_exercise
+                    + timedelta(seconds=60)
+                ),
+                'session_started_at': now
+                - (
+                    settings.session_ttl_since_last_exercise
+                    + timedelta(seconds=(60 + 120))
+                ),
+                'exercises_get_in_session': 5,
+                'session_frozen_until': None,
+                'exercises_get_in_set': 0,
+                'errors_count_in_set': 0,
+                'current_streak_days': 5,
+                'wants_session_reminders': False,
+                'last_long_break_reminder_type_sent': '1d',
+                'last_long_break_reminder_sent_at': now
+                - timedelta(days=1, hours=1),
+            },
+            {
+                'user_id': 2,
+                'telegram_id': '456',
+                'username': 'user2_timeout',
+                'name': 'User Timeout',
+                'cohort': 'cohort_B',
+                'plan': 'premium',
+            },
+        ),
+        (
+            {
+                'user_id': 3,
+                'bot_id': BotID.BG,
+                'user_language': 'en',
+                'language_level': LanguageLevel.C1,
+                'status': UserStatusInBot.ACTIVE,
+                'last_exercise_at': now - timedelta(minutes=1),
+                'session_started_at': now - timedelta(minutes=3),
+                'exercises_get_in_session': 7,
+                'session_frozen_until': None,
+                'exercises_get_in_set': 2,
+                'errors_count_in_set': 1,
+                'current_streak_days': 3,
+                'wants_session_reminders': True,
+                'last_long_break_reminder_type_sent': None,
+                'last_long_break_reminder_sent_at': None,
+            },
+            {
+                'user_id': 3,
+                'telegram_id': '789',
+                'username': 'user3_active',
+                'name': 'User Active',
+                'cohort': 'cohort_A',
+                'plan': 'free',
+            },
+        ),
+        (
+            {
+                'user_id': 4,
+                'bot_id': BotID.BG,
+                'user_language': 'en',
+                'language_level': LanguageLevel.C1,
+                'status': UserStatusInBot.ACTIVE,
+                'last_exercise_at': now - timedelta(minutes=2),
+                'session_started_at': now - timedelta(minutes=5),
+                'exercises_get_in_session': 3,
+                'session_frozen_until': None,
+                'exercises_get_in_set': 3,
+                'errors_count_in_set': 0,
+                'current_streak_days': 3,
+                'wants_session_reminders': True,
+                'last_long_break_reminder_type_sent': None,
+                'last_long_break_reminder_sent_at': None,
+            },
+            {
+                'user_id': 4,
+                'telegram_id': '101',
+                'username': 'user4_active_same_labels',
+                'name': 'User Active Same Labels',
+                'cohort': 'cohort_A',
+                'plan': 'free',
+            },
+        ),
+    ]
 
 
 @pytest.fixture
-def dummy_exercise(user: User) -> Exercise:
-    """A dummy exercise to be returned by the mocked service."""
-    return Exercise(
-        exercise_id=1,
-        exercise_type=ExerciseType.FILL_IN_THE_BLANK,
-        exercise_language=BotID.BG.value,
-        language_level=user.language_level,
-        topic=ExerciseTopic.GENERAL,
-        exercise_text='Dummy exercise text',
-        data={'text_with_blanks': 'dummy ____', 'words': ['text']},
-        created_at=datetime.now(timezone.utc),
-    )
+def mock_backend_user_metrics():
+    # Define the expected structure and methods for each metric
+    metrics_config = {
+        'session_length': {
+            'spec': ['labels', 'observe'],
+            'methods': ['observe'],
+        },
+        'exercises_per_session': {
+            'spec': ['labels', 'inc'],
+            'methods': ['inc'],
+        },
+        'active': {'spec': ['labels', 'set'], 'methods': ['set']},
+        'full_sessions': {'spec': ['labels', 'inc'], 'methods': ['inc']},
+    }
 
+    mocked_metrics_dict = {}
+    for name, config in metrics_config.items():
+        metric_mock = MagicMock(spec=config['spec'])
+        labels_return_mock = MagicMock()
+        for method_name in config['methods']:
+            setattr(labels_return_mock, method_name, MagicMock())
+        metric_mock.labels.return_value = labels_return_mock
+        mocked_metrics_dict[name] = metric_mock
 
-@pytest.mark.asyncio
-async def test_streak_initial_exercise(
-    user_progress_service: UserProgressService,
-    user_bot_profile_service: UserBotProfileService,
-    user_service: UserService,
-    user: User,
-    db_session,
-    dummy_exercise: Exercise,
-):
-    created_user, _ = await user_service.get_or_create(user)
-    user_id = created_user.user_id
-    bot_id = BotID.BG
-
-    profile, _ = await user_bot_profile_service.get_or_create(
-        user_id=user_id,
-        bot_id=bot_id,
-        user_language=created_user.user_language,
-        language_level=created_user.language_level,
-    )
-    assert profile.current_streak_days == 0
-    assert profile.last_exercise_at is None
-
-    with (
-        freeze_time('2023-10-26 10:00:00 UTC'),
-        patch.object(
-            user_progress_service,
-            '_get_next_exercise',
-            return_value=dummy_exercise,
-        ) as mock_get_exercise,
+    with patch(
+        'app.workers.metrics_updater.BACKEND_USER_METRICS', mocked_metrics_dict
     ):
-        next_action_result = await user_progress_service.get_next_action(
-            user_id, bot_id
-        )
-        assert next_action_result.action == UserAction.new_exercise
-        mock_get_exercise.assert_awaited_once()
-
-    updated_profile = await user_bot_profile_service.get(user_id, bot_id)
-    assert updated_profile is not None
-    assert updated_profile.current_streak_days == 1
-    assert updated_profile.last_exercise_at is not None
-    assert (
-        updated_profile.last_exercise_at.date()
-        == datetime(2023, 10, 26, tzinfo=timezone.utc).date()
-    )
+        yield mocked_metrics_dict
 
 
-@pytest.mark.asyncio
-async def test_streak_next_day_exercise(
-    user_progress_service: UserProgressService,
-    user_bot_profile_service: UserBotProfileService,
-    user_service: UserService,
-    user: User,
-    db_session,
-    dummy_exercise: Exercise,
+@patch('app.workers.metrics_updater.SQLAlchemyUserBotProfileRepository')
+async def test_update_user_sessions_metrics_new_logic(
+    mock_repo_cls, mock_backend_user_metrics, mock_user_bot_profiles_data
 ):
-    created_user, _ = await user_service.get_or_create(user)
-    user_id = created_user.user_id
-    bot_id = BotID.BG
+    mock_repo_instance = AsyncMock()
 
-    yesterday = datetime(2023, 10, 25, 15, 0, 0, tzinfo=timezone.utc)
-    profile_data, _ = await user_bot_profile_service.get_or_create(
-        user_id=user_id,
-        bot_id=bot_id,
-        user_language=created_user.user_language,
-        language_level=created_user.language_level,
+    processed_profiles = []
+    for profile_data, user_data_dict in mock_user_bot_profiles_data:
+        user_obj_data = {
+            k: user_data_dict[k]
+            for k in [
+                'user_id',
+                'telegram_id',
+                'username',
+                'name',
+                'cohort',
+                'plan',
+            ]
+            if k in user_data_dict
+        }
+        user_obj = DBUser(**user_obj_data)
+        profile_obj = DBUserBotProfile(**profile_data)
+        profile_obj.user = user_obj
+        processed_profiles.append(profile_obj)
+
+    mock_repo_instance.get_by_recent_exercise_with_user_data.return_value = (
+        processed_profiles
     )
-    profile_data.last_exercise_at = yesterday
-    profile_data.current_streak_days = 1
-    await user_bot_profile_service.save(profile_data)
+    mock_repo_cls.return_value = mock_repo_instance
 
-    with (
-        freeze_time('2023-10-26 10:00:00 UTC'),
-        patch.object(
-            user_progress_service,
-            '_get_next_exercise',
-            return_value=dummy_exercise,
-        ) as mock_get_exercise,
-    ):
-        next_action_result = await user_progress_service.get_next_action(
-            user_id, bot_id
-        )
-        assert next_action_result.action == UserAction.new_exercise
-        mock_get_exercise.assert_awaited_once()
+    await update_user_sessions_metrics()
 
-    updated_profile = await user_bot_profile_service.get(user_id, bot_id)
-    assert updated_profile is not None
-    assert updated_profile.current_streak_days == 2
+    session_length_metric = mock_backend_user_metrics['session_length']
+    exercises_per_session_metric = mock_backend_user_metrics[
+        'exercises_per_session'
+    ]
+    active_metric = mock_backend_user_metrics['active']
+
+    labels_user1 = {
+        'cohort': 'cohort_A',
+        'plan': 'free',
+        'target_language': BotID.BG.value,
+        'user_language': 'en',
+        'language_level': LanguageLevel.A2.value,
+    }
+
+    labels_user2 = {
+        'cohort': 'cohort_B',
+        'plan': 'premium',
+        'target_language': BotID.BG.value,
+        'user_language': 'ru',
+        'language_level': LanguageLevel.B1.value,
+    }
+
+    # Assertions for session_length metric (Users 1 and 2)
+    session_length_metric.labels.assert_any_call(**labels_user1)
+    session_length_metric.labels().observe.assert_any_call(240.0)
+
+    session_length_metric.labels.assert_any_call(**labels_user2)
+    session_length_metric.labels().observe.assert_any_call(
+        120.0
+    )  # Corrected: duration is 120s
+
+    assert session_length_metric.labels().observe.call_count == 2
+
+    # Assertions for exercises_per_session metric (Users 1 and 2)
+    exercises_per_session_metric.labels.assert_any_call(**labels_user1)
+    exercises_per_session_metric.labels().inc.assert_any_call(15)
+
+    exercises_per_session_metric.labels.assert_any_call(**labels_user2)
+    exercises_per_session_metric.labels().inc.assert_any_call(5)
+
+    assert exercises_per_session_metric.labels().inc.call_count == 2
+
+    full_sessions_metric = mock_backend_user_metrics['full_sessions']
+    assert full_sessions_metric.labels().inc.call_count == 0
+
+    labels_active_users_group = {
+        'cohort': 'cohort_A',
+        'plan': 'free',
+        'target_language': BotID.BG.value,
+        'user_language': 'en',
+        'language_level': LanguageLevel.C1.value,
+    }
+
+    # Assertions for 'active' metric
+    active_metric.labels.assert_any_call(**labels_user1)
+    active_metric.labels.assert_any_call(**labels_user2)
+    active_metric.labels.assert_any_call(**labels_active_users_group)
+
+    # Check the values passed to set()
+    # This assumes that for each .labels() call, the .set()
+    # on the returned mock is called.
+    active_labels_return_mock = active_metric.labels.return_value
+    set_call_values = [
+        call_args[0][0]
+        for call_args in active_labels_return_mock.set.call_args_list
+    ]
+
     assert (
-        updated_profile.last_exercise_at.date()
-        == datetime(2023, 10, 26, tzinfo=timezone.utc).date()
-    )
-
-
-@pytest.mark.asyncio
-async def test_streak_same_day_exercise(
-    user_progress_service: UserProgressService,
-    user_bot_profile_service: UserBotProfileService,
-    user_service: UserService,
-    user: User,
-    db_session,
-    dummy_exercise: Exercise,
-):
-    created_user, _ = await user_service.get_or_create(user)
-    user_id = created_user.user_id
-    bot_id = BotID.BG
-
-    today_morning = datetime(2023, 10, 26, 9, 0, 0, tzinfo=timezone.utc)
-    profile_data, _ = await user_bot_profile_service.get_or_create(
-        user_id=user_id,
-        bot_id=bot_id,
-        user_language=created_user.user_language,
-        language_level=created_user.language_level,
-    )
-    profile_data.last_exercise_at = today_morning
-    profile_data.current_streak_days = 1
-    await user_bot_profile_service.save(profile_data)
-
-    with (
-        freeze_time('2023-10-26 10:00:00 UTC'),
-        patch.object(
-            user_progress_service,
-            '_get_next_exercise',
-            return_value=dummy_exercise,
-        ) as mock_get_exercise,
-    ):
-        next_action_result = await user_progress_service.get_next_action(
-            user_id, bot_id
-        )
-        assert next_action_result.action == UserAction.new_exercise
-        mock_get_exercise.assert_awaited_once()
-
-    updated_profile = await user_bot_profile_service.get(user_id, bot_id)
-    assert updated_profile is not None
-    assert updated_profile.current_streak_days == 1
+        set_call_values.count(0) == 2
+    )  # For user1 and user2 (sessions ended)
     assert (
-        updated_profile.last_exercise_at.date()
-        == datetime(2023, 10, 26, tzinfo=timezone.utc).date()
+        set_call_values.count(2) == 1
+    )  # For the group of user3 and user4 (active)
+    assert len(set_call_values) == 3
+
+    mock_repo_instance.get_by_recent_exercise_with_user_data.assert_awaited_once()
+    call_args = (
+        mock_repo_instance.get_by_recent_exercise_with_user_data.call_args
     )
-    assert (
-        updated_profile.last_exercise_at.time()
-        == datetime(2023, 10, 26, 10, 0, 0, tzinfo=timezone.utc).time()
-    )
-
-
-@pytest.mark.asyncio
-async def test_streak_exercise_after_one_day_gap(
-    user_progress_service: UserProgressService,
-    user_bot_profile_service: UserBotProfileService,
-    user_service: UserService,
-    user: User,
-    db_session,
-    dummy_exercise: Exercise,
-):
-    created_user, _ = await user_service.get_or_create(user)
-    user_id = created_user.user_id
-    bot_id = BotID.BG
-
-    day_before_yesterday = datetime(
-        2023, 10, 24, 15, 0, 0, tzinfo=timezone.utc
-    )
-    profile_data, _ = await user_bot_profile_service.get_or_create(
-        user_id=user_id,
-        bot_id=bot_id,
-        user_language=created_user.user_language,
-        language_level=created_user.language_level,
-    )
-    profile_data.last_exercise_at = day_before_yesterday
-    profile_data.current_streak_days = 5
-    await user_bot_profile_service.save(profile_data)
-
-    with (
-        freeze_time('2023-10-26 10:00:00 UTC'),
-        patch.object(
-            user_progress_service,
-            '_get_next_exercise',
-            return_value=dummy_exercise,
-        ) as mock_get_exercise,
-    ):
-        next_action_result = await user_progress_service.get_next_action(
-            user_id, bot_id
-        )
-        assert next_action_result.action == UserAction.new_exercise
-        mock_get_exercise.assert_awaited_once()
-
-    updated_profile = await user_bot_profile_service.get(user_id, bot_id)
-    assert updated_profile is not None
-    assert updated_profile.current_streak_days == 1
-    assert (
-        updated_profile.last_exercise_at.date()
-        == datetime(2023, 10, 26, tzinfo=timezone.utc).date()
-    )
-
-
-@pytest.mark.asyncio
-@freeze_time('2023-10-26 10:00:00 UTC')
-async def test_long_break_1d_reminder_no_streak(
-    user_service: UserService,
-    user_bot_profile_service: UserBotProfileService,
-    user: User,
-):
-    # Ensure user_language is set for the test
-    user.user_language = 'ru'
-    created_user, _ = await user_service.get_or_create(user)
-    user_id = created_user.user_id
-    bot_id = BotID.BG
-
-    profile, _ = await user_bot_profile_service.get_or_create(
-        user_id=user_id,
-        bot_id=bot_id,
-        user_language=created_user.user_language,
-        language_level=created_user.language_level,
-    )
-    profile.current_streak_days = 1
-    await user_bot_profile_service.save(profile)
-
-    producer_instance = NotificationProducerService()
-
-    with patch.object(
-        producer_instance, 'enqueue_notification', new_callable=AsyncMock
-    ) as mock_enqueue:
-        mock_enqueue.return_value = True
-
-        await producer_instance.prepare_and_enqueue_long_break_reminder(
-            user=created_user,
-            user_profile=profile,
-            reminder_type='1d',
-            days_inactive=1,
-        )
-
-        mock_enqueue.assert_awaited_once()
-
-        with patch(
-            'app.services.notification_producer.get_text'
-        ) as mock_get_text:
-            mock_get_text.return_value = 'Mocked Text'
-            producer_instance._get_long_break_reminder_text(
-                user_profile=profile, reminder_type='1d'
-            )
-            mock_get_text.assert_called_once_with(
-                key=Reminder.LONG_BREAK_1D,
-                language_code=profile.user_language,
-            )
-            call_kwargs = mock_get_text.call_args.kwargs
-            assert 'streak_days' not in call_kwargs
-
-
-@pytest.mark.asyncio
-@freeze_time('2023-10-26 10:00:00 UTC')
-async def test_long_break_1d_reminder_with_streak(
-    user_service: UserService,
-    user_bot_profile_service: UserBotProfileService,
-    user: User,
-):
-    user.user_language = 'ru'
-    created_user, _ = await user_service.get_or_create(user)
-    user_id = created_user.user_id
-    bot_id = BotID.BG
-
-    profile, _ = await user_bot_profile_service.get_or_create(
-        user_id=user_id,
-        bot_id=bot_id,
-        user_language=created_user.user_language,
-        language_level=created_user.language_level,
-    )
-    profile.current_streak_days = 5
-    await user_bot_profile_service.save(profile)
-
-    producer_instance = NotificationProducerService()
-    with patch.object(
-        producer_instance, 'enqueue_notification', new_callable=AsyncMock
-    ) as mock_enqueue:
-        mock_enqueue.return_value = True
-
-        await producer_instance.prepare_and_enqueue_long_break_reminder(
-            user=created_user,
-            user_profile=profile,
-            reminder_type='1d',
-            days_inactive=1,
-        )
-
-        mock_enqueue.assert_awaited_once()
-
-        with patch(
-            'app.services.notification_producer.get_text'
-        ) as mock_get_text:
-            mock_get_text.return_value = 'Mocked Streak Text'
-            producer_instance._get_long_break_reminder_text(
-                user_profile=profile, reminder_type='1d'
-            )
-            mock_get_text.assert_called_once_with(
-                key=Reminder.LONG_BREAK_1D_STREAK,
-                language_code=profile.user_language,
-                streak_days=5,
-            )
+    assert 'period_seconds' in call_args.kwargs

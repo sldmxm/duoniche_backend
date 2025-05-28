@@ -99,6 +99,7 @@ async def test_generate_exercise_metrics(
     mock_assess,
     llm_service: LLMService,
     user: User,
+    user_bot_profile,
     mock_llm_model,
     mock_backend_llm_metrics,
     mock_exercise_and_answer,
@@ -115,22 +116,21 @@ async def test_generate_exercise_metrics(
 
     # Act
     await llm_service.generate_exercise(
-        user_language=user.user_language,
-        target_language=user.target_language,
+        user_language=user_bot_profile.user_language,
+        target_language=user_bot_profile.bot_id.value,
         language_level=language_level,
         exercise_type=exercise_type,
         topic=topic,
     )
 
     # Assert
-    # Проверяем, что был создан правильный генератор упражнений
     user_language_for_prompt = convert_iso639_language_code_to_full_name(
-        user.user_language
+        user_bot_profile.user_language
     )
     mock_generate.assert_called_once_with(
         user_language=user_language_for_prompt,
-        user_language_code=user.user_language,
-        target_language=user.target_language,
+        user_language_code=user_bot_profile.user_language,
+        target_language=user_bot_profile.bot_id.value,
         language_level=language_level,
         topic=topic,
     )
@@ -140,8 +140,8 @@ async def test_generate_exercise_metrics(
     exercises_created_metric.labels.assert_called_with(
         exercise_type=exercise_type.value,
         level=language_level.value,
-        user_language=user.user_language,
-        target_language=user.target_language,
+        user_language=user_bot_profile.user_language,
+        target_language=user_bot_profile.bot_id.value,
         llm_model=mock_llm_model.model_name,
     )
     exercises_created_metric.labels().inc.assert_called_once()
@@ -153,8 +153,8 @@ async def test_generate_exercise_metrics(
     exercises_creation_time_metric.labels.assert_called_with(
         exercise_type=exercise_type.value,
         level=language_level.value,
-        user_language=user.user_language,
-        target_language=user.target_language,
+        user_language=user_bot_profile.user_language,
+        target_language=user_bot_profile.bot_id.value,
         llm_model=mock_llm_model.model_name,
     )
     exercises_creation_time_metric.labels().time.assert_called_once()

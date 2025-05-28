@@ -41,8 +41,6 @@ def mock_user_bot_profiles_data():
                 'name': 'User Frozen',
                 'cohort': 'cohort_A',
                 'plan': 'free',
-                'user_language': 'en',
-                'target_language': 'bg',
             },
         ),
         (
@@ -72,8 +70,6 @@ def mock_user_bot_profiles_data():
                 'name': 'User Timeout',
                 'cohort': 'cohort_B',
                 'plan': 'premium',
-                'user_language': 'ru',
-                'target_language': 'bg',
             },
         ),
         (
@@ -95,8 +91,6 @@ def mock_user_bot_profiles_data():
                 'name': 'User Active',
                 'cohort': 'cohort_A',
                 'plan': 'free',
-                'user_language': 'en',
-                'target_language': 'en',
             },
         ),
         (
@@ -118,8 +112,6 @@ def mock_user_bot_profiles_data():
                 'name': 'User Active Same Labels',
                 'cohort': 'cohort_A',
                 'plan': 'free',
-                'user_language': 'en',
-                'target_language': 'en',
             },
         ),
     ]

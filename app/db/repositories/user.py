@@ -4,10 +4,9 @@ from typing import List, Optional, override
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.entities.user import User
-from app.core.enums import LanguageLevel
+from app.core.entities.user import User as UserCore
 from app.core.repositories.user import UserRepository
-from app.db.models.user import User as UserModel
+from app.db.models.user import User as UserDBModel
 
 logger = logging.getLogger(__name__)
 
@@ -16,63 +15,60 @@ class SQLAlchemyUserRepository(UserRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    def _to_entity(self, db_user: UserModel) -> User:
-        """Converts a UserModel to a User entity."""
-        user_data = db_user.__dict__
-        user_data['language_level'] = LanguageLevel(
-            user_data['language_level']
-        )
-        return User.model_validate(user_data)
-
-    def _to_db_model(self, user: User) -> UserModel:
-        """Converts a User entity to a UserModel."""
-        user_data = user.model_dump()
-        user_data['language_level'] = user.language_level.value
-        return UserModel(**user_data)
-
     @override
-    async def get_by_id(self, user_id: int) -> Optional[User]:
-        db_user = await self.session.get(UserModel, user_id)
+    async def get_by_id(self, user_id: int) -> Optional[UserCore]:
+        db_user = await self.session.get(UserDBModel, user_id)
         if not db_user:
             return None
-        return self._to_entity(db_user)
+        return UserCore.model_validate(db_user)
 
     @override
-    async def get_by_telegram_id(self, telegram_id: str) -> Optional[User]:
-        stmt = select(UserModel).where(UserModel.telegram_id == telegram_id)
+    async def get_by_telegram_id(self, telegram_id: str) -> Optional[UserCore]:
+        stmt = select(UserDBModel).where(
+            UserDBModel.telegram_id == telegram_id
+        )
         result = await self.session.execute(stmt)
         db_user = result.scalar_one_or_none()
         if not db_user:
             return None
-        return self._to_entity(db_user)
+        return UserCore.model_validate(db_user)
 
     @override
-    async def get_all(self) -> List[User]:
-        stmt = select(UserModel)
+    async def get_all(self) -> List[UserCore]:
+        stmt = select(UserDBModel)
         result = await self.session.execute(stmt)
         db_users = result.scalars().all()
-        return [self._to_entity(db_user) for db_user in db_users]
+        return [UserCore.model_validate(db_user) for db_user in db_users]
 
     @override
-    async def update(self, user: User) -> User:
-        db_user = await self.session.get(UserModel, user.user_id)
+    async def update(self, user: UserCore) -> UserCore:
+        if user.user_id is None:
+            raise ValueError('User ID must be provided for an update.')
+        db_user = await self.session.get(UserDBModel, user.user_id)
         if not db_user:
-            raise ValueError('User does not exist')
+            raise ValueError(f'User with id {user.user_id} does not exist')
 
-        update_data = {
-            key: value
-            for key, value in self._to_db_model(user).__dict__.items()
-            if not key.startswith('_') and key != 'user_id'
-        }
+        update_data = user.model_dump(exclude_unset=True)
         for key, value in update_data.items():
-            setattr(db_user, key, value)
+            if key == 'user_id':
+                continue
+            if hasattr(db_user, key):
+                setattr(db_user, key, value)
+            else:
+                logger.warning(
+                    f"Attempted to update non-existent field '{key}' "
+                    f'on UserDBModel for user_id {user.user_id}'
+                )
+
         await self.session.commit()
-        return self._to_entity(db_user)
+        await self.session.refresh(db_user)
+        return UserCore.model_validate(db_user)
 
     @override
-    async def create(self, user: User) -> User:
-        db_user = self._to_db_model(user)
+    async def create(self, user: UserCore) -> UserCore:
+        user_data = user.model_dump(exclude_unset=True)
+        db_user = UserDBModel(**user_data)
         self.session.add(db_user)
         await self.session.commit()
         await self.session.refresh(db_user)
-        return self._to_entity(db_user)
+        return UserCore.model_validate(db_user)

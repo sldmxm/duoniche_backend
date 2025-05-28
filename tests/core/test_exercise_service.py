@@ -181,7 +181,6 @@ def db_answer_correct(exercise, answer_vo) -> ExerciseAnswer:
 def db_answer_wrong_lang(exercise, answer_vo, user) -> ExerciseAnswer:
     # Assume user language is 'en' (from user fixture)
     other_lang = 'fr'
-    assert user.user_language != other_lang
     return ExerciseAnswer(
         answer_id=502,
         exercise_id=exercise.exercise_id,
@@ -195,7 +194,9 @@ def db_answer_wrong_lang(exercise, answer_vo, user) -> ExerciseAnswer:
 
 
 @pytest.fixture
-def validated_answer(exercise, answer_vo, user) -> ExerciseAnswer:
+def validated_answer(
+    exercise, answer_vo, user, user_bot_profile
+) -> ExerciseAnswer:
     # Represents an answer generated *by* the LLM validation process
     return ExerciseAnswer(
         answer_id=503,  # Should get assigned by mock save
@@ -204,23 +205,24 @@ def validated_answer(exercise, answer_vo, user) -> ExerciseAnswer:
         is_correct=False,
         feedback='LLM says this is incorrect.',
         # LLM provides in user's language
-        feedback_language=user.user_language,
+        feedback_language=user_bot_profile.user_language,
         created_at=datetime.now(),
         created_by=f'LLM:user:{user.user_id}',
     )
 
 
 @pytest.fixture
-def translated_answer(db_answer_wrong_lang, user) -> ExerciseAnswer:
-    # Represents an answer generated *by* the translation process
+def translated_answer(
+    db_answer_wrong_lang, user_bot_profile
+) -> ExerciseAnswer:
     return ExerciseAnswer(
-        answer_id=504,  # Should get assigned by mock save
+        answer_id=504,
         exercise_id=db_answer_wrong_lang.exercise_id,
-        answer=db_answer_wrong_lang.answer,  # Same underlying answer
-        is_correct=db_answer_wrong_lang.is_correct,  # Same correctness
-        feedback=f'Translated to {user.user_language}:'
+        answer=db_answer_wrong_lang.answer,
+        is_correct=db_answer_wrong_lang.is_correct,
+        feedback=f'Translated to {user_bot_profile.user_language}:'
         f' {db_answer_wrong_lang.feedback}',
-        feedback_language=user.user_language,  # Now in user's language
+        feedback_language=user_bot_profile.user_language,
         created_at=datetime.now(),
         created_by=f'translated_answer:{db_answer_wrong_lang.answer_id}',
     )
@@ -304,10 +306,7 @@ class TestExerciseServiceValidation:
         """
         # Arrange
         db_answer_correct_lang = db_answer_correct.model_copy()
-        db_answer_correct_lang.is_correct = False  # Make it incorrect
-        db_answer_correct_lang.feedback_language = (
-            user.user_language
-        )  # Ensure lang matches
+        db_answer_correct_lang.is_correct = False
         db_answer_correct_lang.feedback = (
             'Feedback in correct language but answer wrong.'
         )
@@ -349,6 +348,7 @@ class TestExerciseServiceValidation:
         async_task_cache,
         mock_translator,
         user: User,
+        user_bot_profile,
         exercise: Exercise,
         answer_vo: Answer,
         db_answer_wrong_lang: ExerciseAnswer,
@@ -390,7 +390,7 @@ class TestExerciseServiceValidation:
         # (inside the task_func simulated by cache mock)
         mock_translator.translate_feedback.assert_awaited_once_with(
             feedback=db_answer_wrong_lang.feedback,
-            user_language=user.user_language,
+            user_language=user_bot_profile.user_language,
             exercise_data=exercise.data.model_dump_json(),
             user_answer=answer_vo.get_answer_text(),
             exercise_language=exercise.exercise_language,
@@ -415,7 +415,10 @@ class TestExerciseServiceValidation:
                     saved_answer.feedback == translated_answer.feedback
                 )  # Check content
                 new_translated_answer = saved_answer
-                assert saved_answer.feedback_language == user.user_language
+                assert (
+                    saved_answer.feedback_language
+                    == user_bot_profile.user_language
+                )
                 break
         assert (
             found_translated_save
@@ -449,6 +452,7 @@ class TestExerciseServiceValidation:
         exercise: Exercise,
         answer_vo: Answer,
         validated_answer: ExerciseAnswer,
+        user_bot_profile,
     ):
         """
         Scenario: No relevant answer found in DB.
@@ -483,7 +487,7 @@ class TestExerciseServiceValidation:
 
         # 3. LLM service call (inside the task_func simulated by cache mock)
         mock_llm_service.validate_attempt.assert_awaited_once_with(
-            user_language=user.user_language,
+            user_language=user_bot_profile.user_language,
             exercise=exercise,
             answer=answer_vo,
         )
@@ -527,6 +531,7 @@ class TestExerciseServiceValidation:
         user: User,
         fill_in_the_blank_exercise: Exercise,
         fill_in_the_blank_answer: FillInTheBlankAnswer,
+        user_bot_profile,
     ):
         user.user_id = 157
 
@@ -579,7 +584,7 @@ class TestExerciseServiceValidation:
         # Assertions
         assert mock_answer_repo.get_all_by_user_answer.assert_awaited_once
         mock_llm_service.validate_attempt.assert_awaited_once_with(
-            user_language=user.user_language,
+            user_language=user_bot_profile.user_language,
             exercise=fill_in_the_blank_exercise,
             answer=fill_in_the_blank_answer,
         )

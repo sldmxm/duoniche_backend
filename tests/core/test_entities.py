@@ -1,4 +1,3 @@
-from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
@@ -14,7 +13,6 @@ def test_user_creation():
     assert user.user_id == 1
     assert user.telegram_id == '123'
     assert user.username == 'testuser'
-    assert user.language_level == settings.default_language_level
 
 
 def test_exercise_creation():

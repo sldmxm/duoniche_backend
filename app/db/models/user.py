@@ -22,9 +22,6 @@ class User(Base):
     telegram_id: Mapped[str] = mapped_column(String, unique=True, index=True)
     username: Mapped[str] = mapped_column(String, nullable=True)
     name: Mapped[str] = mapped_column(String, nullable=True)
-    user_language: Mapped[str] = mapped_column(String, default='ru')
-    target_language: Mapped[str] = mapped_column(String, default='bg')
-    language_level: Mapped[str] = mapped_column(String, default='A2')
     telegram_data: Mapped[dict] = mapped_column(JSONB, nullable=True)
 
     cohort: Mapped[str] = mapped_column(String, nullable=True)
@@ -32,19 +29,6 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.now, nullable=False
-    )
-
-    exercises_get_in_session: Mapped[int] = mapped_column(Integer, default=0)
-    exercises_get_in_set: Mapped[int] = mapped_column(Integer, default=0)
-    errors_count_in_set: Mapped[int] = mapped_column(Integer, default=0)
-    last_exercise_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    session_started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    session_frozen_until: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=True
     )
 
     description: Mapped[str | None] = mapped_column(Text)

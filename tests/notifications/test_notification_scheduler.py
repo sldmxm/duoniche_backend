@@ -9,7 +9,6 @@ from freezegun import freeze_time
 from app.config import settings
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import UserBotProfile
-from app.core.enums import LanguageLevel
 from app.db.models import DBUserBotProfile as DBUserBotProfileModel
 from app.db.models import User as DBUserModel
 from app.services.notification_producer import (
@@ -358,7 +357,6 @@ async def test_run_check_cycle_processes_both_reminder_types(
 ):
     db_user = DBUserModel(
         **user.model_dump(exclude={'language_level'}),
-        language_level=user.language_level.value,
     )
 
     db_profile_session = DBUserBotProfileModel(**user_bot_profile.model_dump())
@@ -376,7 +374,6 @@ async def test_run_check_cycle_processes_both_reminder_types(
             user_id=user_bot_profile_long_break.user_id,
             telegram_id='another_tg_id',
         ).model_dump(exclude={'language_level'}),
-        language_level=LanguageLevel.A1.value,
     )
 
     db_profile_long_break = DBUserBotProfileModel(

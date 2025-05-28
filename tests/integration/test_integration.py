@@ -238,8 +238,6 @@ async def test_concurrent_requests(
                 'telegram_id': telegram_id,
                 'username': f'user_{telegram_id}',
                 'name': f'User {telegram_id}',
-                'user_language': 'en',
-                'target_language': 'en',
             }
             db_user = UserModel(**user_specific_data)
             db_user.language_level = settings.default_language_level.value

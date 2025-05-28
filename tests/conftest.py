@@ -230,19 +230,11 @@ def user_data():
         'telegram_id': '67890',
         'username': 'testuser',
         'name': 'Test User',
-        'user_language': 'en',
-        'target_language': 'en',
-        'is_waiting_next_session': False,
-        'exercises_get_in_session': 0,
-        'exercises_get_in_set': 0,
-        'errors_count_in_set': 0,
     }
 
 
 @pytest.fixture
 def user(user_data):
-    user = User(**user_data)
-    user.language_level = settings.default_language_level
     return User(**user_data)
 
 
@@ -252,7 +244,6 @@ async def add_db_user(
     user,
 ):
     db_user_data = user.model_dump()
-    db_user_data['language_level'] = user.language_level.value
     db_user = UserModel(**db_user_data)
 
     db_session.add(db_user)
@@ -457,6 +448,7 @@ async def add_db_correct_exercise_answer(
     db_sample_exercise,
     request_data_correct_answer_for_sample_exercise,
     user,
+    user_bot_profile,
 ):
     """Create a correct ExerciseAnswerModel in the database."""
     exercise_answer = ExerciseAnswer(
@@ -468,7 +460,7 @@ async def add_db_correct_exercise_answer(
         ),
         is_correct=True,
         feedback='',
-        feedback_language=user.user_language,
+        feedback_language=user_bot_profile.user_language,
         created_by='LLM',
         created_at=datetime.now(),
         answer_id=1,
@@ -494,6 +486,7 @@ async def add_db_incorrect_exercise_answer(
     db_sample_exercise,
     request_data_incorrect_answer_for_sample_exercise,
     user,
+    user_bot_profile,
 ):
     """Create an incorrect ExerciseAnswerModel in the database."""
     exercise_answer = ExerciseAnswer(
@@ -505,7 +498,7 @@ async def add_db_incorrect_exercise_answer(
         ),
         is_correct=False,
         feedback='incorrect',
-        feedback_language=user.user_language,
+        feedback_language=user_bot_profile.user_language,
         created_by='LLM',
         created_at=datetime.now(),
         answer_id=1,
@@ -516,7 +509,7 @@ async def add_db_incorrect_exercise_answer(
         answer_text=exercise_answer.answer.get_answer_text(),
         is_correct=exercise_answer.is_correct,
         feedback=exercise_answer.feedback,
-        feedback_language=user.user_language,
+        feedback_language=user_bot_profile.user_language,
         created_at=exercise_answer.created_at,
         created_by=exercise_answer.created_by,
     )
@@ -526,7 +519,7 @@ async def add_db_incorrect_exercise_answer(
 
 
 @pytest.fixture
-def fill_in_the_blank_exercise(user):
+def fill_in_the_blank_exercise(user, user_bot_profile):
     exercise_data = FillInTheBlankExerciseData(
         text_with_blanks='This is a test ____ for learning.',
         words=['exercise'],
@@ -535,7 +528,7 @@ def fill_in_the_blank_exercise(user):
         exercise_id=1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK,
         exercise_language='en',
-        language_level=user.language_level,
+        language_level=user_bot_profile.language_level,
         topic=ExerciseTopic.GENERAL,
         exercise_text='Fill in the blank in the sentence.',
         data=exercise_data,

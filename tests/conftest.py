@@ -2,7 +2,7 @@ import os
 import sys
 from datetime import datetime
 from typing import Any, AsyncGenerator, List
-from unittest.mock import create_autospec, patch
+from unittest.mock import AsyncMock, create_autospec, patch
 
 import pytest
 import pytest_asyncio
@@ -566,10 +566,11 @@ async def mock_llm_service():
     return create_autospec(LLMService, instance=True)
 
 
-@pytest_asyncio.fixture
-async def mock_translator():
-    """Mock LLMService for testing."""
-    return create_autospec(TranslateProvider, instance=True)
+@pytest.fixture
+def mock_translator():
+    mock = AsyncMock(spec=TranslateProvider)
+    mock.translate_feedback.return_value = 'Translated feedback'
+    return mock
 
 
 @pytest.fixture

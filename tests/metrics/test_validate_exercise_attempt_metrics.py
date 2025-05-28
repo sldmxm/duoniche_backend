@@ -5,6 +5,7 @@ import pytest
 
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
+from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
 from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
 from app.core.repositories.exercise import ExerciseRepository
@@ -53,30 +54,50 @@ def mock_exercise_repo():
 
 @pytest.fixture
 def mock_async_task_cache():
-    return AsyncMock(spec=AsyncTaskCache)
+    mock = AsyncMock(spec=AsyncTaskCache)
+
+    async def mock_get_or_create_task(
+        key, task_func, serializer, deserializer
+    ):
+        result = await task_func()
+        return result
+
+    mock.get_or_create_task = AsyncMock(side_effect=mock_get_or_create_task)
+    return mock
 
 
 @pytest.fixture
-def mock_answer_repo():
+def mock_answer_repo(exercise, answer_vo):
     mock = AsyncMock(spec=ExerciseAnswerRepository)
-    mock.get_all_by_user_answer = AsyncMock()
-    mock.save = AsyncMock()
-    mock.save.return_value = ExerciseAnswer(
-        answer_id=1,
-        exercise_id=1,
-        answer=FillInTheBlankAnswer(words=['word']),
-        is_correct=False,
-        feedback='Wrong!',
-        feedback_language='en',
-        created_at=datetime.now(),
-        created_by='LLM',
-    )
+    mock.get_all_by_user_answer = AsyncMock(return_value=[])
+
+    def create_side_effect(exercise_answer_to_save: ExerciseAnswer):
+        if exercise_answer_to_save.answer_id is None:
+            exercise_answer_to_save.answer_id = 123
+        return exercise_answer_to_save
+
+    mock.create = AsyncMock(side_effect=create_side_effect)
     return mock
 
 
 @pytest.fixture
 def mock_attempt_repo():
-    return AsyncMock(spec=ExerciseAttemptRepository)
+    mock = AsyncMock(spec=ExerciseAttemptRepository)
+
+    def create_side_effect(attempt_to_save):
+        if attempt_to_save.attempt_id is None:
+            attempt_to_save.attempt_id = 456
+        return attempt_to_save
+
+    def update_side_effect(attempt_id, **kwargs):
+        updated_attempt_mock = MagicMock(spec=ExerciseAttempt)
+        updated_attempt_mock.attempt_id = attempt_id
+        updated_attempt_mock.is_correct = kwargs.get('is_correct')
+        return updated_attempt_mock
+
+    mock.create = AsyncMock(side_effect=create_side_effect)
+    mock.update = AsyncMock(side_effect=update_side_effect)
+    return mock
 
 
 @pytest.fixture

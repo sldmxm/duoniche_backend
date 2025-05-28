@@ -232,7 +232,7 @@ class AttemptValidator:
                 serializer=serialize_exercise_attempt,
                 deserializer=deserialize_exercise_attempt,
             )
-            if exercise_attempt.is_correct:
+            if exercise_attempt.is_correct is False:
                 BACKEND_EXERCISE_METRICS['incorrect_attempts'].labels(
                     exercise_type=exercise.exercise_type.value,
                     level=exercise.language_level.value,
@@ -247,6 +247,8 @@ class AttemptValidator:
         exercise: Exercise,
         answer: Answer,
     ) -> ExerciseAnswer:
+        LLM_MAX_RETRIES = 2
+
         async def _inner(
             user_id: int,
             user_language: str,
@@ -255,11 +257,32 @@ class AttemptValidator:
         ) -> ExerciseAnswer:
             if exercise.exercise_id is None:
                 raise ValueError('Cannot validate an exercise without an ID')
-            is_correct, feedback = await self.llm_service.validate_attempt(
-                user_language=user_language,
-                exercise=exercise,
-                answer=answer,
-            )
+            for attempt_count in range(LLM_MAX_RETRIES):
+                try:
+                    (
+                        is_correct,
+                        feedback,
+                    ) = await self.llm_service.validate_attempt(
+                        user_language=user_language,
+                        exercise=exercise,
+                        answer=answer,
+                    )
+                    break
+                except Exception as e:
+                    if attempt_count >= LLM_MAX_RETRIES - 1:
+                        logger.error(
+                            f'LLM validation failed after '
+                            f'{LLM_MAX_RETRIES} attempts '
+                            f'due to OutputParserException for exercise_id '
+                            f'{exercise.exercise_id}'
+                        )
+                        raise
+                    logger.warning(
+                        f'Exception during LLM validation '
+                        f'(attempt {attempt_count + 1}/{LLM_MAX_RETRIES}): '
+                        f'{e}'
+                    )
+
             exercise_answer = ExerciseAnswer(
                 answer_id=None,
                 exercise_id=exercise.exercise_id,
@@ -291,11 +314,21 @@ class AttemptValidator:
             serializer=serialize_exercise_answer,
             deserializer=deserialize_exercise_answer,
         )
-        if validated.answer_id is None:
+
+        if validated.feedback_language != user_language:
+            new_answer = await self.copy_answer_translate_feedback(
+                exercise=exercise,
+                answer=validated,
+                user_language=user_language,
+            )
+        else:
+            new_answer = validated
+
+        if new_answer.answer_id is None:
             raise ValueError('Exercise answer answer_id must not be None')
 
-        logger.debug(f'Validation answer retrieved/generated: {validated}')
-        return validated
+        logger.debug(f'Validation answer retrieved/generated: {new_answer}')
+        return new_answer
 
     async def copy_answer_translate_feedback(
         self,

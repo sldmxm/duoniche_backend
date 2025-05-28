@@ -57,7 +57,12 @@ class ExerciseTopic(Enum):
     NATURE = 'NATURE'
     ANIMALS = 'ANIMALS'
     KIDS = 'KIDS'
-    # Add more topics here...
+    HOUSING = 'housing'
+    CULTURE = 'culture'
+    DATING = 'dating'
+    WINE = 'wine'
+    DIGITAL_LIFE = 'digital life'
+    PUBLIC_SERVICES = 'public services'
 
     @classmethod
     def get_next_topic(cls) -> 'ExerciseTopic':

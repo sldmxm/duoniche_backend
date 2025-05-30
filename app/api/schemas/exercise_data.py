@@ -10,3 +10,14 @@ class FillInTheBlankExerciseDataSchema(BaseModel):
 
 class ChooseExerciseDataSchema(BaseModel):
     options: List[str] = Field(description='List of sentences')
+
+
+class AudioTextChooseExerciseDataSchema(BaseModel):
+    content_text: str = Field(description='The content text')
+    audio_url: str = Field(description='The audio url')
+    audio_telegram_file_id: str = Field(
+        description='The audio telegram file_id'
+    )
+    options: List[str] = Field(
+        description='List of statements, one is correct'
+    )

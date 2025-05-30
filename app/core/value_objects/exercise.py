@@ -82,8 +82,11 @@ class ChooseAccentExerciseData(ExerciseData):
 
 
 class StoryComprehensionExerciseData(ExerciseData):
-    story_text: str = Field(description='The full story text')
-    story_audio_url: str = Field(description='The full story audio url')
+    content_text: str = Field(description='The full story text')
+    audio_url: str = Field(description='The full story audio url')
+    audio_telegram_file_id: str = Field(
+        description='The full story audio telegram file_id'
+    )
     options: List[str] = Field(
         description='List of statements, one is correct'
     )

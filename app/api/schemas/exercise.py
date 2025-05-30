@@ -3,6 +3,7 @@ from typing import Union
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.schemas.exercise_data import (
+    AudioTextChooseExerciseDataSchema,
     ChooseExerciseDataSchema,
     FillInTheBlankExerciseDataSchema,
 )
@@ -19,6 +20,7 @@ class ExerciseSchema(BaseModel):
     data: Union[
         FillInTheBlankExerciseDataSchema,
         ChooseExerciseDataSchema,
+        AudioTextChooseExerciseDataSchema,
     ] = Field(description='Exercise data')
 
     model_config = ConfigDict(

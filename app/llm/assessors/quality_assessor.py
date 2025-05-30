@@ -6,10 +6,14 @@ from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.core.enums import ExerciseType, LanguageLevel
+from app.llm.assessors.prompts import SYSTEM_PROMPT_TEMPLATE
 from app.llm.llm_base import BaseLLMService
 from app.metrics import BACKEND_LLM_METRICS
 
 logger = logging.getLogger(__name__)
+
+
+class RejectedByAssessor(Exception): ...
 
 
 class ExerciseForAssessor(BaseModel):
@@ -61,7 +65,7 @@ class ExerciseQualityAssessor(BaseLLMService):
                 f'Exercise rejected: duplicate options in answers. '
                 f'Exercise: {exercise}'
             )
-            raise ValueError(message)
+            raise RejectedByAssessor(message)
 
         if exercise.exercise_type in (
             ExerciseType.FILL_IN_THE_BLANK,
@@ -77,7 +81,7 @@ class ExerciseQualityAssessor(BaseLLMService):
                 f'Exercise rejected: too long options. '
                 f'Exercise: {exercise}'
             )
-            raise ValueError(message)
+            raise RejectedByAssessor(message)
 
         review = await self._run_llm_check(
             exercise, user_language, target_language
@@ -94,7 +98,7 @@ class ExerciseQualityAssessor(BaseLLMService):
                 f'Exercise rejected by LLM'  # {review.issues}. '
                 f'Exercise: {exercise}'
             )
-            raise ValueError(message)
+            raise RejectedByAssessor(message)
 
         logger.info(
             f'Exercise reviewed and accepted by LLM. ' f'Exercise: {exercise}'
@@ -120,38 +124,6 @@ class ExerciseQualityAssessor(BaseLLMService):
     ) -> LLMExerciseReview:
         parser = PydanticOutputParser(pydantic_object=LLMExerciseReview)
 
-        system_prompt_template = (
-            'You are an expert language learning exercise assessor. '
-            'Your task is to evaluate the quality and correctness '
-            'of an exercise '
-            'designed for a learner of the {target_language} language.\n'
-            'The exercise task description (if provided within the '
-            "'Exercise Text') should be in {user_language}.\n"
-            'Carefully analyze all aspects of the exercise: the main '
-            'text/question, the provided options (if any), and the '
-            'designated correct answer.\n'
-            'Set `is_valid` to true ONLY if the exercise meets ALL the '
-            'following criteria:\n'
-            '1.  **Correctness:** The exercise itself (question/text) '
-            'and the designated `correct_answer` are grammatically and '
-            'factually correct in {target_language}.\n'
-            '2.  **Educational Value:** The exercise is useful for learning '
-            '{target_language} at the specified level.\n'
-            '3.  **Clarity & Naturalness:** The exercise text and correct '
-            'answer sound natural and are common usage in {target_language}. '
-            'Avoid awkward or overly artificial phrasing.\n'
-            '4.  **Unambiguity:** The task is clear, and the correct answer '
-            'is unambiguously the best option among the provided `options`.\n'
-            '5.  **Incorrect Options (if applicable):** All other `options` '
-            'must be clearly and definitively incorrect. They should not be '
-            'subtly wrong, alternative grammatically correct and '
-            'semantically plausible sentences, or merely stylistically '
-            'different. '
-            'Incorrect options should lead to grammatical errors or clear '
-            'semantic absurdity.\n'
-            'If any of these criteria are not met, set `is_valid` to false.'
-        )
-
         user_prompt_template = (
             'Please assess the following exercise:\n'
             'Target Language: {target_language}\n'
@@ -167,7 +139,7 @@ class ExerciseQualityAssessor(BaseLLMService):
 
         chat_prompt = ChatPromptTemplate.from_messages(
             [
-                ('system', system_prompt_template),
+                ('system', SYSTEM_PROMPT_TEMPLATE),
                 ('user', user_prompt_template),
             ]
         )

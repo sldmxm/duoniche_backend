@@ -115,7 +115,9 @@ EXERCISES_TASKS_TRANSLATIONS: Dict[
     ExerciseType.STORY_COMPREHENSION: {
         'ru': 'Послушай текст и выбери верное утверждение',
         'en': 'Listen to the text and choose the correct statement',
-        # TODO: уточнить формулировки и перевести
+        'bg': 'Чуй текста и избери вярното твърдение',
+        'tr': 'Metni dinle ve doğru ifadeyi seç',
+        'uk': 'Прослухай текст і вибери правильне твердження',
     },
 }
 

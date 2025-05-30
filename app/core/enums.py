@@ -19,17 +19,11 @@ class ExerciseType(Enum):
                 2,
                 3,
             ],
-            # weights=[
-            #     0.50,
-            #     0.30,
-            #     0.10,
-            #     0.10,
-            # ],
             weights=[
-                0,
-                0,
-                0,
-                1.0,
+                0.40,
+                0.30,
+                0.10,
+                0.20,
             ],
         )[0]
         return types[choice]
@@ -38,6 +32,7 @@ class ExerciseType(Enum):
 class ExerciseUiTemplates(Enum):
     FILL_IN_THE_BLANK = 'fill_in_the_blank'
     CHOOSE = 'choose'
+    AUDIO_CHOOSE = 'audio_choose'
 
 
 class ExerciseTopic(Enum):
@@ -67,8 +62,8 @@ class ExerciseTopic(Enum):
     CULTURE = 'culture'
     DATING = 'dating'
     WINE = 'wine'
-    DIGITAL_LIFE = 'digital life'
-    PUBLIC_SERVICES = 'public services'
+    DIGITAL_LIFE = 'digital_life'
+    PUBLIC_SERVICES = 'public_services'
 
     @classmethod
     def get_next_topic(cls) -> 'ExerciseTopic':
@@ -108,3 +103,11 @@ class UserAction(str, Enum):
     congratulations_and_wait = 'congratulations_and_wait'
     limit_reached = 'limit_reached'
     error = 'error'
+
+
+class ExerciseStatus(str, Enum):
+    PUBLISHED = 'published'
+    PENDING_REVIEW = 'pending_review'
+    REJECTED_BY_ASSESSOR = 'rejected_by_assessor'
+    REJECTED_BY_ERROR = 'rejected_by_error'
+    ARCHIVED = 'archived'

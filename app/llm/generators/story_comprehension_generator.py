@@ -31,7 +31,10 @@ class StoryComprehensionLLMOutput(BaseModel):
 
 
 class StoryComprehensionGenerator(ExerciseGenerator):
-    def __init__(self, llm_service: BaseLLMService):
+    def __init__(
+        self,
+        llm_service: BaseLLMService,
+    ):
         self.llm_service = llm_service
 
     async def generate(
@@ -97,8 +100,9 @@ class StoryComprehensionGenerator(ExerciseGenerator):
                 ExerciseType.STORY_COMPREHENSION, user_language_code
             ),
             data=StoryComprehensionExerciseData(
-                story_audio_url='',
-                story_text=llm_output.story_text,
+                audio_url='',
+                audio_telegram_file_id='',
+                content_text=llm_output.story_text,
                 options=options,
             ),
         )

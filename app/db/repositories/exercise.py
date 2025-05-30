@@ -5,7 +5,12 @@ from sqlalchemy import and_, exists, func, literal, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.entities.exercise import Exercise
-from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
+from app.core.enums import (
+    ExerciseStatus,
+    ExerciseTopic,
+    ExerciseType,
+    LanguageLevel,
+)
 from app.core.repositories.exercise import ExerciseRepository
 from app.db.models import Exercise as ExerciseModel
 from app.db.models import ExerciseAttempt as ExerciseAttemptModel
@@ -72,6 +77,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
                     ExerciseModel.exercise_type == exercise_type.value,
                     ExerciseModel.exercise_language == target_language,
                     ExerciseModel.topic == topic.value,
+                    ExerciseModel.status == ExerciseStatus.PUBLISHED,
                     not_(exists(answered_exercise_exists_subquery)),
                 )
             )
@@ -97,6 +103,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             and_(
                 ExerciseAttemptModel.user_id == user_id,
                 ExerciseAttemptModel.exercise_id == ExerciseModel.exercise_id,
+                ExerciseModel.status == ExerciseStatus.PUBLISHED,
             )
         )
 
@@ -141,6 +148,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             .where(
                 and_(
                     ExerciseModel.exercise_language == target_language,
+                    ExerciseModel.status == ExerciseStatus.PUBLISHED,
                     exists(answered_exercise_exists_subquery),
                 )
             )
@@ -172,6 +180,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             .where(
                 and_(
                     ExerciseModel.exercise_language == target_language,
+                    ExerciseModel.status == ExerciseStatus.PUBLISHED,
                     exists(incorrect_answered_subquery),
                 )
             )
@@ -206,7 +215,12 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
                 ExerciseModel.exercise_type,
                 func.count().label('count'),
             )
-            .where(not_(exists(attempts_exist)))
+            .where(
+                and_(
+                    ExerciseModel.status == ExerciseStatus.PUBLISHED,
+                    not_(exists(attempts_exist)),
+                )
+            )
             .group_by(
                 ExerciseModel.exercise_language, ExerciseModel.exercise_type
             )

@@ -1,10 +1,18 @@
 from typing import Tuple
 
 from app.core.entities.exercise import Exercise
-from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
+from app.core.enums import (
+    ExerciseStatus,
+    ExerciseTopic,
+    ExerciseType,
+    LanguageLevel,
+)
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.value_objects.answer import Answer
-from app.llm.assessors.quality_assessor import ExerciseQualityAssessor
+from app.llm.assessors.quality_assessor import (
+    ExerciseQualityAssessor,
+    RejectedByAssessor,
+)
 from app.llm.factories import (
     ExerciseGeneratorFactory,
     ExerciseValidatorFactory,
@@ -19,6 +27,7 @@ from app.utils.language_code_converter import (
 class LLMService(BaseLLMService, LLMProvider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.exercise_quality_assessor = ExerciseQualityAssessor(
             *args, **kwargs
         )
@@ -33,7 +42,8 @@ class LLMService(BaseLLMService, LLMProvider):
     ) -> tuple[Exercise, Answer]:
         """Generate exercise for user based on exercise type."""
         generator = ExerciseGeneratorFactory.create_generator(
-            exercise_type, self
+            exercise_type=exercise_type,
+            llm_service=self,
         )
 
         with (
@@ -62,14 +72,14 @@ class LLMService(BaseLLMService, LLMProvider):
                 topic=topic,
             )
 
-            # TODO: Посмотреть качество заданий после новых промптов,
-            #  кажется, качество стало сильно лучше,
-            #  если нет, включить проверку
-            # await self.exercise_quality_assessor.assess(
-            #     exercise=exercise_for_quality_assessor,
-            #     user_language=user_language_for_prompt,
-            #     target_language=target_language,
-            # )
+            try:
+                await self.exercise_quality_assessor.assess(
+                    exercise=exercise_for_quality_assessor,
+                    user_language=user_language_for_prompt,
+                    target_language=target_language,
+                )
+            except RejectedByAssessor:
+                new_exercise.status = ExerciseStatus.REJECTED_BY_ASSESSOR
 
         BACKEND_LLM_METRICS['exercises_created'].labels(
             exercise_type=exercise_type.value,
@@ -89,7 +99,8 @@ class LLMService(BaseLLMService, LLMProvider):
     ) -> Tuple[bool, str]:
         """Validate user's answer to the exercise."""
         validator = ExerciseValidatorFactory.create_validator(
-            exercise.exercise_type, self
+            exercise_type=exercise.exercise_type,
+            llm_service=self,
         )
 
         target_language = exercise.exercise_language

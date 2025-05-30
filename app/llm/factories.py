@@ -20,7 +20,8 @@ from app.llm.validators.fill_in_blank_validator import FillInTheBlankValidator
 class ExerciseGeneratorFactory:
     @staticmethod
     def create_generator(
-        exercise_type: ExerciseType, llm_service: BaseLLMService
+        exercise_type: ExerciseType,
+        llm_service: BaseLLMService,
     ) -> ExerciseGenerator:
         """Create an appropriate exercise generator based on exercise type."""
         generators = {
@@ -28,7 +29,6 @@ class ExerciseGeneratorFactory:
             ExerciseType.CHOOSE_SENTENCE: ChooseSentenceGenerator,
             ExerciseType.CHOOSE_ACCENT: ChooseAccentGenerator,
             ExerciseType.STORY_COMPREHENSION: StoryComprehensionGenerator,
-            # Add new exercise types here
         }
 
         generator_class = generators.get(exercise_type)
@@ -37,7 +37,9 @@ class ExerciseGeneratorFactory:
                 f"Exercise type '{exercise_type}' is not implemented"
             )
 
-        return generator_class(llm_service)  # type: ignore[abstract]
+        return generator_class(
+            llm_service=llm_service,
+        )  # type: ignore[abstract]
 
 
 class ExerciseValidatorFactory:

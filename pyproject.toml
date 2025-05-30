@@ -24,6 +24,8 @@ dependencies = [
     "lxml>=5.4.0",
     "pycountry>=24.6.1",
     "celery>=5.5.2",
+    "google-genai>=1.17.0",
+    "aioboto3>=14.3.0",
 ]
 
 [dependency-groups]

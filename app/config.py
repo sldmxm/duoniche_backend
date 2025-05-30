@@ -1,6 +1,8 @@
+import json
 from datetime import timedelta
 from typing import Dict, List
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.enums import LanguageLevel
@@ -36,6 +38,17 @@ class Settings(BaseSettings):  # type: ignore
     openai_request_timeout: int = 10
 
     google_api_key: str = ''
+    tts_model: str = ''
+
+    cloudflare_r2_account_id: str = ''
+    cloudflare_r2_access_key_id: str = ''
+    cloudflare_r2_secret_access_key: str = ''
+    cloudflare_r2_bucket_name: str = 'duoniche'
+    cloudflare_r2_public_url_prefix: str = ''
+
+    telegram_upload_bot_tokens_json: str = ''
+    telegram_upload_bot_tokens: Dict[str, str] = {}
+    telegram_upload_bot_chat_id: str = ''
 
     redis_url: str = 'redis://localhost:6379'
     redis_test_db: int = 1
@@ -95,6 +108,19 @@ class Settings(BaseSettings):  # type: ignore
         env_file_encoding='utf-8',
         extra='ignore',
     )
+
+    @model_validator(mode='after')
+    def parse_bot_tokens(self) -> 'Settings':
+        try:
+            parsed_tokens = json.loads(self.telegram_upload_bot_tokens_json)
+            if not isinstance(parsed_tokens, dict):
+                raise ValueError('BOT_TOKENS_JSON must be a JSON object')
+            self.telegram_upload_bot_tokens = parsed_tokens
+        except json.JSONDecodeError as e:
+            raise ValueError('Error decoding BOT_TOKENS_JSON') from e
+        except ValueError as e:
+            raise ValueError(f'Error parsing BOT_TOKENS_JSON: {e}') from e
+        return self
 
 
 settings = Settings()

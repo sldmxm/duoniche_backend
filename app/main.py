@@ -20,7 +20,9 @@ from app.llm.llm_translator import LLMTranslator
 from app.logging_config import configure_logging
 from app.sentry_sdk import sentry_init
 from app.services.choose_accent_generator import ChooseAccentGenerator
+from app.services.file_storage_service import R2FileStorageService
 from app.services.notification_producer import NotificationProducerService
+from app.services.tts_service import GoogleTTSService
 from app.workers.exercise_stock_refill import exercise_stock_refill_loop
 from app.workers.metrics_updater import metrics_loop
 from app.workers.notification_scheduler import notification_scheduler_loop
@@ -41,6 +43,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     app.state.redis_client = await get_redis_client()
     app.state.async_task_cache = AsyncTaskCache(app.state.redis_client)
     app.state.async_task_cache.clear()
+    app.state.file_storage_service = R2FileStorageService()
+    app.state.tts_service = GoogleTTSService()
     app.state.llm_service = LLMService()
     app.state.translator = LLMTranslator()
     app.state.choose_accent_generator = ChooseAccentGenerator(
@@ -60,6 +64,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
         exercise_stock_refill_loop(
             llm_service=app.state.llm_service,
             choose_accent_generator=app.state.choose_accent_generator,
+            tts_service=app.state.tts_service,
+            file_storage_service=app.state.file_storage_service,
+            http_client=app.state.http_client,
             stop_event=stop_event,
         ),
         name='exercise_refill_loop',

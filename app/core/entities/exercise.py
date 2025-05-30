@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union
+from typing import Optional, Union
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -18,7 +18,6 @@ from app.core.value_objects.exercise import (
     SentenceConstructionExerciseData,
     StoryComprehensionExerciseData,
     TranslationExerciseData,
-    create_exercise_data_model_validate,
 )
 
 
@@ -42,25 +41,21 @@ class Exercise(BaseModel):
         SentenceConstructionExerciseData,
         MultipleChoiceExerciseData,
         TranslationExerciseData,
-    ] = Field(description='Exercise data')
+    ] = Field(description='Exercise data', discriminator='type')
 
     @model_validator(mode='after')
     def assign_ui_template(self) -> 'Exercise':
         self.ui_template = EXERCISE_UI_TEMPLATE_MAP[self.exercise_type]
         return self
 
-    @classmethod
-    def get_data_model_validate(cls, data: Dict[str, Any]):
-        return create_exercise_data_model_validate(data)
-
     def __str__(self):
         return (
             f'Exercise(exercise_id={self.exercise_id}, '
-            f'exercise_type={self.exercise_type}, '
-            f'status={self.status}, '
+            f'exercise_type={self.exercise_type.value}, '
+            f'status={self.status.value}, '
             f'exercise_language={self.exercise_language}, '
-            f'language_level={self.language_level}, '
-            f'topic={self.topic}, '
+            f'language_level={self.language_level.value}, '
+            f'topic={self.topic.value}, '
             f'exercise_text={self.exercise_text}, '
             f'data={self.data})'
         )

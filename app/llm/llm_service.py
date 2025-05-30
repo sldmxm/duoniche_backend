@@ -1,3 +1,4 @@
+import logging
 from typing import Tuple
 
 from app.core.entities.exercise import Exercise
@@ -22,6 +23,8 @@ from app.metrics import BACKEND_LLM_METRICS
 from app.utils.language_code_converter import (
     convert_iso639_language_code_to_full_name,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class LLMService(BaseLLMService, LLMProvider):
@@ -78,7 +81,8 @@ class LLMService(BaseLLMService, LLMProvider):
                     user_language=user_language_for_prompt,
                     target_language=target_language,
                 )
-            except RejectedByAssessor:
+            except RejectedByAssessor as e:
+                logger.warning(f'Exercise rejected by assessor {e}')
                 new_exercise.status = ExerciseStatus.REJECTED_BY_ASSESSOR
 
         BACKEND_LLM_METRICS['exercises_created'].labels(

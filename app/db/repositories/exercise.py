@@ -23,16 +23,13 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         self.session = session
 
     async def _to_entity(self, db_exercise: ExerciseModel) -> Exercise:
-        """Converts an ExerciseModel to an Exercise entity."""
-        return Exercise(
-            exercise_id=db_exercise.exercise_id,
-            exercise_type=ExerciseType(db_exercise.exercise_type),
-            exercise_language=db_exercise.exercise_language,
-            language_level=LanguageLevel(db_exercise.language_level),
-            topic=ExerciseTopic(db_exercise.topic),
-            exercise_text=db_exercise.exercise_text,
-            data=Exercise.get_data_model_validate(db_exercise.data),
-        )
+        """Converts an ExerciseModel to an Exercise
+        entity using Pydantic validation."""
+        exercise_dict = {
+            column.name: getattr(db_exercise, column.name)
+            for column in db_exercise.__table__.columns
+        }
+        return Exercise.model_validate(exercise_dict)
 
     async def _to_db_model(self, exercise: Exercise) -> ExerciseModel:
         """Converts an Exercise entity to an ExerciseModel."""
@@ -43,6 +40,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             language_level=exercise.language_level.value,
             topic=exercise.topic.value,
             exercise_text=exercise.exercise_text,
+            status=exercise.status,
             data=exercise.data.model_dump(),
         )
 
@@ -103,12 +101,12 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             and_(
                 ExerciseAttemptModel.user_id == user_id,
                 ExerciseAttemptModel.exercise_id == ExerciseModel.exercise_id,
-                ExerciseModel.status == ExerciseStatus.PUBLISHED,
             )
         )
 
         conditions = [
             ExerciseModel.exercise_language == target_language,
+            ExerciseModel.status == ExerciseStatus.PUBLISHED,
             not_(exists(answered_exercise_exists_subquery)),
         ]
         if exercise_type is not None:
@@ -171,6 +169,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         incorrect_answered_subquery = select(literal(1)).where(
             and_(
                 ExerciseAttemptModel.user_id == user_id,
+                ExerciseAttemptModel.exercise_id == ExerciseModel.exercise_id,
                 not_(ExerciseAttemptModel.is_correct),
             )
         )
@@ -229,7 +228,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         result = await self.session.execute(stmt)
 
         counts: dict[str, dict[str, int]] = {}
-        for lang, ex_type, count in result:
-            counts.setdefault(lang, {})[ex_type] = count
+        for lang, ex_type_str, count_val in result:
+            counts.setdefault(lang, {})[ex_type_str] = count_val
 
         return counts

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Type
+from typing import List, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -20,21 +20,16 @@ class ExerciseData(ABC, BaseModel):
         populate_by_name=True,
     )
 
-    @property
-    def type(self) -> str:
-        return self.__class__.__name__
-
     @abstractmethod
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
 
-    def model_dump(self, **kwargs) -> Dict[str, Any]:
-        data = super().model_dump(**kwargs)
-        data['type'] = self.type
-        return data
-
 
 class FillInTheBlankExerciseData(ExerciseData):
+    type: Literal['FillInTheBlankExerciseData'] = Field(
+        default='FillInTheBlankExerciseData',
+        description='Type of exercise data',
+    )
     text_with_blanks: str = Field(description='Text with blanks')
     words: List[str] = Field(description='List of words')
 
@@ -64,6 +59,10 @@ class FillInTheBlankExerciseData(ExerciseData):
 
 
 class ChooseSentenceExerciseData(ExerciseData):
+    type: Literal['ChooseSentenceExerciseData'] = Field(
+        default='ChooseSentenceExerciseData',
+        description='Type of exercise data',
+    )
     options: List[str] = Field(description='List of sentences')
 
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
@@ -73,6 +72,9 @@ class ChooseSentenceExerciseData(ExerciseData):
 
 
 class ChooseAccentExerciseData(ExerciseData):
+    type: Literal['ChooseAccentExerciseData'] = Field(
+        default='ChooseAccentExerciseData', description='Type of exercise data'
+    )
     options: List[str] = Field(description='List of accents')
 
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
@@ -82,6 +84,10 @@ class ChooseAccentExerciseData(ExerciseData):
 
 
 class StoryComprehensionExerciseData(ExerciseData):
+    type: Literal['StoryComprehensionExerciseData'] = Field(
+        default='StoryComprehensionExerciseData',
+        description='Type of exercise data',
+    )
     content_text: str = Field(description='The full story text')
     audio_url: str = Field(description='The full story audio url')
     audio_telegram_file_id: str = Field(
@@ -98,6 +104,10 @@ class StoryComprehensionExerciseData(ExerciseData):
 
 
 class SentenceConstructionExerciseData(ExerciseData):
+    type: Literal['SentenceConstructionExerciseData'] = Field(
+        default='SentenceConstructionExerciseData',
+        description='Type of exercise data',
+    )
     words: List[str] = Field(description='List of words')
 
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
@@ -105,6 +115,10 @@ class SentenceConstructionExerciseData(ExerciseData):
 
 
 class MultipleChoiceExerciseData(ExerciseData):
+    type: Literal['MultipleChoiceExerciseData'] = Field(
+        default='MultipleChoiceExerciseData',
+        description='Type of exercise data',
+    )
     options: List[str] = Field(description='List of options')
 
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
@@ -112,31 +126,10 @@ class MultipleChoiceExerciseData(ExerciseData):
 
 
 class TranslationExerciseData(ExerciseData):
+    type: Literal['TranslationExerciseData'] = Field(
+        default='TranslationExerciseData', description='Type of exercise data'
+    )
     translations: List[str] = Field(description='List of translations')
 
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
-
-
-def create_exercise_data_model_validate(data: Dict[str, Any]) -> ExerciseData:
-    exercise_data_type = data.get('type')
-    if not isinstance(exercise_data_type, str):
-        raise ValueError('Missing or invalid "type" key in ExerciseData data')
-
-    exercise_data_types: Dict[str, Type[ExerciseData]] = {
-        'FillInTheBlankExerciseData': FillInTheBlankExerciseData,
-        'ChooseSentenceExerciseData': ChooseSentenceExerciseData,
-        'ChooseAccentExerciseData': ChooseAccentExerciseData,
-        'StoryComprehensionExerciseData': StoryComprehensionExerciseData,
-        'SentenceConstructionExerciseData': SentenceConstructionExerciseData,
-        'MultipleChoiceExerciseData': MultipleChoiceExerciseData,
-        'TranslationExerciseData': TranslationExerciseData,
-    }
-
-    exercise_data_class: Optional[Type[ExerciseData]] = (
-        exercise_data_types.get(exercise_data_type)
-    )
-    if exercise_data_class is None:
-        raise ValueError(f'Unknown ExerciseData type: {exercise_data_type}')
-
-    return exercise_data_class.model_validate(data)

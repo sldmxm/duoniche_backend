@@ -2,10 +2,12 @@ import asyncio
 import logging
 import random
 from datetime import datetime, timezone
+from typing import Optional
 
 import httpx
 
 from app.config import settings
+from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.user_bot_profile import BotID
 from app.core.enums import (
@@ -106,6 +108,194 @@ async def get_saved_audio_telegram_file_id(
     return ''
 
 
+async def _generate_and_upload_audio(
+    exercise_data: StoryComprehensionExerciseData,
+    target_language: str,
+    language_level: LanguageLevel,
+    topic: ExerciseTopic,
+    tts_service: GoogleTTSService,
+    file_storage_service: R2FileStorageService,
+    http_client: httpx.AsyncClient,
+) -> tuple[Optional[str], Optional[str], bool]:
+    """
+    Generates OGG audio from text, uploads it to R2 and Telegram.
+    Returns a tuple: (audio_url, telegram_file_id, success_flag).
+    success_flag is True if both audio_url and telegram_file_id are obtained.
+    """
+    audio_url: Optional[str] = None
+    telegram_file_id: Optional[str] = None
+    audio_generation_successful = False
+
+    if not exercise_data.content_text:
+        logger.warning(
+            'Content text is empty for STORY_COMPREHENSION. '
+            'Skipping audio generation.'
+        )
+        return None, None, False
+
+    VOICE_NAMES = ['Leda', 'Enceladus']
+    voice_name = random.choice(VOICE_NAMES)
+    ogg_audio_data = await tts_service.text_to_speech_ogg(
+        text=exercise_data.content_text,
+        voice_name=voice_name,
+    )
+
+    if ogg_audio_data:
+        r2_url = await get_saved_audio_url(
+            ogg_audio_data=ogg_audio_data,
+            bot_id=target_language,
+            language_level=language_level,
+            topic=topic,
+            file_storage_service=file_storage_service,
+        )
+        if r2_url:
+            audio_url = r2_url
+
+        tg_file_id = await get_saved_audio_telegram_file_id(
+            ogg_audio_data=ogg_audio_data,
+            bot_id=target_language,
+            http_client=http_client,
+        )
+        if tg_file_id:
+            telegram_file_id = tg_file_id
+
+        if audio_url and telegram_file_id:
+            audio_generation_successful = True
+        else:
+            logger.error(
+                f'Failed to obtain both R2 URL and Telegram File ID. '
+                f'R2 URL: {audio_url}, TG File ID: {telegram_file_id}'
+            )
+    else:
+        logger.warning(
+            f'TTS generation resulted in no audio data '
+            f'for STORY_COMPREHENSION. '
+            f'Content: "{exercise_data.content_text[:50]}..."'
+        )
+
+    return audio_url, telegram_file_id, audio_generation_successful
+
+
+async def _try_to_regenerate_audio_for_exercise(
+    exercise_to_retry: Exercise,
+    target_language: str,
+    tts_service: GoogleTTSService,
+    file_storage_service: R2FileStorageService,
+    http_client: httpx.AsyncClient,
+    exercise_repository: SQLAlchemyExerciseRepository,
+) -> bool:
+    """
+    Tries to regenerate and save audio for an existing exercise.
+    Updates the exercise status and data in the DB.
+    Returns True if successfully published, False otherwise.
+    """
+    if not isinstance(exercise_to_retry.data, StoryComprehensionExerciseData):
+        logger.warning(
+            f'Cannot regenerate audio for non-story exercise '
+            f'{exercise_to_retry.exercise_id}'
+        )
+        if exercise_to_retry.exercise_id:
+            await exercise_repository.update_exercise_status_and_data(
+                exercise_id=exercise_to_retry.exercise_id,
+                new_status=ExerciseStatus.AUDIO_GENERATION_ERROR,
+            )
+        return False
+
+    logger.info(
+        f'Attempting to regenerate audio for exercise ID: '
+        f'{exercise_to_retry.exercise_id}'
+    )
+
+    (
+        audio_url_opt,
+        telegram_file_id_opt,
+        audio_success,
+    ) = await _generate_and_upload_audio(
+        exercise_data=exercise_to_retry.data,
+        target_language=target_language,
+        language_level=exercise_to_retry.language_level,
+        topic=exercise_to_retry.topic,
+        tts_service=tts_service,
+        file_storage_service=file_storage_service,
+        http_client=http_client,
+    )
+
+    current_status = ExerciseStatus.PUBLISHED
+    if audio_success and audio_url_opt and telegram_file_id_opt:
+        exercise_to_retry.data.audio_url = audio_url_opt
+        exercise_to_retry.data.audio_telegram_file_id = telegram_file_id_opt
+    else:
+        current_status = ExerciseStatus.AUDIO_GENERATION_ERROR
+        logger.error(
+            f'Audio regeneration failed for exercise '
+            f'{exercise_to_retry.exercise_id}.'
+        )
+
+    if exercise_to_retry.exercise_id is not None:
+        updated_exercise = (
+            await exercise_repository.update_exercise_status_and_data(
+                exercise_id=exercise_to_retry.exercise_id,
+                new_status=current_status,
+                new_data=exercise_to_retry.data,
+            )
+        )
+        if (
+            updated_exercise
+            and updated_exercise.status == ExerciseStatus.PUBLISHED
+        ):
+            logger.info(
+                f'Successfully regenerated audio and published exercise '
+                f'{exercise_to_retry.exercise_id}'
+            )
+            return True
+        else:
+            logger.error(
+                f'Failed to publish exercise {exercise_to_retry.exercise_id} '
+                f'after audio regeneration attempt. '
+                f'Final status: {current_status}'
+            )
+            return False
+    else:
+        logger.error(
+            'Cannot update exercise status for exercise without ID '
+            'after audio regeneration attempt.'
+        )
+        return False
+
+
+async def _repair_broken_audio_for_exercise(
+    exercise_type: ExerciseType,
+    target_language: str,
+    tts_service: GoogleTTSService,
+    file_storage_service: R2FileStorageService,
+    http_client: httpx.AsyncClient,
+) -> bool:
+    async with async_session_maker() as session:
+        exercise_repository = SQLAlchemyExerciseRepository(session)
+        getter = exercise_repository.get_and_lock_exercise_with_audio_error
+        exercise_to_retry = await getter(
+            exercise_type=exercise_type,
+            target_language=target_language,
+        )
+        if exercise_to_retry:
+            logger.info(
+                f'Found exercise {exercise_to_retry.exercise_id} '
+                f'to retry audio generation.'
+            )
+            success = await _try_to_regenerate_audio_for_exercise(
+                exercise_to_retry=exercise_to_retry,
+                target_language=target_language,
+                tts_service=tts_service,
+                file_storage_service=file_storage_service,
+                http_client=http_client,
+                exercise_repository=exercise_repository,
+            )
+            await session.commit()
+            return success
+        logger.info('No exercise found to retry audio generation.')
+        return False
+
+
 async def generate_and_save_exercise(
     user_language: str,
     target_language: str,
@@ -122,6 +312,18 @@ async def generate_and_save_exercise(
                 settings.default_language_level
             )
             topic = ExerciseTopic.get_next_topic()
+
+            if exercise_type == ExerciseType.STORY_COMPREHENSION:
+                success = await _repair_broken_audio_for_exercise(
+                    exercise_type=exercise_type,
+                    target_language=target_language,
+                    tts_service=tts_service,
+                    file_storage_service=file_storage_service,
+                    http_client=http_client,
+                )
+                if success:
+                    return True
+
             if exercise_type == ExerciseType.CHOOSE_ACCENT:
                 if target_language == BotID.BG.value:
                     generator = choose_accent_generator
@@ -148,49 +350,37 @@ async def generate_and_save_exercise(
                 if exercise.status == ExerciseStatus.PUBLISHED and isinstance(
                     exercise.data, StoryComprehensionExerciseData
                 ):
-                    voice_names = ['Leda', 'Enceladus']
-                    voice_name = random.choice(voice_names)
-                    ogg_audio_data = await tts_service.text_to_speech_ogg(
-                        text=exercise.data.content_text,
-                        voice_name=voice_name,
+                    (
+                        audio_url_opt,
+                        telegram_file_id_opt,
+                        audio_success,
+                    ) = await _generate_and_upload_audio(
+                        exercise_data=exercise.data,
+                        target_language=target_language,
+                        language_level=exercise.language_level,
+                        topic=exercise.topic,
+                        tts_service=tts_service,
+                        file_storage_service=file_storage_service,
+                        http_client=http_client,
                     )
 
-                    if ogg_audio_data:
-                        audio_url = await get_saved_audio_url(
-                            ogg_audio_data=ogg_audio_data,
-                            bot_id=target_language,
-                            language_level=exercise.language_level,
-                            topic=exercise.topic,
-                            file_storage_service=file_storage_service,
-                        )
-                        if audio_url:
-                            exercise.data.audio_url = audio_url
-
-                        telegram_file_id = (
-                            await get_saved_audio_telegram_file_id(
-                                ogg_audio_data=ogg_audio_data,
-                                bot_id=target_language,
-                                http_client=http_client,
-                            )
-                        )
-                        if telegram_file_id:
-                            exercise.data.audio_telegram_file_id = (
-                                telegram_file_id
-                            )
-                    else:
-                        exercise.status = ExerciseStatus.REJECTED_BY_ERROR
-                        logger.warning(
-                            f'TTS generation resulted in no audio data '
-                            f'for STORY_COMPREHENSION. '
-                            f'Exercise topic: {topic.value}, '
-                            f'level: {language_level.value}'
-                        )
-                    if not (
-                        exercise.data.audio_telegram_file_id
-                        and exercise.data.audio_url
+                    if (
+                        audio_success
+                        and audio_url_opt
+                        and telegram_file_id_opt
                     ):
-                        exercise.status = ExerciseStatus.REJECTED_BY_ERROR
-                        logger.error('Failed to upload audio')
+                        exercise.data.audio_url = audio_url_opt
+                        exercise.data.audio_telegram_file_id = (
+                            telegram_file_id_opt
+                        )
+                    else:
+                        exercise.status = ExerciseStatus.AUDIO_GENERATION_ERROR
+                        logger.error(
+                            f'Audio generation/upload failed '
+                            f'for NEW exercise. '
+                            f'Topic: {topic.value}, '
+                            f'Level: {language_level.value}'
+                        )
 
             if exercise and answer:
                 async with async_session_maker() as session:
@@ -227,11 +417,12 @@ async def generate_and_save_exercise(
     except ChooseAccentGenerationError as e:
         logger.warning(f'Failed to generate CHOOSE_ACCENT exercise: {e}')
         return False
-
     except Exception as e:
         logger.error(
             f'Error during exercise generation '
-            f'and saving ({exercise_type}): {e}',
+            f'and saving ('
+            f'{exercise_type.value if exercise_type else "UnknownType"}): '
+            f'{e}',
             exc_info=True,
         )
         return False

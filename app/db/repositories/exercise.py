@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, override
+from typing import Optional, Union, override
 
 from sqlalchemy import and_, exists, func, literal, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from app.core.enums import (
     LanguageLevel,
 )
 from app.core.repositories.exercise import ExerciseRepository
+from app.core.value_objects.exercise import ExerciseData
 from app.db.models import Exercise as ExerciseModel
 from app.db.models import ExerciseAttempt as ExerciseAttemptModel
 
@@ -232,3 +233,70 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             counts.setdefault(lang, {})[ex_type_str] = count_val
 
         return counts
+
+    async def get_and_lock_exercise_with_audio_error(
+        self,
+        exercise_type: ExerciseType,
+        target_language: str,
+    ) -> Optional[Exercise]:
+        """
+        Finds an exercise with AUDIO_GENERATION_ERROR status
+        for the given type, atomically updates its status to
+        PROCESSING_ERROR_RETRY, and returns it.
+        """
+        stmt = (
+            select(ExerciseModel)
+            .where(
+                ExerciseModel.exercise_type == exercise_type.value,
+                ExerciseModel.exercise_language == target_language,
+                ExerciseModel.status == ExerciseStatus.AUDIO_GENERATION_ERROR,
+            )
+            .order_by(ExerciseModel.created_at)
+            .limit(1)
+            .with_for_update(skip_locked=True)
+        )
+
+        db_exercise_to_retry = await self.session.scalar(stmt)
+
+        if db_exercise_to_retry:
+            try:
+                db_exercise_to_retry.status = (
+                    ExerciseStatus.PROCESSING_ERROR_RETRY
+                )
+                await self.session.flush()
+                await self.session.refresh(db_exercise_to_retry)
+                logger.info(
+                    f'Locked exercise {db_exercise_to_retry.exercise_id} '
+                    f'for error retry.'
+                )
+                return await self._to_entity(db_exercise_to_retry)
+            except Exception as e:
+                logger.error(
+                    f'Failed to lock exercise for retry: {e}', exc_info=True
+                )
+                await self.session.rollback()
+                return None
+        return None
+
+    async def update_exercise_status_and_data(
+        self,
+        exercise_id: int,
+        new_status: ExerciseStatus,
+        new_data: Optional[Union[ExerciseData, dict]] = None,
+    ) -> Optional[Exercise]:
+        """
+        Updates the status and optionally the data of an exercise.
+        """
+        db_exercise = await self.session.get(ExerciseModel, exercise_id)
+        if db_exercise:
+            db_exercise.status = new_status
+            if new_data:
+                if hasattr(new_data, 'model_dump'):
+                    db_exercise.data = new_data.model_dump()
+                else:
+                    db_exercise.data = new_data
+
+            await self.session.flush()
+            await self.session.refresh(db_exercise)
+            return await self._to_entity(db_exercise)
+        return None

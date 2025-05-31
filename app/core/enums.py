@@ -111,3 +111,5 @@ class ExerciseStatus(str, Enum):
     REJECTED_BY_ASSESSOR = 'rejected_by_assessor'
     REJECTED_BY_ERROR = 'rejected_by_error'
     ARCHIVED = 'archived'
+    AUDIO_GENERATION_ERROR = 'audio_generation_error'
+    PROCESSING_ERROR_RETRY = 'processing_error_retry'

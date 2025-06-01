@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, AsyncGenerator, List
 from unittest.mock import AsyncMock, create_autospec, patch
 
+import httpx
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -30,6 +31,9 @@ from app.db.repositories.user_bot_profile import (
     SQLAlchemyUserBotProfileRepository,
 )
 from app.llm.llm_translator import LLMTranslator
+from app.services.choose_accent_generator import ChooseAccentGenerator
+from app.services.file_storage_service import R2FileStorageService
+from app.services.tts_service import GoogleTTSService
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -45,9 +49,22 @@ from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.user import User
-from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
-from app.core.value_objects.answer import FillInTheBlankAnswer
-from app.core.value_objects.exercise import FillInTheBlankExerciseData
+from app.core.enums import (
+    ExerciseStatus,
+    ExerciseTopic,
+    ExerciseType,
+    LanguageLevel,
+)
+from app.core.value_objects.answer import (
+    ChooseAccentAnswer,
+    FillInTheBlankAnswer,
+    StoryComprehensionAnswer,
+)
+from app.core.value_objects.exercise import (
+    ChooseAccentExerciseData,
+    FillInTheBlankExerciseData,
+    StoryComprehensionExerciseData,
+)
 from app.db.base import Base
 from app.db.models.exercise import Exercise as ExerciseModel
 from app.db.models.exercise_answer import ExerciseAnswer as ExerciseAnswerModel
@@ -593,3 +610,103 @@ def mock_get_next_type():
     with patch('app.core.enums.ExerciseType.get_next_type') as mock:
         mock.return_value = ExerciseType.FILL_IN_THE_BLANK
         yield mock
+
+
+@pytest_asyncio.fixture
+async def mock_tts_service():
+    """Mock GoogleTTSService."""
+    service = create_autospec(GoogleTTSService, instance=True)
+    service.text_to_speech_ogg = AsyncMock(return_value=b'fake_ogg_data')
+    return service
+
+
+@pytest_asyncio.fixture
+async def mock_file_storage_service():
+    """Mock R2FileStorageService."""
+    service = create_autospec(R2FileStorageService, instance=True)
+    service.upload_audio = AsyncMock(
+        return_value='http://fake-r2-url.com/audio.ogg'
+    )
+    return service
+
+
+@pytest_asyncio.fixture
+async def mock_http_client_telegram():
+    """Mock httpx.AsyncClient for Telegram uploads."""
+    client = AsyncMock(spec=httpx.AsyncClient)
+    mock_response = AsyncMock(spec=httpx.Response)
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        'ok': True,
+        'result': {
+            'voice': {'file_id': 'fake_telegram_file_id'},
+            'message_id': 12345,  # Добавим message_id для полноты
+        },
+    }
+    client.post = AsyncMock(return_value=mock_response)
+    return client
+
+
+@pytest_asyncio.fixture
+async def mock_llm_service_for_story(db_session: AsyncSession):
+    """Specific LLMService mock for Story Comprehension generation."""
+    service = create_autospec(LLMService, instance=True)
+
+    async def async_generate_story_exercise_mock(*args, **kwargs):
+        target_language = kwargs.get('target_language')
+        language_level = kwargs.get('language_level')
+        topic = kwargs.get('topic')
+        exercise_type = kwargs.get('exercise_type')
+
+        if exercise_type == ExerciseType.STORY_COMPREHENSION:
+            story_data = StoryComprehensionExerciseData(
+                content_text='This is a test story.',
+                audio_url='',
+                audio_telegram_file_id='',
+                options=['Correct statement', 'Incorrect 1', 'Incorrect 2'],
+            )
+            exercise = Exercise(
+                exercise_type=ExerciseType.STORY_COMPREHENSION,
+                exercise_language=target_language,
+                language_level=language_level,
+                topic=topic,
+                exercise_text=(
+                    'Read the story and choose the correct statement.'
+                ),
+                status=ExerciseStatus.PUBLISHED,
+                data=story_data,
+            )
+            answer_obj = StoryComprehensionAnswer(answer='Correct statement')
+            return exercise, answer_obj
+        else:
+            return None, None
+
+    service.generate_exercise = AsyncMock(
+        side_effect=async_generate_story_exercise_mock
+    )
+    return service
+
+
+@pytest_asyncio.fixture
+async def mock_choose_accent_generator():
+    """Mock ChooseAccentGenerator."""
+    generator = create_autospec(ChooseAccentGenerator, instance=True)
+
+    mock_exercise_data = ChooseAccentExerciseData(
+        options=['строя̀вам', 'стро̀явам']
+    )
+    mock_exercise = Exercise(
+        exercise_id=None,
+        exercise_type=ExerciseType.CHOOSE_ACCENT,
+        exercise_language='bg',
+        language_level=LanguageLevel.A1,
+        topic=ExerciseTopic.GENERAL,
+        exercise_text='Изберете правилното ударение.',
+        status=ExerciseStatus.PUBLISHED,
+        data=mock_exercise_data,
+    )
+    mock_answer_obj = ChooseAccentAnswer(answer='стро̀явам')
+    generator.generate = AsyncMock(
+        return_value=(mock_exercise, mock_answer_obj)
+    )
+    return generator

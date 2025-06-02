@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from app.config import settings
 from app.core.entities.exercise import Exercise
@@ -182,21 +183,36 @@ class UserProgressService:
                 language_level=user_bot_profile.language_level.value,
             ).inc()
 
-            logger.info(f'User {user_id} ended session and is frozen ')
+            logger.info(
+                f'User {user_id} ended session and is frozen. '
+                f'Current streak: {user_bot_profile.current_streak_days} days.'
+            )
 
             payment_details = self.payment_service.get_payment_unlock_details(
                 user_language=user_bot_profile.user_language
             )
+            message_key: Messages
+            message_kwargs: dict[str, Any] = {
+                'exercise_num': user_bot_profile.exercises_get_in_session,
+                'pause_time': str(settings.delta_between_sessions).split('.')[
+                    0
+                ],
+            }
+
+            if user_bot_profile.current_streak_days >= 2:
+                message_key = Messages.CONGRATULATIONS_AND_WAIT_STREAK
+                message_kwargs['streak_days'] = (
+                    user_bot_profile.current_streak_days
+                )
+            else:
+                message_key = Messages.CONGRATULATIONS_AND_WAIT
 
             return NextAction(
                 action=UserAction.congratulations_and_wait,
                 message=get_text(
-                    Messages.CONGRATULATIONS_AND_WAIT,
+                    message_key,
                     language_code=user_bot_profile.user_language,
-                    exercise_num=user_bot_profile.exercises_get_in_session,
-                    pause_time=str(settings.delta_between_sessions).split('.')[
-                        0
-                    ],
+                    **message_kwargs,
                 ),
                 pause=settings.delta_between_sessions,
                 payment_info=payment_details,

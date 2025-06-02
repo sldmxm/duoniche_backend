@@ -9,6 +9,7 @@ from app.core.enums import ExerciseType
 class Messages(str, Enum):
     ERROR_GETTING_NEW_EXERCISE = 'error_getting_new_exercise'
     CONGRATULATIONS_AND_WAIT = 'congratulations'
+    CONGRATULATIONS_AND_WAIT_STREAK = 'congratulations_and_wait_streak'
     LIMIT_REACHED = 'limit_reached'
     PRAISE_AND_NEXT_SET = 'praise_and_next_set'
 
@@ -86,6 +87,28 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
         '🕑Час на коротку перерву — досягнуто ліміту на зараз. '
         'Наступна вправа буде доступна через {pause_time}. 💪',
     },
+    Messages.CONGRATULATIONS_AND_WAIT_STREAK: {
+        'en': '🥳Awesome! Exercises completed: {exercise_num}! '
+        'Days in a row: {streak_days} 🔥\n'
+        '🕑Time for a short break — you’ve hit the limit. '
+        'Next exercise will be ready in {pause_time}. 💪',
+        'bg': '🥳Супер! Изпълнени упражнения: {exercise_num}! '
+        'Дни подред: {streak_days} 🔥\n'
+        '🕑Време за кратка почивка — достигна лимита. '
+        'Следващото упражнение ще е готово след {pause_time}. 💪',
+        'tr': '🥳Süper! Tamamlanan alıştırmalar: {exercise_num}! '
+        'Günlük seri: {streak_days} 🔥\n'
+        '🕑Kısa bir mola zamanı — limite ulaştınız. '
+        'Yeni alıştırma {pause_time} içinde hazır olacak. 💪',
+        'ru': '🥳Супер! Упражнений выполнено: {exercise_num}! '
+        'Дней подряд: {streak_days} 🔥\n'
+        '🕑Пора на короткий перерыв — вы достигли лимита. '
+        'Новое упражнение будет готово через {pause_time}. 💪',
+        'uk': '🥳Супер! Виконано вправ: {exercise_num}! '
+        'Днів поспіль: {streak_days} 🔥\n'
+        '🕑Час на коротку перерву — досягнуто ліміту. '
+        'Нова вправа буде готова через {pause_time}. 💪',
+    },
 }
 
 EXERCISES_TASKS_TRANSLATIONS: Dict[
@@ -137,7 +160,7 @@ class Reminder(str, Enum):
 
 DEFAULT_LONG_BREAK_REMINDER = Reminder.LONG_BREAK_5D
 
-REMINDERS_TRANSLATIONS: Dict[str, Dict[str, str]] = {
+REMINDERS_TRANSLATIONS: Dict[str, Dict[str, Union[str, List[str]]]] = {
     Reminder.SESSION_IS_READY: {
         'en': '🚀Ready to level up? Your new session is here '
         '— time to sharpen your skills!',
@@ -151,16 +174,47 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, str]] = {
         '— вперед до знань!',
     },
     Reminder.LONG_BREAK_1D_STREAK: {
-        'en': "🔥You're on a {streak_days}-day streak "
-        "— that's impressive! Don't break the rhythm now!",
-        'bg': '🔥Серията ти вече е {streak_days} 📆 '
-        '— впечатляващо! Не прекъсвай ритъма!',
-        'ru': '🔥У тебя уже серия {streak_days} 📆 '
-        '— крутой результат! Не сбивай ритм!',
-        'tr': '🔥Serin şu anda {streak_days} 📆 gün! '
-        'Harika, bırakma şimdi!',
-        'uk': '🔥У тебе вже серія {streak_days} 📆 '
-        '— це круто! Не зупиняйся!',
+        'en': [
+            '🚀{streak_days} 📆 in a row — that’s impressive! '
+            'Keep it going!',
+            '🔥{streak_days} 📆 so far. '
+            'Just a few minutes to keep the fire alive!',
+            '🏄‍♂️{streak_days} 📆 riding the wave! '
+            'Perfect time to continue!',
+            '✚ 1️⃣ How about adding one more day to '
+            'your {streak_days} streak?',
+        ],
+        'ru': [
+            '🚀Подряд {streak_days} 📆 — крутой результат! '
+            'Не останавливайся!',
+            '🔥{streak_days} 📆 подряд. Всего пара минут, чтобы продлить.',
+            '🏄‍♂️Уже {streak_days} 📆 на волне! ' 'Самое время продолжить! ',
+            '✚ 1️⃣ Как насчет добавить к {streak_days} ' 'еще один день подряд?',
+        ],
+        'bg': [
+            '🚀{streak_days} 📆 подред — впечатляващо! ' 'Не спирай сега!',
+            '🔥{streak_days} 📆 подред. Само няколко минути, '
+            'за да продължиш!',
+            '🏄‍♂️Вече {streak_days} 📆 на вълната! '
+            'Перфектен момент да продължиш!',
+            '✚ 1️⃣ Как ти се струва да добавим още '
+            'един ден към {streak_days}?',
+        ],
+        'tr': [
+            '🚀{streak_days} 📆 gün üst üste — harika bir başarı! ' 'Durma!',
+            '🔥{streak_days} 📆 gün oldu. Devam etmek için sadece '
+            'birkaç dakikan var!',
+            '🏄‍♂️{streak_days} 📆 gündür dalgadasın! '
+            'Şimdi devam etme zamanı!',
+            '✚ 1️⃣ {streak_days} güne bir gün daha ' 'eklemeye ne dersin?',
+        ],
+        'uk': [
+            '🚀{streak_days} 📆 підряд — вражає! ' 'Не зупиняйся!',
+            '🔥{streak_days} 📆 підряд. '
+            'Лише кілька хвилин, щоб продовжити!',
+            '🏄‍♂️Вже {streak_days} 📆 на хвилі! ' 'Саме час рухатися далі!',
+            '✚ 1️⃣ Як щодо додати ще один день ' 'до {streak_days}?',
+        ],
     },
     Reminder.LONG_BREAK_1D: {
         'en': '📚Time to practice a bit — around this time yesterday, '

@@ -23,6 +23,7 @@ from app.services.choose_accent_generator import ChooseAccentGenerator
 from app.services.file_storage_service import R2FileStorageService
 from app.services.notification_producer import NotificationProducerService
 from app.services.tts_service import GoogleTTSService
+from app.workers.exercise_quality_monitor import quality_monitoring_worker_loop
 from app.workers.exercise_stock_refill import exercise_stock_refill_loop
 from app.workers.metrics_updater import metrics_loop
 from app.workers.notification_scheduler import notification_scheduler_loop
@@ -78,6 +79,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
         ),
         name='notification_scheduler_loop',
     )
+    quality_monitoring_worker_task = asyncio.create_task(
+        quality_monitoring_worker_loop(stop_event=stop_event)
+    )
 
     logger.info('Application startup complete. All workers started.')
     yield
@@ -87,6 +91,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
         metrics_task,
         exercise_refill_task,
         notification_scheduler_task,
+        quality_monitoring_worker_task,
     ]
     stop_event.set()
     for task in worker_tasks:
@@ -120,7 +125,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
         await app.state.http_client.aclose()
     if hasattr(app.state, 'async_task_cache') and app.state.async_task_cache:
         app.state.async_task_cache.clear()
+
     await close_redis_client()
+
     logger.info('Application shutdown complete.')
 
 

@@ -1,9 +1,10 @@
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import (
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -15,7 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.config import settings
-from app.core.entities.user_bot_profile import BotID, UserStatusInBot
+from app.core.entities.user_bot_profile import UserStatusInBot
 from app.core.enums import LanguageLevel
 from app.db.base import Base
 
@@ -32,11 +33,11 @@ class DBUserBotProfile(Base):
         primary_key=True,
         index=True,
     )
-    bot_id: Mapped[BotID] = mapped_column(
-        SQLAlchemyEnum(BotID, name='bot_id_enum', create_type=True),
+    bot_id: Mapped[str] = mapped_column(
+        String(50),
         primary_key=True,
         index=True,
-        default=BotID.BG,
+        default=settings.default_target_language,
     )
 
     user_language: Mapped[str] = mapped_column(String, nullable=False)
@@ -82,6 +83,11 @@ class DBUserBotProfile(Base):
         mapped_column(  # Добавил | None
             DateTime(timezone=True), nullable=True
         )
+    )
+
+    rating: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    rating_last_calculated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(

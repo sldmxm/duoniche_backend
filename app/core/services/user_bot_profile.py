@@ -81,6 +81,8 @@ class UserBotProfileService:
             wants_session_reminders=None,
             last_long_break_reminder_type_sent=None,
             last_long_break_reminder_sent_at=None,
+            rating=None,
+            rating_last_calculated_at=None,
         )
         try:
             created_profile = await self._profile_repo.create(new_profile)

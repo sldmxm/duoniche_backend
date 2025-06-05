@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from app.core.entities.user_bot_profile import (
     BotID,
@@ -24,4 +24,15 @@ class UserBotProfileRepository(ABC):
 
     @abstractmethod
     async def create(self, profile: UserBotProfile) -> UserBotProfile:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def calc_and_store_ratings_for_profiles(
+        self,
+    ) -> Dict[Tuple[int, BotID], float]:
+        """
+        Calculates ratings for the given user/bot profiles based on
+        their attempt history and stores them in the DB.
+        Returns a map of (user_id, bot_id) to new rating.
+        """
         raise NotImplementedError

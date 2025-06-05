@@ -1,7 +1,7 @@
 import logging
-from typing import Optional, Union, override
+from typing import List, Optional, Union, override
 
-from sqlalchemy import and_, exists, func, literal, not_, select
+from sqlalchemy import and_, exists, func, literal, not_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.entities.exercise import Exercise
@@ -300,3 +300,74 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             await self.session.refresh(db_exercise)
             return await self._to_entity(db_exercise)
         return None
+
+    async def get_exercise_ids_for_quality_review(
+        self,
+        min_weighted_attempts_sum_for_review: float,
+        weighted_error_threshold: float,
+        default_user_rating: float = 0.1,
+    ) -> List[int]:
+        """
+        Fetches exercise IDs that are candidates for review based on
+        weighted error rates, using user ratings from DBUserBotProfile.
+        """
+        sql_query = f"""
+        WITH exercise_weighted_errors AS (
+            SELECT
+                e.exercise_id,
+                SUM(COALESCE(ubp.rating, {default_user_rating}))
+                    AS total_rating_sum_for_exercise,
+                SUM(
+                    CASE
+                        WHEN ea.is_correct IS FALSE THEN COALESCE(
+                            ubp.rating, {default_user_rating})
+                        ELSE 0
+                    END
+                ) AS incorrect_rating_sum_for_exercise,
+                COUNT(ea.attempt_id) as total_raw_attempts
+            FROM
+                exercises e
+            JOIN
+                exercise_attempts ea ON e.exercise_id = ea.exercise_id
+            LEFT JOIN user_bot_profiles ubp
+                ON ea.user_id = ubp.user_id
+                    AND e.exercise_language = ubp.bot_id::TEXT
+            WHERE
+                e.status = '{ExerciseStatus.PUBLISHED.value}'
+            GROUP BY
+                e.exercise_id
+        )
+        SELECT
+            exercise_id
+        FROM
+            exercise_weighted_errors
+        WHERE
+            total_rating_sum_for_exercise >=
+                {min_weighted_attempts_sum_for_review}
+            AND (incorrect_rating_sum_for_exercise
+                / NULLIF(total_rating_sum_for_exercise, 0))
+                > {weighted_error_threshold};
+        """
+
+        result = await self.session.execute(text(sql_query))
+        exercise_ids = [row[0] for row in result.fetchall()]
+        logger.info(
+            f'Found {len(exercise_ids)} exercises '
+            f'for quality review based on DB ratings.'
+        )
+        return exercise_ids
+
+    async def update_statuses(
+        self, exercise_ids: list[int], new_status: ExerciseStatus
+    ) -> int:
+        if not exercise_ids:
+            return 0
+
+        stmt = (
+            update(ExerciseModel)
+            .where(ExerciseModel.exercise_id.in_(exercise_ids))
+            .values(status=new_status)
+            .execution_options(synchronize_session='fetch')
+        )
+        result = await self.session.execute(stmt)
+        return result.rowcount

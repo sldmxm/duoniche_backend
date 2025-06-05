@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.config import settings
 from app.core.enums import LanguageLevel
@@ -76,6 +76,23 @@ class UserBotProfile(BaseModel):
     last_long_break_reminder_sent_at: Optional[datetime] = Field(
         None, description='Timestamp of the last long break reminder sent'
     )
+
+    rating: Optional[float] = Field(
+        None, description="User's calculated rating for this bot/language"
+    )
+    rating_last_calculated_at: Optional[datetime] = Field(
+        None, description='Timestamp when the rating was last calculated'
+    )
+
+    @field_validator('bot_id', mode='before')
+    @classmethod
+    def validate_bot_id(cls, v):
+        if isinstance(v, str):
+            for bot in BotID:
+                if bot.value == v:
+                    return bot
+            raise ValueError(f'Invalid bot_id value: {v}')
+        return v
 
     model_config = ConfigDict(
         from_attributes=True,

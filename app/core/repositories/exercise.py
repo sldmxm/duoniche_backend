@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from app.core.entities.exercise import Exercise
-from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
+from app.core.enums import ExerciseType, LanguageLevel
+from app.core.generation.config import ExerciseTopic
 
 
 class ExerciseRepository(ABC):

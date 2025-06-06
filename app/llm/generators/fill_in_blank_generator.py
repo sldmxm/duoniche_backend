@@ -1,5 +1,5 @@
 import re
-from typing import Tuple
+from typing import Optional, Tuple
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -7,7 +7,9 @@ from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.core.entities.exercise import Exercise
-from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
+from app.core.enums import ExerciseType, LanguageLevel
+from app.core.generation.config import ExerciseTopic
+from app.core.generation.persona import Persona
 from app.core.texts import get_text
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
@@ -52,6 +54,7 @@ class FillInTheBlankGenerator(ExerciseGenerator):
         target_language: str,
         language_level: LanguageLevel,
         topic: ExerciseTopic,
+        persona: Optional[Persona] = None,
     ) -> Tuple[Exercise, FillInTheBlankAnswer, ExerciseForAssessor]:
         """Generate a fill-in-the-blank exercise."""
 
@@ -80,11 +83,27 @@ class FillInTheBlankGenerator(ExerciseGenerator):
             chat_prompt, parser, is_chat_prompt=True
         )
 
+        persona_instructions = ''
+        if persona:
+            parts = [f'Persona: {persona.name}.']
+            if persona.role:
+                parts.append(f'Role: {persona.role}.')
+            if persona.emotion:
+                parts.append(f'Emotion: {persona.emotion}.')
+            if persona.motivation:
+                parts.append(f'Motivation: {persona.motivation}.')
+            if persona.communication_style:
+                parts.append(
+                    f'Communication Style: {persona.communication_style}.'
+                )
+            persona_instructions = ' '.join(parts)
+
         request_data = {
             'user_language': user_language,
             'exercise_language': target_language,
             'language_level': language_level.value,
             'topic': topic.value,
+            'persona_instructions': persona_instructions,
             'format_instructions': parser.get_format_instructions(),
         }
 

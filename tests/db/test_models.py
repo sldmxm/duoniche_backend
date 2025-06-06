@@ -4,7 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
+from app.core.enums import ExerciseType, LanguageLevel
+from app.core.generation.config import ExerciseTopic
 from app.core.value_objects.answer import ChooseSentenceAnswer
 from app.db.models import Exercise, ExerciseAnswer, ExerciseAttempt
 

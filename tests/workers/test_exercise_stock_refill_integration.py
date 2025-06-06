@@ -8,10 +8,10 @@ from app.core.entities.exercise import Exercise
 from app.core.entities.user_bot_profile import BotID
 from app.core.enums import (
     ExerciseStatus,
-    ExerciseTopic,
     ExerciseType,
     LanguageLevel,
 )
+from app.core.generation.config import ExerciseTopic
 from app.core.value_objects.exercise import (
     ChooseAccentExerciseData,
     StoryComprehensionExerciseData,

@@ -12,10 +12,12 @@ from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.user_bot_profile import BotID
 from app.core.enums import (
     ExerciseStatus,
-    ExerciseTopic,
     ExerciseType,
     LanguageLevel,
 )
+from app.core.generation.config import ExerciseTopic
+from app.core.generation.persona import Persona
+from app.core.generation.selector import select_persona_for_topic
 from app.core.value_objects.exercise import StoryComprehensionExerciseData
 from app.db.db import async_session_maker
 from app.db.repositories.exercise import SQLAlchemyExerciseRepository
@@ -35,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 MIN_EXERCISE_COUNT_TO_GENERATE_NEW = 5
 EXERCISE_REFILL_INTERVAL = 60 * 10
+CHANCE_TO_GENERATE_PERSONA_FOR_TOPIC = 1
 
 exercise_generation_semaphore = asyncio.Semaphore(5)
 
@@ -116,6 +119,7 @@ async def _generate_and_upload_audio(
     tts_service: GoogleTTSService,
     file_storage_service: R2FileStorageService,
     http_client: httpx.AsyncClient,
+    emotion_instruction: Optional[str] = None,
 ) -> tuple[Optional[str], Optional[str], bool]:
     """
     Generates OGG audio from text, uploads it to R2 and Telegram.
@@ -138,6 +142,7 @@ async def _generate_and_upload_audio(
     ogg_audio_data = await tts_service.text_to_speech_ogg(
         text=exercise_data.content_text,
         voice_name=voice_name,
+        emotion_instruction=emotion_instruction,
     )
 
     if ogg_audio_data:
@@ -218,6 +223,7 @@ async def _try_to_regenerate_audio_for_exercise(
         tts_service=tts_service,
         file_storage_service=file_storage_service,
         http_client=http_client,
+        emotion_instruction=None,
     )
 
     current_status = ExerciseStatus.PUBLISHED
@@ -313,6 +319,26 @@ async def generate_and_save_exercise(
             )
             topic = ExerciseTopic.get_next_topic()
 
+            persona: Optional[Persona] = None
+            persona_log_info = 'No persona'
+            if random.random() < CHANCE_TO_GENERATE_PERSONA_FOR_TOPIC:
+                persona = select_persona_for_topic(topic)
+                if persona:
+                    persona_log_info = (
+                        f'Persona: {persona.name} (Role: {persona.role}, '
+                        f'Emotion: {persona.emotion}, '
+                        f'Motivation: {persona.motivation}, '
+                        f'Style: {persona.communication_style})'
+                    )
+                    logger.info(f'Generating exercise with {persona_log_info}')
+
+            generation_params_log = (
+                f'Starting exercise generation: Lang: {target_language}\n'
+                f'Level: {language_level.value}, Type: {exercise_type.value}\n'
+                f'Topic: {topic.value}, UserLang: {user_language}\n'
+                f'Persona: {persona_log_info}\n'
+            )
+
             if exercise_type == ExerciseType.STORY_COMPREHENSION:
                 success = await _repair_broken_audio_for_exercise(
                     exercise_type=exercise_type,
@@ -322,6 +348,10 @@ async def generate_and_save_exercise(
                     http_client=http_client,
                 )
                 if success:
+                    logger.info(
+                        f'Successfully repaired audio for a '
+                        f'STORY_COMPREHENSION exercise for {target_language}.'
+                    )
                     return True
 
             if exercise_type == ExerciseType.CHOOSE_ACCENT:
@@ -344,12 +374,18 @@ async def generate_and_save_exercise(
                     language_level=language_level,
                     exercise_type=exercise_type,
                     topic=topic,
+                    persona=persona,
                 )
                 created_by = 'LLM'
 
                 if exercise.status == ExerciseStatus.PUBLISHED and isinstance(
                     exercise.data, StoryComprehensionExerciseData
                 ):
+                    emotion_instruction = None
+                    if persona and persona.emotion_instruction_for_tts:
+                        emotion_instruction = (
+                            persona.emotion_instruction_for_tts
+                        )
                     (
                         audio_url_opt,
                         telegram_file_id_opt,
@@ -362,6 +398,7 @@ async def generate_and_save_exercise(
                         tts_service=tts_service,
                         file_storage_service=file_storage_service,
                         http_client=http_client,
+                        emotion_instruction=emotion_instruction,
                     )
 
                     if (
@@ -383,6 +420,20 @@ async def generate_and_save_exercise(
                         )
 
             if exercise and answer:
+                exercise_details_log = (
+                    f'Generated exercise params: \n{generation_params_log}'
+                    f'Generated Exercise Details:\n'
+                    f'  Type: {exercise.exercise_type.value}\n'
+                    f'  Language: {exercise.exercise_language}\n'
+                    f'  Level: {exercise.language_level.value}\n'
+                    f'  Topic: {exercise.topic.value}\n'
+                    f'  Status: {exercise.status.value}\n'
+                    f'  Text: {exercise.exercise_text}\n'
+                    f'  Data: {exercise.data.model_dump_json(indent=2)}\n'
+                    f'  Correct Answer: {answer.model_dump_json(indent=2)}'
+                )
+                logger.info(exercise_details_log)
+
                 async with async_session_maker() as session:
                     exercise_repository = SQLAlchemyExerciseRepository(session)
                     exercise_answer_repository = (
@@ -404,13 +455,17 @@ async def generate_and_save_exercise(
                         )
                         await exercise_answer_repository.create(right_answer)
                     await session.commit()
+                logger.info(
+                    f'Successfully generated and saved exercise ID: '
+                    f'{exercise.exercise_id} '
+                    f'with status: {exercise.status.value}'
+                )
                 return exercise.status == ExerciseStatus.PUBLISHED
             else:
                 logger.warning(
                     f'Skipping save for exercise type '
                     f'{exercise_type.value} for {target_language} '
-                    f'as it was not generated (exercise_data '
-                    f'or answer_data is None).'
+                    f'as it was not generated (exercise or answer is None).'
                 )
                 return False
 

@@ -1,11 +1,13 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from app.core.entities.exercise import Exercise
-from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
+from app.core.enums import ExerciseType, LanguageLevel
+from app.core.generation.config import ExerciseTopic
+from app.core.generation.persona import Persona
 from app.core.texts import get_text
 from app.core.value_objects.answer import StoryComprehensionAnswer
 from app.core.value_objects.exercise import StoryComprehensionExerciseData
@@ -13,6 +15,7 @@ from app.llm.assessors.quality_assessor import ExerciseForAssessor
 from app.llm.generators.prompt_templates import (
     BASE_SYSTEM_PROMPT_FOR_GENERATION,
     STORY_COMPREHENSION_GENERATION_INSTRUCTIONS,
+    STORY_COMPREHENSION_WITH_PERSONA_GENERATION_INSTRUCTIONS,
 )
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
 from app.llm.llm_base import BaseLLMService
@@ -44,15 +47,38 @@ class StoryComprehensionGenerator(ExerciseGenerator):
         target_language: str,
         language_level: LanguageLevel,
         topic: ExerciseTopic,
+        persona: Optional[Persona] = None,
     ) -> Tuple[Exercise, StoryComprehensionAnswer, ExerciseForAssessor]:
         """Generate a choose-the-sentence exercise."""
         parser = PydanticOutputParser(
             pydantic_object=StoryComprehensionLLMOutput
         )
 
+        persona_instructions = ''
+        specific_instructions_template = (
+            STORY_COMPREHENSION_GENERATION_INSTRUCTIONS
+        )
+
+        if persona:
+            parts = [f'Persona: {persona.name}.']
+            if persona.role:
+                parts.append(f'Role: {persona.role}.')
+            if persona.emotion:
+                parts.append(f'Emotion: {persona.emotion}.')
+            if persona.motivation:
+                parts.append(f'Motivation: {persona.motivation}.')
+            if persona.communication_style:
+                parts.append(
+                    f'Communication Style: {persona.communication_style}.'
+                )
+            persona_instructions = ' '.join(parts)
+            specific_instructions_template = (
+                STORY_COMPREHENSION_WITH_PERSONA_GENERATION_INSTRUCTIONS
+            )
+
         system_prompt_template = BASE_SYSTEM_PROMPT_FOR_GENERATION.replace(
             '{specific_exercise_generation_instructions}',
-            STORY_COMPREHENSION_GENERATION_INSTRUCTIONS,
+            specific_instructions_template,
         )
 
         user_prompt_template = (
@@ -76,6 +102,7 @@ class StoryComprehensionGenerator(ExerciseGenerator):
             'exercise_language': target_language,
             'language_level': language_level.value,
             'topic': topic.value,
+            'persona_instructions': persona_instructions,
             'format_instructions': parser.get_format_instructions(),
         }
 

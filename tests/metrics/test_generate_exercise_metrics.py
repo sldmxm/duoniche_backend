@@ -4,7 +4,9 @@ import pytest
 
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
-from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
+from app.core.enums import ExerciseType, LanguageLevel
+from app.core.generation.config import ExerciseTopic
+from app.core.generation.persona import Persona
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.assessors.quality_assessor import (
@@ -48,8 +50,6 @@ def user():
         telegram_id='123',
         username='testuser',
         name='Test User',
-        user_language='en',
-        target_language='bg',
     )
 
 
@@ -109,8 +109,8 @@ async def test_generate_exercise_metrics(
     exercise_type = ExerciseType.FILL_IN_THE_BLANK
     language_level = LanguageLevel.A1
     topic = ExerciseTopic.GENERAL
+    persona_to_pass: Persona | None = None
 
-    # Устанавливаем мок для метода generate генератора упражнений
     mock_generate.return_value = mock_exercise_and_answer
     mock_assess.return_value = None
 
@@ -121,6 +121,7 @@ async def test_generate_exercise_metrics(
         language_level=language_level,
         exercise_type=exercise_type,
         topic=topic,
+        persona=persona_to_pass,
     )
 
     # Assert
@@ -133,6 +134,7 @@ async def test_generate_exercise_metrics(
         target_language=user_bot_profile.bot_id.value,
         language_level=language_level,
         topic=topic,
+        persona=persona_to_pass,
     )
 
     # Check exercises_created

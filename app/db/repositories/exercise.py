@@ -7,10 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.entities.exercise import Exercise
 from app.core.enums import (
     ExerciseStatus,
-    ExerciseTopic,
     ExerciseType,
     LanguageLevel,
 )
+from app.core.generation.config import ExerciseTopic
 from app.core.repositories.exercise import ExerciseRepository
 from app.core.value_objects.exercise import ExerciseData
 from app.db.models import Exercise as ExerciseModel

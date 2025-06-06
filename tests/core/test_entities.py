@@ -1,7 +1,8 @@
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
-from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
+from app.core.enums import ExerciseType, LanguageLevel
+from app.core.generation.config import ExerciseTopic
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import (
     SentenceConstructionExerciseData,

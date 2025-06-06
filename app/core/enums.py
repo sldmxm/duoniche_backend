@@ -35,42 +35,6 @@ class ExerciseUiTemplates(Enum):
     AUDIO_CHOOSE = 'audio_choose'
 
 
-class ExerciseTopic(Enum):
-    GENERAL = 'general'
-    SHOPPING = 'shopping'
-    TRAVEL = 'travel'
-    FOOD = 'food'
-    SPORTS = 'sports'
-    WEATHER = 'weather'
-    WORK = 'work'
-    HEALTH = 'health'
-    EMERGENCIES = 'emergencies'
-    RELATIONSHIPS = 'relationships'
-    TECH = 'tech'
-    EDUCATION = 'education'
-    ENTERTAINMENT = 'entertainment'
-    MONEY = 'money'
-    HOME = 'home'
-    TRANSPORT = 'transport'
-    RESTAURANT = 'restaurant'
-    FAMILY = 'family'
-    PHARMACY = 'pharmacy'
-    NATURE = 'NATURE'
-    ANIMALS = 'ANIMALS'
-    KIDS = 'KIDS'
-    HOUSING = 'housing'
-    CULTURE = 'culture'
-    DATING = 'dating'
-    WINE = 'wine'
-    DIGITAL_LIFE = 'digital_life'
-    PUBLIC_SERVICES = 'public_services'
-
-    @classmethod
-    def get_next_topic(cls) -> 'ExerciseTopic':
-        topics: List[ExerciseTopic] = list(ExerciseTopic)
-        return random.choice(topics)
-
-
 class LanguageLevel(Enum):
     A1 = 'A1'
     A2 = 'A2'

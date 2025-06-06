@@ -1,9 +1,11 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 from pydantic import BaseModel, Field
 
 from app.core.entities.exercise import Exercise
-from app.core.enums import ExerciseTopic, LanguageLevel
+from app.core.enums import LanguageLevel
+from app.core.generation.config import ExerciseTopic
+from app.core.generation.persona import Persona
 from app.core.value_objects.answer import ChooseAccentAnswer
 from app.llm.assessors.quality_assessor import ExerciseForAssessor
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
@@ -28,6 +30,7 @@ class ChooseAccentGenerator(ExerciseGenerator):
         target_language: str,
         language_level: LanguageLevel,
         topic: ExerciseTopic,
+        persona: Optional[Persona] = None,
     ) -> Tuple[Exercise, ChooseAccentAnswer, ExerciseForAssessor]:
         # TODO: LLM не умеют в ударение, сейчас не используется,
         #  но можно попробовать допилить

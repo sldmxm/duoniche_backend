@@ -9,7 +9,8 @@ from lxml import html
 from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.user_bot_profile import BotID
-from app.core.enums import ExerciseTopic, ExerciseType
+from app.core.enums import ExerciseType
+from app.core.generation.config import ExerciseTopic
 from app.core.texts import get_text
 from app.core.value_objects.answer import Answer, ChooseAccentAnswer
 from app.core.value_objects.exercise import ChooseAccentExerciseData

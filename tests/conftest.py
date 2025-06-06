@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
+from app.core.generation.config import ExerciseTopic
 from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.services.async_task_cache import AsyncTaskCache
 from app.core.services.exercise import ExerciseService
@@ -51,7 +52,6 @@ from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.user import User
 from app.core.enums import (
     ExerciseStatus,
-    ExerciseTopic,
     ExerciseType,
     LanguageLevel,
 )
@@ -599,7 +599,9 @@ def mock_get_next_exercise_level():
 @pytest.fixture(autouse=True)
 def mock_get_next_topic():
     """Mocks ExerciseTopic.get_next_topic for all tests."""
-    with patch('app.core.enums.ExerciseTopic.get_next_topic') as mock:
+    with patch(
+        'app.core.generation.config.ExerciseTopic.get_next_topic'
+    ) as mock:
         mock.return_value = ExerciseTopic.GENERAL
         yield mock
 

@@ -4,12 +4,12 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.core.enums import (
     ExerciseStatus,
-    ExerciseTopic,
     ExerciseType,
     ExerciseUiTemplates,
     LanguageLevel,
 )
 from app.core.exercise_templates import EXERCISE_UI_TEMPLATE_MAP
+from app.core.generation.config import ExerciseTopic
 from app.core.value_objects.exercise import (
     ChooseAccentExerciseData,
     ChooseSentenceExerciseData,

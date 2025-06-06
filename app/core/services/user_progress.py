@@ -14,11 +14,11 @@ from app.core.entities.user_bot_profile import (
     UserStatusInBot,
 )
 from app.core.enums import (
-    ExerciseTopic,
     ExerciseType,
     LanguageLevel,
     UserAction,
 )
+from app.core.generation.config import ExerciseTopic
 from app.core.services.exercise import ExerciseService
 from app.core.services.payment import PaymentService
 from app.core.services.user import UserService

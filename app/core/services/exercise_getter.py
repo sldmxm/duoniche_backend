@@ -3,7 +3,8 @@ import logging
 from typing import Optional
 
 from app.core.entities.exercise import Exercise
-from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
+from app.core.enums import ExerciseType, LanguageLevel
+from app.core.generation.config import ExerciseTopic
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.repositories.exercise import ExerciseRepository
 from app.core.repositories.exercise_answer import ExerciseAnswerRepository

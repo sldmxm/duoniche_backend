@@ -2,6 +2,7 @@ import asyncio
 import logging
 import subprocess
 import tempfile
+from typing import Optional
 
 from google import genai
 from google.genai import types
@@ -111,7 +112,10 @@ class GoogleTTSService:
             return None
 
     async def text_to_speech_ogg(
-        self, text: str, voice_name: str | None = None
+        self,
+        text: str,
+        voice_name: str | None = None,
+        emotion_instruction: Optional[str] = None,
     ) -> bytes | None:
         """
         Converts text to speech and returns OGG Opus audio data as bytes.
@@ -134,10 +138,18 @@ class GoogleTTSService:
                 speech_config=speech_config_to_use,
             )
 
+            text_to_synthesize = text
+            if emotion_instruction:
+                text_to_synthesize = f'{emotion_instruction.strip()} {text}'
+
+            logger.info(
+                f"Synthesizing speech for: '{text_to_synthesize[:100]}...' "
+            )
+
             response = await asyncio.to_thread(
                 self.client.models.generate_content,
                 model=self.tts_model_name,
-                contents=text,
+                contents=text_to_synthesize,
                 config=request_config,
             )
 

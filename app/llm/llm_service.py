@@ -1,13 +1,14 @@
 import logging
-from typing import Tuple
+from typing import Optional, Tuple
 
 from app.core.entities.exercise import Exercise
 from app.core.enums import (
     ExerciseStatus,
-    ExerciseTopic,
     ExerciseType,
     LanguageLevel,
 )
+from app.core.generation.config import ExerciseTopic
+from app.core.generation.persona import Persona
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.value_objects.answer import Answer
 from app.llm.assessors.quality_assessor import (
@@ -42,6 +43,7 @@ class LLMService(BaseLLMService, LLMProvider):
         language_level: LanguageLevel,
         exercise_type: ExerciseType,
         topic: ExerciseTopic,
+        persona: Optional[Persona] = None,
     ) -> tuple[Exercise, Answer]:
         """Generate exercise for user based on exercise type."""
         generator = ExerciseGeneratorFactory.create_generator(
@@ -73,6 +75,7 @@ class LLMService(BaseLLMService, LLMProvider):
                 target_language=target_language,
                 language_level=language_level,
                 topic=topic,
+                persona=persona,
             )
 
             try:

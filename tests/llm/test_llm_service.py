@@ -3,7 +3,8 @@ import pytest
 from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
-from app.core.enums import ExerciseTopic, ExerciseType, LanguageLevel
+from app.core.enums import ExerciseType, LanguageLevel
+from app.core.generation.config import ExerciseTopic
 from app.core.value_objects.answer import (
     ChooseSentenceAnswer,
     FillInTheBlankAnswer,
@@ -26,8 +27,6 @@ def user():
         telegram_id='123',
         username='testuser',
         name='Test User',
-        user_language='ru',
-        target_language='bulgarian',
     )
 
 

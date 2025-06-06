@@ -1,7 +1,8 @@
 from typing import List, Optional, override
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.entities.exercise_answer import (
     ExerciseAnswer as ExerciseAnswerEntity,
@@ -9,6 +10,7 @@ from app.core.entities.exercise_answer import (
 from app.core.repositories.exercise_answer import ExerciseAnswerRepository
 from app.core.value_objects.answer import Answer, create_answer_model_validate
 from app.db.models import ExerciseAnswer as ExerciseAnswerModel
+from app.db.models import ExerciseAttempt as ExerciseAttemptModel
 
 
 class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
@@ -92,3 +94,34 @@ class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
             created_at=db_answer.created_at,
             created_by=db_answer.created_by,
         )
+
+    async def get_answers_with_attempt_counts(
+        self, exercise_id: int
+    ) -> List[tuple[ExerciseAnswerEntity, int]]:
+        """
+        Fetches all ExerciseAnswerEntities for a given exercise_id,
+        along with the count of attempts associated with each answer_id.
+        Returns a list of tuples: (ExerciseAnswerEntity, attempt_count).
+        """
+        ea_attempt_alias = aliased(ExerciseAttemptModel)
+
+        stmt = (
+            select(
+                ExerciseAnswerModel,
+                func.count(ea_attempt_alias.attempt_id).label('attempt_count'),
+            )
+            .outerjoin(
+                ea_attempt_alias,
+                ExerciseAnswerModel.answer_id == ea_attempt_alias.answer_id,
+            )
+            .where(ExerciseAnswerModel.exercise_id == exercise_id)
+            .group_by(ExerciseAnswerModel.answer_id)
+        )
+
+        result = await self.session.execute(stmt)
+
+        answers_with_counts: List[tuple[ExerciseAnswerEntity, int]] = []
+        for db_answer, count in result.all():
+            answers_with_counts.append((self._to_entity(db_answer), count))
+
+        return answers_with_counts

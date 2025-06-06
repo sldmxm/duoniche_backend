@@ -12,9 +12,10 @@ from app.db.repositories.user_bot_profile import (
 
 logger = logging.getLogger(__name__)
 
-QUALITY_MONITORING_INTERVAL_SECONDS = 60 * 60
+QUALITY_MONITORING_INTERVAL_SECONDS = 2 * 60 * 60
 MIN_WEIGHTED_ATTEMPTS_SUM_FOR_REVIEW = 7.0
-EXERCISE_REVIEW_CANDIDATE_THRESHOLD = 0.4
+EXERCISE_REVIEW_CANDIDATE_THRESHOLD = 0.50
+MIN_HOURS_SINCE_LAST_UPDATE_FOR_REVIEW = 24
 
 
 async def check_exercises_for_review(session: AsyncSession):
@@ -26,6 +27,7 @@ async def check_exercises_for_review(session: AsyncSession):
         min_weighted_attempts_sum_for_review=min_weighted_attempts_sum,
         weighted_error_threshold=EXERCISE_REVIEW_CANDIDATE_THRESHOLD,
         default_user_rating=0.1,
+        min_hours_since_last_update=MIN_HOURS_SINCE_LAST_UPDATE_FOR_REVIEW,
     )
 
     if exercise_ids_to_review:

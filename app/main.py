@@ -24,6 +24,9 @@ from app.services.file_storage_service import R2FileStorageService
 from app.services.notification_producer import NotificationProducerService
 from app.services.tts_service import GoogleTTSService
 from app.workers.exercise_quality_monitor import quality_monitoring_worker_loop
+from app.workers.exercise_review_processor import (
+    exercise_review_processor_loop,
+)
 from app.workers.exercise_stock_refill import exercise_stock_refill_loop
 from app.workers.metrics_updater import metrics_loop
 from app.workers.notification_scheduler import notification_scheduler_loop
@@ -82,6 +85,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     quality_monitoring_worker_task = asyncio.create_task(
         quality_monitoring_worker_loop(stop_event=stop_event)
     )
+    exercise_review_processor_worker_task = asyncio.create_task(
+        exercise_review_processor_loop(stop_event=stop_event)
+    )
 
     logger.info('Application startup complete. All workers started.')
     yield
@@ -92,6 +98,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
         exercise_refill_task,
         notification_scheduler_task,
         quality_monitoring_worker_task,
+        exercise_review_processor_worker_task,
     ]
     stop_event.set()
     for task in worker_tasks:

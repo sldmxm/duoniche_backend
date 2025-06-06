@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Integer, String, Text
+from sqlalchemy import DateTime, Integer, String, Text, func
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -26,9 +26,6 @@ class Exercise(Base):
     topic: Mapped[str] = mapped_column(String, nullable=False)
     exercise_text: Mapped[str] = mapped_column(Text, nullable=False)
     data: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.now, nullable=False
-    )
     status: Mapped[ExerciseStatus] = mapped_column(
         SQLAlchemyEnum(
             ExerciseStatus,
@@ -41,6 +38,17 @@ class Exercise(Base):
         nullable=False,
         server_default=ExerciseStatus.PUBLISHED.value,
         index=True,
+    )
+    comments: Mapped[str] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.now, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     attempts: Mapped[list['ExerciseAttempt']] = relationship(

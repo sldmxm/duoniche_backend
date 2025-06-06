@@ -283,6 +283,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         exercise_id: int,
         new_status: ExerciseStatus,
         new_data: Optional[Union[ExerciseData, dict]] = None,
+        comments: Optional[str] = None,
     ) -> Optional[Exercise]:
         """
         Updates the status and optionally the data of an exercise.
@@ -295,6 +296,8 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
                     db_exercise.data = new_data.model_dump()
                 else:
                     db_exercise.data = new_data
+            if comments is not None:
+                db_exercise.comments = comments
 
             await self.session.flush()
             await self.session.refresh(db_exercise)
@@ -306,11 +309,23 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         min_weighted_attempts_sum_for_review: float,
         weighted_error_threshold: float,
         default_user_rating: float = 0.1,
+        min_hours_since_last_update: Optional[int] = None,
     ) -> List[int]:
         """
         Fetches exercise IDs that are candidates for review based on
         weighted error rates, using user ratings from DBUserBotProfile.
+        Optionally filters out exercises updated recently.
         """
+        updated_at_filter_condition = ''
+        if (
+            min_hours_since_last_update is not None
+            and min_hours_since_last_update > 0
+        ):
+            updated_at_filter_condition = (
+                f'AND e.updated_at <= NOW() '
+                f"- INTERVAL '{min_hours_since_last_update} hours'"
+            )
+
         sql_query = f"""
         WITH exercise_weighted_errors AS (
             SELECT
@@ -334,6 +349,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
                     AND e.exercise_language = ubp.bot_id::TEXT
             WHERE
                 e.status = '{ExerciseStatus.PUBLISHED.value}'
+                {updated_at_filter_condition}
             GROUP BY
                 e.exercise_id
         )
@@ -353,7 +369,10 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         exercise_ids = [row[0] for row in result.fetchall()]
         logger.info(
             f'Found {len(exercise_ids)} exercises '
-            f'for quality review based on DB ratings.'
+            f'for quality review based on DB ratings'
+            f'{f" (excluding those updated in last "
+               f"{min_hours_since_last_update}h)"
+            if min_hours_since_last_update else ""}.'
         )
         return exercise_ids
 
@@ -371,3 +390,13 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
         )
         result = await self.session.execute(stmt)
         return result.rowcount
+
+    async def get_exercises_by_status(
+        self, status: ExerciseStatus, limit: Optional[int] = None
+    ) -> List[Exercise]:
+        stmt = select(ExerciseModel).where(ExerciseModel.status == status)
+        if limit:
+            stmt = stmt.limit(limit)
+        result = await self.session.execute(stmt)
+        db_exercises = result.scalars().all()
+        return [await self._to_entity(db_ex) for db_ex in db_exercises]

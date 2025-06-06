@@ -113,3 +113,4 @@ class ExerciseStatus(str, Enum):
     ARCHIVED = 'archived'
     AUDIO_GENERATION_ERROR = 'audio_generation_error'
     PROCESSING_ERROR_RETRY = 'processing_error_retry'
+    PENDING_ADMIN_REVIEW = 'pending_admin_review'

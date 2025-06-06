@@ -43,7 +43,7 @@ async def update_user_sessions_metrics():
                 label_tuple = (
                     profile.user.cohort,
                     profile.user.plan,
-                    profile.bot_id.value,
+                    profile.bot_id,
                     profile.user_language,
                     profile.language_level.value,
                 )
@@ -82,7 +82,7 @@ async def update_user_sessions_metrics():
                         ).inc(profile.exercises_get_in_session)
                         logger.debug(
                             f'Session ended for user {profile.user_id}'
-                            f'/{profile.bot_id.value}: '
+                            f'/{profile.bot_id}: '
                             f'duration {session_duration}s, exercises '
                             f'{profile.exercises_get_in_session}'
                         )

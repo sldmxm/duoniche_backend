@@ -39,6 +39,13 @@ MIN_EXERCISE_COUNT_TO_GENERATE_NEW = 5
 EXERCISE_REFILL_INTERVAL = 60 * 10
 CHANCE_TO_GENERATE_PERSONA_FOR_TOPIC = 1
 
+EXCLUDE_TOPICS = [
+    ExerciseTopic.TECH,
+    ExerciseTopic.PHARMACY,
+    ExerciseTopic.EMERGENCIES,
+    ExerciseTopic.EDUCATION,
+]
+
 exercise_generation_semaphore = asyncio.Semaphore(5)
 
 
@@ -317,7 +324,9 @@ async def generate_and_save_exercise(
             language_level = LanguageLevel.get_next_exercise_level(
                 settings.default_language_level
             )
-            topic = ExerciseTopic.get_next_topic()
+            topic = ExerciseTopic.get_topic_for_generation(
+                exclude_topics=EXCLUDE_TOPICS,
+            )
 
             persona: Optional[Persona] = None
             persona_log_info = 'No persona'
@@ -330,7 +339,6 @@ async def generate_and_save_exercise(
                         f'Motivation: {persona.motivation}, '
                         f'Style: {persona.communication_style})'
                     )
-                    logger.info(f'Generating exercise with {persona_log_info}')
 
             generation_params_log = (
                 f'Starting exercise generation: Lang: {target_language}\n'

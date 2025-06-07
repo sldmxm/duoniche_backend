@@ -1,6 +1,6 @@
 import random
 from enum import Enum
-from typing import List
+from typing import Dict, List, Optional
 
 from app.core.generation.persona import Persona
 
@@ -39,6 +39,52 @@ class ExerciseTopic(Enum):
     def get_next_topic(cls) -> 'ExerciseTopic':
         topics: List[ExerciseTopic] = list(ExerciseTopic)
         return random.choice(topics)
+
+    @classmethod
+    def get_topic_for_generation(
+        cls,
+        exclude_topics: Optional[List['ExerciseTopic']] = None,
+        topic_weights: Optional[Dict['ExerciseTopic', float]] = None,
+    ) -> 'ExerciseTopic':
+        """
+        Returns a topic for exercise generation,
+        allowing for exclusions and weighting.
+
+        :param exclude_topics: A list of topics to exclude from selection.
+        :param topic_weights: A dictionary mapping topics to their
+                                selection weights.
+                              If None, all available topics are chosen with
+                                equal probability.
+                              Topics not in this dict (but not excluded) will
+                                have a default weight of 1.0.
+        :return: A selected ExerciseTopic.
+        """
+        available_topics = list(cls)
+        if exclude_topics:
+            available_topics = [
+                topic
+                for topic in available_topics
+                if topic not in exclude_topics
+            ]
+
+        if not available_topics:
+            return cls.GENERAL
+
+        if topic_weights:
+            weights = []
+            valid_topics_for_weighting = []
+            for topic in available_topics:
+                valid_topics_for_weighting.append(topic)
+                weights.append(topic_weights.get(topic, 1.0))
+
+            if not valid_topics_for_weighting or all(w <= 0 for w in weights):
+                return random.choice(available_topics)
+
+            return random.choices(
+                valid_topics_for_weighting, weights=weights, k=1
+            )[0]
+        else:
+            return random.choice(available_topics)
 
 
 TOPIC_GROUPS = {

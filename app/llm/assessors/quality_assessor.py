@@ -83,6 +83,22 @@ class ExerciseQualityAssessor(BaseLLMService):
             )
             raise RejectedByAssessor(message)
 
+        if exercise.exercise_type in (
+            ExerciseType.FILL_IN_THE_BLANK,
+        ) and self._has_space_in_options(exercise):
+            BACKEND_LLM_METRICS['exercises_rejected'].labels(
+                exercise_type=exercise.exercise_type.value,
+                level=exercise.language_level.value,
+                user_language=user_language,
+                target_language=target_language,
+                llm_model=self.model.model_name,
+            ).inc()
+            message = (
+                f'Exercise rejected: space in options. '
+                f'Exercise: {exercise}'
+            )
+            raise RejectedByAssessor(message)
+
         review = await self._run_llm_check(
             exercise, user_language, target_language
         )
@@ -107,6 +123,10 @@ class ExerciseQualityAssessor(BaseLLMService):
     @staticmethod
     def _has_duplicate_options(exercise: ExerciseForAssessor) -> bool:
         return len(set(exercise.options)) < len(exercise.options)
+
+    @staticmethod
+    def _has_space_in_options(exercise: ExerciseForAssessor) -> bool:
+        return any(' ' in option for option in exercise.options)
 
     @staticmethod
     def _has_too_long_options(exercise: ExerciseForAssessor) -> bool:

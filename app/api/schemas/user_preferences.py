@@ -1,10 +1,14 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 from app.core.entities.user_bot_profile import BotID
+from app.core.enums import LanguageLevel
 
 
-class SessionRemindersPreferenceUpdate(BaseModel):
-    wants_reminders: bool
+class UserPreferencesUpdate(BaseModel):
+    wants_reminders: Optional[bool] = None
+    language_level: Optional[LanguageLevel] = None
 
 
 class SessionRemindersPreferenceResponse(BaseModel):

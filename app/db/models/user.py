@@ -26,6 +26,16 @@ class User(Base):
 
     cohort: Mapped[str] = mapped_column(String, nullable=True)
     plan: Mapped[str] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(50), nullable=False, server_default='free'
+    )
+    status_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    status_source: Mapped[str | None] = mapped_column(
+        String(100), nullable=True
+    )
+    custom_settings: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.now, nullable=False

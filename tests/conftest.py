@@ -25,6 +25,7 @@ from app.core.services.payment import PaymentService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_progress import UserProgressService
+from app.core.services.user_settings import UserSettingsService
 from app.db.models import DBUserBotProfile
 from app.db.repositories.payment import SQLAlchemyPaymentRepository
 from app.db.repositories.user import SQLAlchemyUserRepository
@@ -45,6 +46,7 @@ from app.api.dependencies import (
     get_user_bot_profile_service,
     get_user_progress_service,
     get_user_service,
+    get_user_settings_service,
 )
 from app.config import settings
 from app.core.entities.exercise import Exercise
@@ -178,6 +180,20 @@ async def payment_service(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture(scope='function')
+async def user_settings_service(
+    user_service: UserService,
+    user_bot_profile_service: UserBotProfileService,
+    redis: Redis,
+):
+    """Create UserBotProfileService with test repositories"""
+    return UserSettingsService(
+        user_service=user_service,
+        user_bot_profile_service=user_bot_profile_service,
+        redis_client=redis,
+    )
+
+
+@pytest_asyncio.fixture(scope='function')
 async def user_progress_service(
     db_session,
     redis,
@@ -185,6 +201,7 @@ async def user_progress_service(
     exercise_service,
     user_bot_profile_service,
     payment_service,
+    user_settings_service,
 ):
     """Create ExerciseService with test repositories"""
     return UserProgressService(
@@ -192,6 +209,7 @@ async def user_progress_service(
         exercise_service=exercise_service,
         user_bot_profile_service=user_bot_profile_service,
         payment_service=payment_service,
+        user_settings_service=user_settings_service,
     )
 
 
@@ -216,6 +234,9 @@ async def client(
     def override_get_user_bot_profile_service():
         return user_bot_profile_service
 
+    def override_get_user_settings_service():
+        return user_settings_service
+
     app.dependency_overrides[get_user_progress_service] = (
         override_get_user_progress_service
     )
@@ -226,6 +247,10 @@ async def client(
     app.dependency_overrides[get_user_bot_profile_service] = (
         override_get_user_bot_profile_service
     )
+    app.dependency_overrides[get_user_settings_service] = (
+        override_get_user_settings_service
+    )
+
     app.state.user_progress_service = user_progress_service
     app.state.exercise_service = exercise_service
 
@@ -599,9 +624,7 @@ def mock_get_next_exercise_level():
 @pytest.fixture(autouse=True)
 def mock_get_next_topic():
     """Mocks ExerciseTopic.get_next_topic for all tests."""
-    with patch(
-        'app.core.generation.config.ExerciseTopic.get_next_topic'
-    ) as mock:
+    with patch('app.core.generation.config.ExerciseTopic.get_topic') as mock:
         mock.return_value = ExerciseTopic.GENERAL
         yield mock
 

@@ -10,6 +10,7 @@ from app.core.services.payment import PaymentService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_progress import UserProgressService
+from app.core.services.user_settings import UserSettingsService
 from app.db.db import get_async_session
 from app.db.repositories.exercise import SQLAlchemyExerciseRepository
 from app.db.repositories.exercise_answers import (
@@ -50,6 +51,21 @@ async def get_redis_dependency(request: Request) -> AsyncRedis:
     if not hasattr(request.app.state, 'redis_client'):
         raise RuntimeError('Redis client not initialized in app.state')
     return request.app.state.redis_client
+
+
+def get_user_settings_service(
+    user_service: Annotated[UserService, Depends(get_user_service)],
+    user_bot_profile_service: Annotated[
+        UserBotProfileService, Depends(get_user_bot_profile_service)
+    ],
+    redis_client: Annotated[AsyncRedis, Depends(get_redis_dependency)],
+) -> UserSettingsService:
+    """Dependency to get the user settings service."""
+    return UserSettingsService(
+        user_service=user_service,
+        user_bot_profile_service=user_bot_profile_service,
+        redis_client=redis_client,
+    )
 
 
 async def get_async_task_cache_dependency(
@@ -103,10 +119,14 @@ def get_user_progress_service(
         ExerciseService, Depends(get_exercise_service)
     ],
     payment_service: Annotated[PaymentService, Depends(get_payment_service)],
+    user_settings_service: Annotated[
+        UserSettingsService, Depends(get_user_settings_service)
+    ],
 ) -> UserProgressService:
     return UserProgressService(
         user_service=user_service,
         user_bot_profile_service=user_bot_profile_service,
         exercise_service=exercise_service,
         payment_service=payment_service,
+        user_settings_service=user_settings_service,
     )

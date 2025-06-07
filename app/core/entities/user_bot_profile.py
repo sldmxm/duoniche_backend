@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Dict, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -82,6 +82,12 @@ class UserBotProfile(BaseModel):
     )
     rating_last_calculated_at: Optional[datetime] = Field(
         None, description='Timestamp when the rating was last calculated'
+    )
+
+    settings: Optional[Dict] = Field(
+        None,
+        description='Bot-specific custom settings overrides, '
+        'e.g., exercise distribution.',
     )
 
     @field_validator('bot_id', mode='before')

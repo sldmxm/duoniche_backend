@@ -11,6 +11,7 @@ from app.core.entities.next_action_result import (
 )
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
+from app.core.entities.user_settings import UserSettings
 from app.core.enums import LanguageLevel, UserAction
 from app.core.services.payment import PaymentService
 from app.core.services.user_progress import UserProgressService
@@ -38,6 +39,21 @@ def mock_exercise_service():
 
 
 @pytest.fixture
+def mock_user_setting_service():
+    service = AsyncMock()
+    service.get_effective_settings.return_value = UserSettings(
+        session_exercise_limit=(
+            settings.exercises_in_set * settings.sets_in_session
+        ),
+        min_session_interval_minutes=int(
+            settings.delta_between_sessions.total_seconds() / 60
+        ),
+        exercises_in_set=settings.exercises_in_set,
+    )
+    return service
+
+
+@pytest.fixture
 def mock_user_bot_profile_service():
     service = AsyncMock()
     service.get_or_create.return_value = (
@@ -58,6 +74,12 @@ def mock_user_bot_profile_service():
             last_long_break_reminder_sent_at=None,
         ),
         False,
+    )
+    service.reset_and_start_new_session = AsyncMock(
+        return_value=service.get_or_create.return_value[0]
+    )
+    service.update_session = AsyncMock(
+        return_value=service.get_or_create.return_value[0]
     )
     return service
 
@@ -122,12 +144,14 @@ def user_progress_service(
     mock_exercise_service: AsyncMock,
     mock_user_bot_profile_service: AsyncMock,
     mock_payment_service: AsyncMock,
+    mock_user_setting_service: AsyncMock,
 ):
     return UserProgressService(
         user_service=mock_user_service,
         exercise_service=mock_exercise_service,
         user_bot_profile_service=mock_user_bot_profile_service,
         payment_service=mock_payment_service,
+        user_settings_service=mock_user_setting_service,
     )
 
 
@@ -145,8 +169,9 @@ async def test_get_next_action_when_frozen_offers_payment(
     expected_item_label_key = PaymentMessages.ITEM_LABEL_TIER_1
 
     user_progress_service.user_service.get_by_id.return_value = sample_user
-    service = user_progress_service.user_bot_profile_service
-    service.get_or_create.return_value = (
+    (
+        user_progress_service.user_bot_profile_service.get_or_create
+    ).return_value = (
         sample_user_bot_profile,
         False,
     )
@@ -188,22 +213,36 @@ async def test_get_next_action_when_session_limit_reached_offers_payment(
     sample_user: User,
     sample_user_bot_profile: UserBotProfile,
 ):
-    sample_user_bot_profile.exercises_get_in_session = (
-        settings.exercises_in_set * settings.sets_in_session
+    # Configure UserSettingsService mock for this specific test
+    test_session_limit = settings.exercises_in_set * settings.sets_in_session
+    test_min_interval_minutes = int(
+        settings.delta_between_sessions.total_seconds() / 60
     )
+    (
+        user_progress_service.user_settings_service.get_effective_settings
+    ).return_value = UserSettings(
+        session_exercise_limit=test_session_limit,
+        min_session_interval_minutes=test_min_interval_minutes,
+        exercises_in_set=settings.exercises_in_set,
+    )
+
+    sample_user_bot_profile.exercises_get_in_session = test_session_limit
     sample_user_bot_profile.session_frozen_until = None
     user_language = sample_user_bot_profile.user_language
     expected_payment_amount = 20
     expected_item_label_key = PaymentMessages.ITEM_LABEL_TIER_1
 
     user_progress_service.user_service.get_by_id.return_value = sample_user
-    service = user_progress_service.user_bot_profile_service
-    service.get_or_create.return_value = (
+
+    (
+        user_progress_service.user_bot_profile_service.get_or_create
+    ).return_value = (
         sample_user_bot_profile,
         False,
     )
-    service = user_progress_service.user_bot_profile_service
-    service.update_session.return_value = sample_user_bot_profile
+    (
+        user_progress_service.user_bot_profile_service.update_session
+    ).return_value = sample_user_bot_profile
 
     next_action = await user_progress_service.get_next_action(
         user_id=sample_user.user_id, bot_id=sample_user_bot_profile.bot_id
@@ -226,14 +265,16 @@ async def test_get_next_action_when_session_limit_reached_offers_payment(
         expected_message_key,
         language_code=user_language,
         exercise_num=sample_user_bot_profile.exercises_get_in_session,
-        pause_time=str(settings.delta_between_sessions).split('.')[0],
+        pause_time=str(timedelta(minutes=test_min_interval_minutes)).split(
+            '.'
+        )[0],
     )
     assert next_action.message == expected_message
-    assert next_action.pause == settings.delta_between_sessions
+    assert next_action.pause == timedelta(minutes=test_min_interval_minutes)
 
-    user_progress_service.user_bot_profile_service.update_session.assert_called_once()
-    service = user_progress_service.user_bot_profile_service
-    call_args = service.update_session.call_args[1]
+    prof_serv = user_progress_service
+    prof_serv.user_bot_profile_service.update_session.assert_called_once()
+    call_args = prof_serv.user_bot_profile_service.update_session.call_args[1]
     assert call_args['user_id'] == sample_user.user_id
     assert call_args['bot_id'] == sample_user_bot_profile.bot_id
     assert 'session_frozen_until' in call_args

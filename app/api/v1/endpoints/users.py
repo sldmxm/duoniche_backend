@@ -13,10 +13,14 @@ from app.api.schemas.payments import (
     PaymentSessionUnlockRequest,
     PaymentSessionUnlockResponse,
 )
-from app.api.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.api.schemas.user import (
+    UserCreate,
+    UserResponse,
+    UserUpdate,
+)
 from app.api.schemas.user_preferences import (
     SessionRemindersPreferenceResponse,
-    SessionRemindersPreferenceUpdate,
+    UserPreferencesUpdate,
 )
 from app.api.schemas.user_status import (
     ReportBlockResponse,
@@ -261,6 +265,8 @@ def _create_user_for_response(
         name=user.name,
         telegram_data=user.telegram_data,
         plan=user.plan,
+        status=user.status,
+        status_expires_at=user.status_expires_at,
         cohort=user.cohort,
         user_language=user_bot_profile.user_language,
         language_level=user_bot_profile.language_level.value,
@@ -282,7 +288,7 @@ async def update_session_reminders_preference(
         BotID, Path(description='Bot ID (e.g., Bulgarian, English)')
     ],
     user_id: Annotated[int, Path(description='User ID', ge=1)],
-    preference_data: SessionRemindersPreferenceUpdate,
+    preference_data: UserPreferencesUpdate,
 ):
     user = await user_service.get_by_id(user_id)
     if not user:

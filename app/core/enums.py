@@ -1,6 +1,6 @@
 import random
 from enum import Enum
-from typing import List
+from typing import Dict, List, Optional
 
 
 class ExerciseType(Enum):
@@ -10,21 +10,30 @@ class ExerciseType(Enum):
     STORY_COMPREHENSION = 'story_comprehension'
 
     @classmethod
-    def get_next_type(cls) -> 'ExerciseType':
+    def get_next_type(
+        cls, distribution: Optional[Dict['ExerciseType', float]] = None
+    ) -> 'ExerciseType':
         types: List[ExerciseType] = list(ExerciseType)
+        if distribution:
+            population = []
+            weights = []
+            for ex_type in types:
+                if ex_type.value in distribution:
+                    population.append(ex_type)
+                    weights.append(distribution[ex_type])
+            if population and any(w > 0 for w in weights):
+                return random.choices(population=population, weights=weights)[
+                    0
+                ]
+
+        default_weights = [
+            0.40,
+            0.30,
+            0.10,
+            0.20,
+        ]
         choice = random.choices(
-            population=[
-                0,
-                1,
-                2,
-                3,
-            ],
-            weights=[
-                0.40,
-                0.30,
-                0.10,
-                0.20,
-            ],
+            population=range(len(types)), weights=default_weights
         )[0]
         return types[choice]
 
@@ -78,3 +87,10 @@ class ExerciseStatus(str, Enum):
     AUDIO_GENERATION_ERROR = 'audio_generation_error'
     PROCESSING_ERROR_RETRY = 'processing_error_retry'
     PENDING_ADMIN_REVIEW = 'pending_admin_review'
+
+
+class UserStatus(str, Enum):
+    FREE = 'free'
+    TRIAL = 'trial'
+    PREMIUM = 'premium'
+    CUSTOM = 'custom'

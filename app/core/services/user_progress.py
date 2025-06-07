@@ -13,6 +13,7 @@ from app.core.entities.user_bot_profile import (
     UserBotProfile,
     UserStatusInBot,
 )
+from app.core.entities.user_settings import UserSettings
 from app.core.enums import (
     ExerciseType,
     LanguageLevel,
@@ -23,6 +24,7 @@ from app.core.services.exercise import ExerciseService
 from app.core.services.payment import PaymentService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
+from app.core.services.user_settings import UserSettingsService
 from app.core.texts import Messages, get_text
 from app.metrics import BACKEND_EXERCISE_METRICS, BACKEND_USER_METRICS
 
@@ -36,11 +38,13 @@ class UserProgressService:
         exercise_service: ExerciseService,
         user_bot_profile_service: UserBotProfileService,
         payment_service: PaymentService,
+        user_settings_service: UserSettingsService,
     ):
         self.user_service = user_service
         self.exercise_service = exercise_service
         self.user_bot_profile_service = user_bot_profile_service
         self.payment_service = payment_service
+        self.user_settings_service = user_settings_service
 
     async def get_next_action(self, user_id: int, bot_id: BotID) -> NextAction:
         async def _start_new_session() -> UserBotProfile:
@@ -85,6 +89,14 @@ class UserProgressService:
                 user_id=user_bot_profile.user_id,
                 bot_id=user_bot_profile.bot_id,
             )
+            user_bot_profile.status = UserStatusInBot.ACTIVE
+            user_bot_profile.reason = None
+
+        user_settings = (
+            await self.user_settings_service.get_effective_settings(
+                user_id=user_id, bot_id=bot_id
+            )
+        )
 
         now = datetime.now(timezone.utc)
         today_date = now.date()
@@ -105,6 +117,11 @@ class UserProgressService:
         else:
             new_streak_days = 1
 
+        logger.info(
+            f'Exercise in session: '
+            f' {user_bot_profile.exercises_get_in_session}'
+        )
+
         if user_bot_profile.session_frozen_until is not None:
             if now < user_bot_profile.session_frozen_until:
                 logger.info(
@@ -114,7 +131,7 @@ class UserProgressService:
                 BACKEND_USER_METRICS['frozen_attempts'].labels(
                     cohort=user.cohort,
                     plan=user.plan,
-                    target_language=user_bot_profile.bot_id,
+                    target_language=user_bot_profile.bot_id.value,
                     user_language=user_bot_profile.user_language,
                     language_level=user_bot_profile.language_level.value,
                 ).inc()
@@ -153,24 +170,19 @@ class UserProgressService:
 
         if current_session_time > settings.max_sessions_length:
             user_bot_profile = await _start_new_session()
-            current_session_time = timedelta(0)
-
-        renewed_sets = int(
-            current_session_time.total_seconds()
-            // settings.renewing_set_period.total_seconds()
-        )
-        current_set_limit = max(settings.sets_in_session, renewed_sets)
-        current_exercises_limit = current_set_limit * settings.exercises_in_set
 
         if (
-            current_exercises_limit - user_bot_profile.exercises_get_in_session
-            <= 0
+            user_bot_profile.exercises_get_in_session
+            >= user_settings.session_exercise_limit
         ):
+            session_pause = timedelta(
+                minutes=user_settings.min_session_interval_minutes
+            )
             user_bot_profile = (
                 await self.user_bot_profile_service.update_session(
                     user_id=user.user_id,
                     bot_id=bot_id,
-                    session_frozen_until=now + settings.delta_between_sessions,
+                    session_frozen_until=now + session_pause,
                     wants_session_reminders=None,
                 )
             )
@@ -178,7 +190,7 @@ class UserProgressService:
             BACKEND_USER_METRICS['full_sessions'].labels(
                 cohort=user.cohort,
                 plan=user.plan,
-                target_language=user_bot_profile.bot_id,
+                target_language=user_bot_profile.bot_id.value,
                 user_language=user_bot_profile.user_language,
                 language_level=user_bot_profile.language_level.value,
             ).inc()
@@ -194,9 +206,7 @@ class UserProgressService:
             message_key: Messages
             message_kwargs: dict[str, Any] = {
                 'exercise_num': user_bot_profile.exercises_get_in_session,
-                'pause_time': str(settings.delta_between_sessions).split('.')[
-                    0
-                ],
+                'pause_time': str(session_pause).split('.')[0],
             }
 
             if user_bot_profile.current_streak_days >= 2:
@@ -214,17 +224,21 @@ class UserProgressService:
                     language_code=user_bot_profile.user_language,
                     **message_kwargs,
                 ),
-                pause=settings.delta_between_sessions,
+                pause=session_pause,
                 payment_info=payment_details,
             )
 
-        if user_bot_profile.exercises_get_in_set < settings.exercises_in_set:
+        if (
+            user_bot_profile.exercises_get_in_set
+            < user_settings.exercises_in_set
+        ):
             try:
                 next_exercise = await self._get_next_exercise(
                     user_id=user.user_id,
                     target_language=user_bot_profile.bot_id.value,
                     user_language=user_bot_profile.user_language,
                     language_level=user_bot_profile.language_level,
+                    user_settings=user_settings,
                 )
             except ValueError as e:
                 logger.error(f'Error getting new exercise: {e}')
@@ -235,18 +249,21 @@ class UserProgressService:
                         user_bot_profile.user_language,
                     ),
                 )
-            profile_service = self.user_bot_profile_service
-            user_bot_profile.exercises_get_in_session += 1
-            user_bot_profile.exercises_get_in_set += 1
-            user_bot_profile = await profile_service.update_session(
-                user_id=user.user_id,
-                bot_id=bot_id,
-                exercises_get_in_session=user_bot_profile.exercises_get_in_session,
-                exercises_get_in_set=user_bot_profile.exercises_get_in_set,
-                last_exercise_at=now,
-                last_long_break_reminder_type_sent=None,
-                last_long_break_reminder_sent_at=None,
-                current_streak_days=new_streak_days,
+            user_bot_profile = await (
+                self.user_bot_profile_service.update_session(
+                    user_id=user.user_id,
+                    bot_id=bot_id,
+                    exercises_get_in_session=(
+                        user_bot_profile.exercises_get_in_session + 1
+                    ),
+                    exercises_get_in_set=(
+                        user_bot_profile.exercises_get_in_set + 1
+                    ),
+                    last_exercise_at=now,
+                    last_long_break_reminder_type_sent=None,
+                    last_long_break_reminder_sent_at=None,
+                    current_streak_days=new_streak_days,
+                )
             )
 
             BACKEND_EXERCISE_METRICS['sent'].labels(
@@ -282,15 +299,21 @@ class UserProgressService:
         target_language: str,
         user_language: str,
         language_level: LanguageLevel,
+        user_settings: UserSettings,
     ) -> Exercise:
         language_level = LanguageLevel.get_next_exercise_level(language_level)
         logger.debug(
             f'Next exercise level: {language_level} ' f'for user {user_id}'
         )
-        exercise_type = ExerciseType.get_next_type()
-        logger.debug(f'Next exercise type: {exercise_type} for user {user_id}')
-        topic = ExerciseTopic.get_next_topic()
-        logger.debug(f'Next exercise topic: {topic} for user {user_id}')
+
+        topic = ExerciseTopic.get_topic(
+            exclude_topics=user_settings.exclude_topics
+        )
+        logger.debug(f'Next exercise topic: {topic.value} for user {user_id}')
+
+        exercise_type = ExerciseType.get_next_type(
+            distribution=user_settings.exercise_type_distribution
+        )
 
         exercise = await self.exercise_service.get_next_exercise(
             user_id=user_id,
@@ -302,7 +325,13 @@ class UserProgressService:
         )
 
         if not exercise:
-            logger.warning(f'No suitable exercise found for user {user_id}')
+            logger.warning(
+                f'No suitable exercise found for user {user_id} '
+                f'with criteria: '
+                f'type={exercise_type.value}, '
+                f'topic={topic.value}, '
+                f'level={language_level.value}'
+            )
             raise ValueError(
                 'No suitable exercise found for the provided criteria'
             )

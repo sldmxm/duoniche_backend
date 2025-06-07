@@ -29,6 +29,10 @@ class UserService:
             'username',
             'name',
             'telegram_data',
+            'status',
+            'status_expires_at',
+            'status_source',
+            'custom_settings',
         }
 
         is_changed = False

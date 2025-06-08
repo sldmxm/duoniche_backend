@@ -132,6 +132,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
         await app.state.http_client.aclose()
     if hasattr(app.state, 'async_task_cache') and app.state.async_task_cache:
         app.state.async_task_cache.clear()
+    if hasattr(app.state, 'tts_service') and app.state.tts_service:
+        await app.state.tts_service.close_rest_http_client()
 
     await close_redis_client()
 

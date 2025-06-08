@@ -39,6 +39,7 @@ class Settings(BaseSettings):  # type: ignore
 
     google_api_key: str = ''
     tts_model: str = ''
+    google_tts_proxy_url: str = ''
 
     cloudflare_r2_account_id: str = ''
     cloudflare_r2_access_key_id: str = ''

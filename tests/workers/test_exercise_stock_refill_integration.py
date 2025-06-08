@@ -18,11 +18,10 @@ from app.core.value_objects.exercise import (
 )
 from app.db.models.exercise import (
     Exercise as ExerciseModel,
-)  # Импортируем модель SQLAlchemy
+)
 from app.db.repositories.exercise import SQLAlchemyExerciseRepository
 from app.workers.exercise_stock_refill import generate_and_save_exercise
 
-# Используем pytest_asyncio для асинхронных тестов
 pytest_plugins = ('pytest_asyncio',)
 
 
@@ -48,7 +47,7 @@ async def test_generate_story_comprehension_successful_first_try(
         mock_session_scope.__aexit__.return_value = None
         mock_session_maker.return_value = mock_session_scope
 
-        success = await generate_and_save_exercise(
+        result_tuple = await generate_and_save_exercise(
             user_language=settings.default_user_language,
             target_language=BotID.BG.value,
             exercise_type=ExerciseType.STORY_COMPREHENSION,
@@ -59,7 +58,10 @@ async def test_generate_story_comprehension_successful_first_try(
             http_client=mock_http_client_telegram,
         )
 
-    assert success is True
+    assert result_tuple == (
+        True,
+        False,
+    )  # (published_successfully, tts_failed)
     mock_llm_service_for_story.generate_exercise.assert_called_once()
     mock_tts_service.text_to_speech_ogg.assert_called_once()
     mock_file_storage_service.upload_audio.assert_called_once()
@@ -108,7 +110,7 @@ async def test_generate_story_comprehension_tts_fails(
         mock_session_scope.__aexit__.return_value = None
         mock_session_maker.return_value = mock_session_scope
 
-        success = await generate_and_save_exercise(
+        result_tuple = await generate_and_save_exercise(
             user_language=settings.default_user_language,
             target_language=BotID.BG.value,
             exercise_type=ExerciseType.STORY_COMPREHENSION,
@@ -119,7 +121,10 @@ async def test_generate_story_comprehension_tts_fails(
             http_client=mock_http_client_telegram,
         )
 
-    assert success is False
+    assert result_tuple == (
+        False,
+        True,
+    )  # (published_successfully, tts_failed)
     mock_llm_service_for_story.generate_exercise.assert_called_once()
     mock_tts_service.text_to_speech_ogg.assert_called_once()
     mock_file_storage_service.upload_audio.assert_not_called()
@@ -162,23 +167,28 @@ async def test_generate_story_comprehension_repair_successful(
     broken_exercise_entity = Exercise(
         exercise_id=1,
         exercise_type=ExerciseType.STORY_COMPREHENSION,
-        exercise_language=BotID.BG.value,  # Используем EN для Story
+        exercise_language=BotID.BG.value,
         language_level=LanguageLevel.A1,
         topic=ExerciseTopic.GENERAL,
         exercise_text='Test exercise text',
         status=ExerciseStatus.AUDIO_GENERATION_ERROR,
         data=initial_data,
     )
-    # Используем _to_db_model и session.add для корректного создания
     db_model_to_create = await repo._to_db_model(broken_exercise_entity)
     db_session.add(db_model_to_create)
-    await (
-        db_session.commit()
-    )  # Коммитим, чтобы ID был присвоен и объект был в БД
-    await db_session.refresh(db_model_to_create)  # Обновляем объект из БД
+    await db_session.commit()
+    await db_session.refresh(db_model_to_create)
 
     broken_exercise_id = db_model_to_create.exercise_id
     assert broken_exercise_id is not None
+
+    mock_llm_service_for_story.reset_mock()
+    mock_tts_service.reset_mock()
+    mock_file_storage_service.reset_mock()
+    mock_http_client_telegram.reset_mock()
+    mock_tts_service.text_to_speech_ogg = AsyncMock(
+        return_value=b'fake_ogg_data'
+    )
 
     with patch(
         'app.workers.exercise_stock_refill.async_session_maker'
@@ -188,7 +198,7 @@ async def test_generate_story_comprehension_repair_successful(
         mock_session_scope.__aexit__.return_value = None
         mock_session_maker.return_value = mock_session_scope
 
-        success = await generate_and_save_exercise(
+        result_tuple = await generate_and_save_exercise(
             user_language=settings.default_user_language,
             target_language=BotID.BG.value,
             exercise_type=ExerciseType.STORY_COMPREHENSION,
@@ -199,7 +209,10 @@ async def test_generate_story_comprehension_repair_successful(
             http_client=mock_http_client_telegram,
         )
 
-    assert success is True
+    assert result_tuple == (
+        True,
+        False,
+    )  # (published_successfully, tts_failed)
     mock_llm_service_for_story.generate_exercise.assert_not_called()
     mock_tts_service.text_to_speech_ogg.assert_called_once()
     mock_file_storage_service.upload_audio.assert_called_once()
@@ -243,7 +256,7 @@ async def test_generate_choose_accent_successful(
         mock_session_scope.__aexit__.return_value = None
         mock_session_maker.return_value = mock_session_scope
 
-        success = await generate_and_save_exercise(
+        result_tuple = await generate_and_save_exercise(
             user_language=settings.default_user_language,
             target_language=BotID.BG.value,
             exercise_type=ExerciseType.CHOOSE_ACCENT,
@@ -254,7 +267,10 @@ async def test_generate_choose_accent_successful(
             http_client=mock_http_client_telegram,
         )
 
-    assert success is True
+    assert result_tuple == (
+        True,
+        False,
+    )  # (published_successfully, tts_failed)
     mock_choose_accent_generator.generate.assert_called_once()
     mock_llm_service_for_story.generate_exercise.assert_not_called()
     mock_tts_service.text_to_speech_ogg.assert_not_called()

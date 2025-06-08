@@ -2,7 +2,7 @@ import asyncio
 import logging
 import random
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Tuple
 
 import httpx
 
@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 MIN_EXERCISE_COUNT_TO_GENERATE_NEW = 5
 EXERCISE_REFILL_INTERVAL = 60 * 10
 CHANCE_TO_GENERATE_PERSONA_FOR_TOPIC = 1
+TTS_COOLDOWN_SECONDS = 60 * 60
 
 EXCLUDE_TOPICS = [
     ExerciseTopic.TECH,
@@ -47,6 +48,44 @@ EXCLUDE_TOPICS = [
 ]
 
 exercise_generation_semaphore = asyncio.Semaphore(5)
+
+_tts_last_failure_timestamp: Optional[datetime] = None
+_tts_cooldown_lock = asyncio.Lock()
+
+
+async def is_tts_cooldown_active() -> bool:
+    async with _tts_cooldown_lock:
+        if _tts_last_failure_timestamp:
+            return (
+                datetime.now(timezone.utc) - _tts_last_failure_timestamp
+            ).total_seconds() < TTS_COOLDOWN_SECONDS
+        return False
+
+
+async def set_tts_failure_timestamp():
+    async with _tts_cooldown_lock:
+        global _tts_last_failure_timestamp
+        _tts_last_failure_timestamp = datetime.now(timezone.utc)
+        logger.warning(
+            f'TTS failure detected. Activating cooldown. '
+            f'Last failure set to: {_tts_last_failure_timestamp}',
+        )
+
+
+async def reset_tts_cooldown_if_passed():
+    async with _tts_cooldown_lock:
+        global _tts_last_failure_timestamp
+        if _tts_last_failure_timestamp and (
+            (
+                datetime.now(timezone.utc) - _tts_last_failure_timestamp
+            ).total_seconds()
+            >= TTS_COOLDOWN_SECONDS
+        ):
+            logger.info(
+                'TTS cooldown period has passed. '
+                'Resetting failure timestamp.',
+            )
+            _tts_last_failure_timestamp = None
 
 
 async def get_saved_audio_url(
@@ -66,7 +105,9 @@ async def get_saved_audio_url(
     )
 
     stored_audio_url = await file_storage_service.upload_audio(
-        file_data=ogg_audio_data, file_name=file_name, content_type='audio/ogg'
+        file_data=ogg_audio_data,
+        file_name=file_name,
+        content_type='audio/ogg',
     )
     if stored_audio_url:
         logger.info(f'Audio uploaded to R2: {stored_audio_url}')
@@ -195,12 +236,13 @@ async def _try_to_regenerate_audio_for_exercise(
     file_storage_service: R2FileStorageService,
     http_client: httpx.AsyncClient,
     exercise_repository: SQLAlchemyExerciseRepository,
-) -> bool:
+) -> Tuple[bool, bool]:
     """
     Tries to regenerate and save audio for an existing exercise.
     Updates the exercise status and data in the DB.
     Returns True if successfully published, False otherwise.
     """
+    tts_failed_this_attempt = False
     if not isinstance(exercise_to_retry.data, StoryComprehensionExerciseData):
         logger.warning(
             f'Cannot regenerate audio for non-story exercise '
@@ -211,7 +253,7 @@ async def _try_to_regenerate_audio_for_exercise(
                 exercise_id=exercise_to_retry.exercise_id,
                 new_status=ExerciseStatus.AUDIO_GENERATION_ERROR,
             )
-        return False
+        return False, tts_failed_this_attempt
 
     logger.info(
         f'Attempting to regenerate audio for exercise ID: '
@@ -221,7 +263,7 @@ async def _try_to_regenerate_audio_for_exercise(
     (
         audio_url_opt,
         telegram_file_id_opt,
-        audio_success,
+        audio_generated_successfully,
     ) = await _generate_and_upload_audio(
         exercise_data=exercise_to_retry.data,
         target_language=target_language,
@@ -234,14 +276,17 @@ async def _try_to_regenerate_audio_for_exercise(
     )
 
     current_status = ExerciseStatus.PUBLISHED
-    if audio_success and audio_url_opt and telegram_file_id_opt:
+    if audio_generated_successfully and audio_url_opt and telegram_file_id_opt:
         exercise_to_retry.data.audio_url = audio_url_opt
         exercise_to_retry.data.audio_telegram_file_id = telegram_file_id_opt
     else:
+        if not audio_generated_successfully:
+            tts_failed_this_attempt = True
         current_status = ExerciseStatus.AUDIO_GENERATION_ERROR
         logger.error(
             f'Audio regeneration failed for exercise '
-            f'{exercise_to_retry.exercise_id}.'
+            f'{exercise_to_retry.exercise_id}. '
+            f'TTS failed: {tts_failed_this_attempt}'
         )
 
     if exercise_to_retry.exercise_id is not None:
@@ -260,20 +305,20 @@ async def _try_to_regenerate_audio_for_exercise(
                 f'Successfully regenerated audio and published exercise '
                 f'{exercise_to_retry.exercise_id}'
             )
-            return True
+            return True, tts_failed_this_attempt
         else:
             logger.error(
                 f'Failed to publish exercise {exercise_to_retry.exercise_id} '
                 f'after audio regeneration attempt. '
                 f'Final status: {current_status}'
             )
-            return False
+            return False, tts_failed_this_attempt
     else:
         logger.error(
             'Cannot update exercise status for exercise without ID '
             'after audio regeneration attempt.'
         )
-        return False
+        return False, tts_failed_this_attempt
 
 
 async def _repair_broken_audio_for_exercise(
@@ -282,7 +327,13 @@ async def _repair_broken_audio_for_exercise(
     tts_service: GoogleTTSService,
     file_storage_service: R2FileStorageService,
     http_client: httpx.AsyncClient,
-) -> bool:
+) -> Tuple[bool, bool]:
+    if await is_tts_cooldown_active():
+        logger.info(
+            'TTS cooldown active, skipping repair attempt for broken audio.',
+        )
+        return False, False
+
     async with async_session_maker() as session:
         exercise_repository = SQLAlchemyExerciseRepository(session)
         getter = exercise_repository.get_and_lock_exercise_with_audio_error
@@ -295,7 +346,10 @@ async def _repair_broken_audio_for_exercise(
                 f'Found exercise {exercise_to_retry.exercise_id} '
                 f'to retry audio generation.'
             )
-            success = await _try_to_regenerate_audio_for_exercise(
+            (
+                published_successfully,
+                tts_failed,
+            ) = await _try_to_regenerate_audio_for_exercise(
                 exercise_to_retry=exercise_to_retry,
                 target_language=target_language,
                 tts_service=tts_service,
@@ -304,9 +358,9 @@ async def _repair_broken_audio_for_exercise(
                 exercise_repository=exercise_repository,
             )
             await session.commit()
-            return success
+            return published_successfully, tts_failed
         logger.info('No exercise found to retry audio generation.')
-        return False
+        return False, False
 
 
 async def generate_and_save_exercise(
@@ -318,11 +372,12 @@ async def generate_and_save_exercise(
     tts_service: GoogleTTSService,
     file_storage_service: R2FileStorageService,
     http_client: httpx.AsyncClient,
-) -> bool:
+) -> Tuple[bool, bool]:
+    tts_failed_this_generation = False
     try:
         async with exercise_generation_semaphore:
             language_level = LanguageLevel.get_next_exercise_level(
-                settings.default_language_level
+                settings.default_language_level,
             )
             topic = ExerciseTopic.get_topic_for_generation(
                 exclude_topics=EXCLUDE_TOPICS,
@@ -348,25 +403,30 @@ async def generate_and_save_exercise(
             )
 
             if exercise_type == ExerciseType.STORY_COMPREHENSION:
-                success = await _repair_broken_audio_for_exercise(
+                (
+                    repaired_and_published,
+                    tts_failed_repair,
+                ) = await _repair_broken_audio_for_exercise(
                     exercise_type=exercise_type,
                     target_language=target_language,
                     tts_service=tts_service,
                     file_storage_service=file_storage_service,
                     http_client=http_client,
                 )
-                if success:
+                if tts_failed_repair:
+                    tts_failed_this_generation = True
+                if repaired_and_published:
                     logger.info(
                         f'Successfully repaired audio for a '
                         f'STORY_COMPREHENSION exercise for {target_language}.'
                     )
-                    return True
+                    return True, tts_failed_this_generation
 
             if exercise_type == ExerciseType.CHOOSE_ACCENT:
                 if target_language == BotID.BG.value:
                     generator = choose_accent_generator
                     exercise, answer = await generator.generate(
-                        user_language=settings.default_user_language
+                        user_language=settings.default_user_language,
                     )
                     created_by = 'scrapper'
                 else:
@@ -374,7 +434,18 @@ async def generate_and_save_exercise(
                         f'Skipping CHOOSE_ACCENT generation for non-BG '
                         f'language: {target_language}'
                     )
-                    return False
+                    return False, tts_failed_this_generation
+            elif (
+                exercise_type == ExerciseType.STORY_COMPREHENSION
+                and await is_tts_cooldown_active()
+            ):
+                logger.warning(
+                    f'Skipping STORY_COMPREHENSION exercise generation'
+                    f'(Topic: {topic.value}, '
+                    f'Level: {language_level.value}) '
+                    f'due to TTS cooldown.'
+                )
+                return False, tts_failed_this_generation
             else:
                 exercise, answer = await llm_service.generate_exercise(
                     user_language=user_language,
@@ -387,7 +458,8 @@ async def generate_and_save_exercise(
                 created_by = 'LLM'
 
                 if exercise.status == ExerciseStatus.PUBLISHED and isinstance(
-                    exercise.data, StoryComprehensionExerciseData
+                    exercise.data,
+                    StoryComprehensionExerciseData,
                 ):
                     emotion_instruction = None
                     if persona and persona.emotion_instruction_for_tts:
@@ -397,7 +469,7 @@ async def generate_and_save_exercise(
                     (
                         audio_url_opt,
                         telegram_file_id_opt,
-                        audio_success,
+                        audio_generated_successfully,
                     ) = await _generate_and_upload_audio(
                         exercise_data=exercise.data,
                         target_language=target_language,
@@ -410,7 +482,7 @@ async def generate_and_save_exercise(
                     )
 
                     if (
-                        audio_success
+                        audio_generated_successfully
                         and audio_url_opt
                         and telegram_file_id_opt
                     ):
@@ -419,12 +491,14 @@ async def generate_and_save_exercise(
                             telegram_file_id_opt
                         )
                     else:
+                        if not audio_generated_successfully:
+                            tts_failed_this_generation = True
                         exercise.status = ExerciseStatus.AUDIO_GENERATION_ERROR
                         logger.error(
-                            f'Audio generation/upload failed '
-                            f'for NEW exercise. '
-                            f'Topic: {topic.value}, '
-                            f'Level: {language_level.value}'
+                            f'Audio generation/upload failed for '
+                            f'NEW exercise. Topic: {topic.value}, '
+                            f'Level: {language_level.value}. '
+                            f'TTS failed: {tts_failed_this_generation}'
                         )
 
             if exercise and answer:
@@ -468,18 +542,21 @@ async def generate_and_save_exercise(
                     f'{exercise.exercise_id} '
                     f'with status: {exercise.status.value}'
                 )
-                return exercise.status == ExerciseStatus.PUBLISHED
+                return (
+                    exercise.status == ExerciseStatus.PUBLISHED,
+                    tts_failed_this_generation,
+                )
             else:
                 logger.warning(
                     f'Skipping save for exercise type '
                     f'{exercise_type.value} for {target_language} '
                     f'as it was not generated (exercise or answer is None).'
                 )
-                return False
+                return False, tts_failed_this_generation
 
     except ChooseAccentGenerationError as e:
         logger.warning(f'Failed to generate CHOOSE_ACCENT exercise: {e}')
-        return False
+        return False, False
     except Exception as e:
         logger.error(
             f'Error during exercise generation '
@@ -488,7 +565,7 @@ async def generate_and_save_exercise(
             f'{e}',
             exc_info=True,
         )
-        return False
+        return False, False
 
 
 async def exercise_stock_refill(
@@ -497,7 +574,8 @@ async def exercise_stock_refill(
     tts_service: GoogleTTSService,
     file_storage_service: R2FileStorageService,
     http_client: httpx.AsyncClient,
-):
+) -> bool:
+    any_tts_failure_in_this_cycle = False
     try:
         tasks = []
         async with async_session_maker() as session:
@@ -515,7 +593,8 @@ async def exercise_stock_refill(
 
                 for ex_type in all_exercise_types:
                     count = available_counts_by_lang_type.get(lang, {}).get(
-                        ex_type.value, 0
+                        ex_type.value,
+                        0,
                     )
 
                     logger.info(
@@ -548,7 +627,6 @@ async def exercise_stock_refill(
                                     http_client=http_client,
                                 )
                             )
-
             if tasks:
                 logger.info(
                     f'Starting generation of {len(tasks)} '
@@ -556,25 +634,39 @@ async def exercise_stock_refill(
                 )
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 successful_generations = 0
-                for i, result in enumerate(results):
-                    if isinstance(result, Exception):
+                for i, result_tuple_or_exc in enumerate(results):
+                    if isinstance(result_tuple_or_exc, Exception):
                         logger.warning(
                             f'Exercise generation task {i} in batch '
                             f'resulted in an error (see previous logs): '
-                            f'{type(result).__name__}'
+                            f'{type(result_tuple_or_exc).__name__}'
                         )
-                    elif result is True:
-                        successful_generations += 1
+                    elif isinstance(result_tuple_or_exc, tuple):
+                        published, tts_failed = result_tuple_or_exc
+                        if published:
+                            successful_generations += 1
+                        if tts_failed:
+                            any_tts_failure_in_this_cycle = True
+                    else:
+                        logger.error(
+                            f'Unexpected result type from '
+                            f'generate_and_save_exercise: '
+                            f'{type(result_tuple_or_exc)}',
+                        )
+
                 logger.info(
-                    f'Finished generation batch. Successful: '
-                    f'{successful_generations}/{len(tasks)}'
+                    f'Finished generation batch. '
+                    f'Successful: {successful_generations}/{len(tasks)}. '
+                    f'TTS failures detected in this cycle: '
+                    f'{any_tts_failure_in_this_cycle}',
                 )
 
     except Exception as e:
         logger.error(
-            f'Error in exercise_stock_refill ' f'main logic: {e}',
+            f'Error in exercise_stock_refill main logic: {e}',
             exc_info=True,
         )
+    return any_tts_failure_in_this_cycle
 
 
 async def exercise_stock_refill_loop(
@@ -586,27 +678,35 @@ async def exercise_stock_refill_loop(
     stop_event: asyncio.Event,
 ):
     logger.info('Exercise stock refill worker started.')
+
     try:
         while not stop_event.is_set():
             logger.info('Starting exercise refill cycle...')
+            await reset_tts_cooldown_if_passed()
+
             try:
-                await exercise_stock_refill(
+                tts_failure_detected_in_cycle = await exercise_stock_refill(
                     llm_service=llm_service,
                     choose_accent_generator=choose_accent_generator,
                     tts_service=tts_service,
                     file_storage_service=file_storage_service,
                     http_client=http_client,
                 )
+                if tts_failure_detected_in_cycle:
+                    await set_tts_failure_timestamp()
+
             except Exception as e:
                 logger.error(
-                    f'Exercise refill cycle failed: {e}', exc_info=True
+                    f'Exercise refill cycle failed: {e}',
+                    exc_info=True,
                 )
 
             if stop_event.is_set():
                 break
             try:
                 await asyncio.wait_for(
-                    stop_event.wait(), timeout=EXERCISE_REFILL_INTERVAL
+                    stop_event.wait(),
+                    timeout=EXERCISE_REFILL_INTERVAL,
                 )
                 logger.info(
                     'Exercise stock refill: stop event '

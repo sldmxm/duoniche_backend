@@ -76,7 +76,9 @@ class ExerciseTopic(Enum):
                 return random.choice(available_topics)
 
             return random.choices(
-                valid_topics_for_weighting, weights=weights, k=1
+                valid_topics_for_weighting,
+                weights=weights,
+                k=1,
             )[0]
         else:
             return random.choice(available_topics)
@@ -175,6 +177,7 @@ PERSONAS: dict[str, Persona] = {
         emotion='embarrassed',
         motivation='is looking for help, afraid of looking stupid',
         emotion_instruction_for_tts='Say hesitantly and a little shyly:',
+        voice_for_tts='Puck',
     ),
     'Irritated Customer': Persona(
         name='Irritated Customer',
@@ -182,6 +185,7 @@ PERSONAS: dict[str, Persona] = {
         emotion='irritated',
         motivation='believes they are being deceived',
         emotion_instruction_for_tts='Say with irritation:',
+        voice_for_tts='Sadaltager',
     ),
     'Friendly Barista': Persona(
         name='Friendly Barista',
@@ -195,6 +199,7 @@ PERSONAS: dict[str, Persona] = {
         emotion='suspicious',
         communication_style='distrustful',
         emotion_instruction_for_tts='Say suspiciously:',
+        voice_for_tts='Umbriel',
     ),
     'Rushing Student': Persona(
         name='Rushing Student',
@@ -202,6 +207,7 @@ PERSONAS: dict[str, Persona] = {
         motivation='in a big hurry',
         emotion_instruction_for_tts='Say a little bit quickly and a bit '
         'breathlessly:',
+        voice_for_tts='Schedar',
     ),
     'Apathetic Taxi Driver': Persona(
         name='Apathetic Taxi Driver',
@@ -209,18 +215,21 @@ PERSONAS: dict[str, Persona] = {
         emotion='apathy, tired of life',
         communication_style='laconic',
         emotion_instruction_for_tts='Say apathetically and monotonously:',
+        voice_for_tts='Enceladus',
     ),
     'Demanding Client': Persona(
         name='Demanding Client',
         role='client',
         communication_style='demanding, laconic',
         emotion_instruction_for_tts='Say demandingly and clearly:',
+        voice_for_tts='Fenrir',
     ),
     'Ironic Colleague': Persona(
         name='Ironic Colleague',
         role='colleague',
         communication_style='ironic, sarcastic',
         emotion_instruction_for_tts='Say with irony:',
+        voice_for_tts='Pulcherrima',
     ),
     'Polite Waiter': Persona(
         name='Polite Waiter',
@@ -228,18 +237,11 @@ PERSONAS: dict[str, Persona] = {
         communication_style='extremely polite',
         motivation='wants to get good tips',
         emotion_instruction_for_tts='Say very politely and courteously:',
+        voice_for_tts='Rasalgethi',
     ),
-    # 'Tired Cashier': Persona(
-    #     name='Tired Cashier',
-    #     role='cashier',
-    #     emotion='tired',
-    #     motivation='wants to finish the shift quickly',
-    #     emotion_instruction_for_tts='Say wearily:',
-    # ),
 }
 
 PERSONA_TOPICS: dict[str, set[str]] = {
-    # 'Tired Cashier': {'SERVICE', 'DAILY_LIFE'},
     'Embarrassed Tourist': {'LEISURE', 'HEALTH_EMERGENCY', 'SERVICE'},
     'Irritated Customer': {'SERVICE', 'NEUTRAL', 'DAILY_LIFE'},
     'Friendly Barista': {'SERVICE', 'NEUTRAL', 'LEISURE'},

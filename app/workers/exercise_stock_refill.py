@@ -168,6 +168,7 @@ async def _generate_and_upload_audio(
     file_storage_service: R2FileStorageService,
     http_client: httpx.AsyncClient,
     emotion_instruction: Optional[str] = None,
+    voice_name: Optional[str] = None,
 ) -> tuple[Optional[str], Optional[str], bool]:
     """
     Generates OGG audio from text, uploads it to R2 and Telegram.
@@ -185,8 +186,10 @@ async def _generate_and_upload_audio(
         )
         return None, None, False
 
-    VOICE_NAMES = ['Leda', 'Enceladus']
-    voice_name = random.choice(VOICE_NAMES)
+    DEFAULT_VOICE_NAMES = ['Leda', 'Enceladus']
+    if not voice_name:
+        voice_name = random.choice(DEFAULT_VOICE_NAMES)
+
     ogg_audio_data = await tts_service.text_to_speech_ogg(
         text=exercise_data.content_text,
         voice_name=voice_name,
@@ -462,10 +465,15 @@ async def generate_and_save_exercise(
                     StoryComprehensionExerciseData,
                 ):
                     emotion_instruction = None
-                    if persona and persona.emotion_instruction_for_tts:
-                        emotion_instruction = (
-                            persona.emotion_instruction_for_tts
-                        )
+                    voice_for_tts = None
+                    if persona:
+                        if persona.emotion_instruction_for_tts:
+                            emotion_instruction = (
+                                persona.emotion_instruction_for_tts
+                            )
+                        if persona.voice_for_tts:
+                            voice_for_tts = persona.voice_for_tts
+
                     (
                         audio_url_opt,
                         telegram_file_id_opt,
@@ -479,6 +487,7 @@ async def generate_and_save_exercise(
                         file_storage_service=file_storage_service,
                         http_client=http_client,
                         emotion_instruction=emotion_instruction,
+                        voice_name=voice_for_tts,
                     )
 
                     if (

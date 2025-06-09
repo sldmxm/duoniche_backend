@@ -15,7 +15,7 @@ from app.core.enums import (
     ExerciseType,
     LanguageLevel,
 )
-from app.core.generation.config import ExerciseTopic
+from app.core.generation.config import PERSONAS, ExerciseTopic
 from app.core.generation.persona import Persona
 from app.core.generation.selector import select_persona_for_topic
 from app.core.value_objects.exercise import StoryComprehensionExerciseData
@@ -263,6 +263,15 @@ async def _try_to_regenerate_audio_for_exercise(
         f'{exercise_to_retry.exercise_id}'
     )
 
+    emotion_instruction = None
+    voice_for_tts = None
+    if exercise_to_retry.persona:
+        persona = PERSONAS.get(exercise_to_retry.persona)
+        if persona and persona.emotion_instruction_for_tts:
+            emotion_instruction = persona.emotion_instruction_for_tts
+        if persona and persona.voice_for_tts:
+            voice_for_tts = persona.voice_for_tts
+
     (
         audio_url_opt,
         telegram_file_id_opt,
@@ -275,7 +284,8 @@ async def _try_to_regenerate_audio_for_exercise(
         tts_service=tts_service,
         file_storage_service=file_storage_service,
         http_client=http_client,
-        emotion_instruction=None,
+        emotion_instruction=emotion_instruction,
+        voice_name=voice_for_tts,
     )
 
     current_status = ExerciseStatus.PUBLISHED
@@ -511,6 +521,9 @@ async def generate_and_save_exercise(
                         )
 
             if exercise and answer:
+                if persona:
+                    exercise.persona = persona.name
+
                 exercise_details_log = (
                     f'Generated exercise params: \n{generation_params_log}'
                     f'Generated Exercise Details:\n'

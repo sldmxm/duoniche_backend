@@ -39,6 +39,7 @@ class Exercise(Base):
         server_default=ExerciseStatus.PUBLISHED.value,
         index=True,
     )
+    persona: Mapped[str] = mapped_column(String(50), nullable=True)
     comments: Mapped[str] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(

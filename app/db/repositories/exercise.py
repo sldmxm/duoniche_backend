@@ -42,6 +42,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
             topic=exercise.topic.value,
             exercise_text=exercise.exercise_text,
             status=exercise.status,
+            persona=exercise.persona,
             data=exercise.data.model_dump(),
         )
 

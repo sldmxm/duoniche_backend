@@ -32,6 +32,9 @@ class Exercise(BaseModel):
     status: ExerciseStatus = Field(
         default=ExerciseStatus.PUBLISHED, description='Status of the exercise'
     )
+    persona: Optional[str] = Field(
+        default=None, description='Persona of the exercise'
+    )
     comments: Optional[str] = Field(
         default=None, description='Exercise comments'
     )

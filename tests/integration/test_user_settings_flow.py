@@ -42,6 +42,7 @@ async def setup_user_and_profile(
     await user_bot_profile_service.reset_and_start_new_session(
         user_id=db_user.user_id, bot_id=bot_id
     )
+    # Re-fetch to ensure session data is fresh after reset
     user_bot_profile = await user_bot_profile_service.get(
         db_user.user_id, bot_id
     )
@@ -109,7 +110,7 @@ async def test_premium_plan_session_limit_via_custom_settings(
     session_limit = 3
     custom_user_settings_values = {
         'session_exercise_limit': session_limit,
-        'min_session_interval_minutes': 0,
+        'min_session_interval_minutes': 0,  # Premium might have 0 wait
         'exercises_in_set': session_limit + 1,  # Ensure set limit is higher
     }
 
@@ -157,7 +158,7 @@ async def test_user_settings_exclude_topics_via_custom_settings(
         'session_exercise_limit': 10,
         'min_session_interval_minutes': 10,
         'exercises_in_set': 2,
-        'exclude_topics': [excluded_topic.value],
+        'exclude_topics': [excluded_topic.value],  # MODIFIED HERE
     }
 
     db_user, _ = await setup_user_and_profile(
@@ -171,7 +172,7 @@ async def test_user_settings_exclude_topics_via_custom_settings(
     )
 
     generated_topics = set()
-    for _ in range(5):
+    for _ in range(5):  # Request a few exercises
         response = await client.get(
             f'/api/v1/users/{db_user.user_id}/bots/{bot_id.value}/next-action/'
         )
@@ -184,8 +185,12 @@ async def test_user_settings_exclude_topics_via_custom_settings(
             )
         elif (
             action_data['action'] == UserAction.congratulations_and_wait.value
-        ):
+        ):  # Stop if session limit reached
             break
+        # Handle praise_and_next_set if necessary,
+        # or ensure enough exercises are generated before limit
+        elif action_data['action'] == UserAction.praise_and_next_set.value:
+            continue
 
     assert excluded_topic not in generated_topics
     assert len(generated_topics) > 0
@@ -201,6 +206,7 @@ async def test_user_settings_exercise_type_distribution_via_custom_settings(
     telegram_id = 'type_dist_user_tg'
     bot_id = BotID.BG
 
+    # MODIFIED HERE: Use .value for enum keys
     specific_distribution_values = {ExerciseType.FILL_IN_THE_BLANK.value: 1.0}
     for ex_type in ExerciseType:
         if ex_type != ExerciseType.FILL_IN_THE_BLANK:
@@ -224,7 +230,7 @@ async def test_user_settings_exercise_type_distribution_via_custom_settings(
     )
 
     generated_exercise_types = set()
-    for _ in range(5):
+    for _ in range(5):  # Request a few exercises
         response = await client.get(
             f'/api/v1/users/{db_user.user_id}/bots/{bot_id.value}/next-action/'
         )
@@ -237,8 +243,10 @@ async def test_user_settings_exercise_type_distribution_via_custom_settings(
             )
         elif (
             action_data['action'] == UserAction.congratulations_and_wait.value
-        ):
+        ):  # Stop if session limit reached
             break
+        elif action_data['action'] == UserAction.praise_and_next_set.value:
+            continue
 
     assert len(generated_exercise_types) > 0
     for ex_type in generated_exercise_types:

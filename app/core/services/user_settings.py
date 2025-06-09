@@ -8,7 +8,7 @@ from app.core.entities.user_settings import UserSettings
 from app.core.enums import UserStatus
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
-from app.core.services.user_settings_templates import (
+from app.core.user_settings_templates import (
     FREE_PLAN_SETTINGS,
     PREMIUM_PLAN_SETTINGS,
     TRIAL_PLAN_SETTINGS,

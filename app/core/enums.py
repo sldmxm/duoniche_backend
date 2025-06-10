@@ -1,6 +1,9 @@
+import logging
 import random
 from enum import Enum
 from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class ExerciseType(Enum):
@@ -13,29 +16,67 @@ class ExerciseType(Enum):
     def get_next_type(
         cls, distribution: Optional[Dict['ExerciseType', float]] = None
     ) -> 'ExerciseType':
-        types: List[ExerciseType] = list(ExerciseType)
+        """
+        Selects the next exercise type based on the provided distribution.
+        If distribution is None, empty, or invalid,
+        falls back to default weights.
+        """
         if distribution:
             population = []
             weights = []
-            for ex_type in types:
-                if ex_type.value in distribution:
+            for ex_type, weight in distribution.items():
+                if isinstance(ex_type, cls):
                     population.append(ex_type)
-                    weights.append(distribution[ex_type])
-            if population and any(w > 0 for w in weights):
-                return random.choices(population=population, weights=weights)[
-                    0
-                ]
+                    weights.append(weight)
+                else:
+                    logger.warning(
+                        f'Invalid key type in exercise type distribution: '
+                        f'{type(ex_type).__name__}. Expected {cls.__name__}.'
+                    )
 
+            if population and sum(weights) > 0:
+                try:
+                    return random.choices(
+                        population=population, weights=weights
+                    )[0]
+                except ValueError as e:
+                    logger.error(
+                        f'ValueError in random.choices with provided '
+                        f'distribution: {distribution}. Error: {e}'
+                    )
+                    pass
+            elif population:
+                logger.warning(
+                    f'Provided exercise type distribution has non-positive '
+                    f'weights or sums to zero: {distribution}. '
+                    f'Falling back to default.'
+                )
+                pass
+            else:
+                logger.warning(
+                    f'Provided exercise type distribution is empty or '
+                    f'contains no valid keys: {distribution}. '
+                    f'Falling back to default.'
+                )
+                pass
+
+        types: List[ExerciseType] = list(ExerciseType)
         default_weights = [
-            0.40,
-            0.30,
-            0.10,
-            0.20,
+            0.40,  # FILL_IN_THE_BLANK
+            0.30,  # CHOOSE_SENTENCE
+            0.10,  # CHOOSE_ACCENT
+            0.20,  # STORY_COMPREHENSION
         ]
-        choice = random.choices(
-            population=range(len(types)), weights=default_weights
-        )[0]
-        return types[choice]
+        if len(default_weights) != len(types):
+            logger.error(
+                'Default weights list length does not match '
+                'ExerciseType count! Using random choice.'
+            )
+            return random.choice(types)
+
+        logger.info('Using default exercise type distribution.')
+        choice = random.choices(population=types, weights=default_weights)[0]
+        return choice
 
 
 class ExerciseUiTemplates(Enum):

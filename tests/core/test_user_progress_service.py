@@ -158,7 +158,7 @@ async def test_get_next_action_returns_new_exercise(
         min_session_interval_minutes=60,
         exercises_in_set=5,
         exercise_type_distribution=None,
-        allowed_topics=None,
+        exclude_topics=None,
     )
     user_progress_service.user_settings_service.get_effective_settings = (
         AsyncMock(return_value=test_user_settings)

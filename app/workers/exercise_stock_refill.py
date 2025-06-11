@@ -272,11 +272,17 @@ async def _try_to_regenerate_audio_for_exercise(
     emotion_instruction = None
     voice_for_tts = None
     if exercise_to_retry.persona:
-        persona = PERSONAS.get(exercise_to_retry.persona)
-        if persona and persona.emotion_instruction_for_tts:
-            emotion_instruction = persona.emotion_instruction_for_tts
-        if persona and persona.voice_for_tts:
-            voice_for_tts = persona.voice_for_tts
+        persona_obj = PERSONAS.get(exercise_to_retry.persona)
+        if persona_obj:
+            if persona_obj.emotion_instruction_for_tts:
+                emotion_instruction = persona_obj.emotion_instruction_for_tts
+            if persona_obj.voice_for_tts:
+                voice_for_tts = persona_obj.voice_for_tts
+        else:
+            logger.warning(
+                f"Persona name '{exercise_to_retry.persona}' "
+                f'found in exercise but not in PERSONAS config.'
+            )
 
     (
         audio_url_opt,
@@ -393,6 +399,7 @@ async def generate_and_save_exercise(
     http_client: httpx.AsyncClient,
 ) -> Tuple[bool, bool]:
     tts_failed_this_generation = False
+
     try:
         async with exercise_generation_semaphore:
             language_level = LanguageLevel.get_next_exercise_level(
@@ -459,12 +466,12 @@ async def generate_and_save_exercise(
                 and await is_tts_cooldown_active()
             ):
                 logger.warning(
-                    f'Skipping STORY_COMPREHENSION exercise generation'
+                    f'Skipping STORY_COMPREHENSION exercise generation '
                     f'(Topic: {topic.value}, '
                     f'Level: {language_level.value}) '
                     f'due to TTS cooldown.'
                 )
-                return False, tts_failed_this_generation
+                return False, False
             else:
                 exercise, answer = await llm_service.generate_exercise(
                     user_language=user_language,
@@ -542,6 +549,10 @@ async def generate_and_save_exercise(
                     f'  Data: {exercise.data.model_dump_json(indent=2)}\n'
                     f'  Correct Answer: {answer.model_dump_json(indent=2)}'
                 )
+                if exercise.comments:
+                    exercise_details_log += (
+                        f'\n  Comments: ' f'{exercise.comments}'
+                    )
                 logger.info(exercise_details_log)
 
                 async with async_session_maker() as session:
@@ -593,7 +604,7 @@ async def generate_and_save_exercise(
             f'{e}',
             exc_info=True,
         )
-        return False, False
+        return False, tts_failed_this_generation
 
 
 async def exercise_stock_refill(

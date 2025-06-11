@@ -86,6 +86,8 @@ def mock_exercise_and_answer():
         text=exercise.exercise_text,
         options=exercise.data.words,
         correct_answer=answer.words[0],
+        correct_options=[answer.words[0]],
+        incorrect_options=answer.words[1:],
         exercise_type=exercise.exercise_type,
         language_level=exercise.language_level,
     )

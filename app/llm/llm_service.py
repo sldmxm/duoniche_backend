@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from typing import Optional, Tuple
 
 from app.core.entities.exercise import Exercise
@@ -87,6 +88,22 @@ class LLMService(BaseLLMService, LLMProvider):
             except RejectedByAssessor as e:
                 logger.warning(f'Exercise rejected by assessor {e}')
                 new_exercise.status = ExerciseStatus.REJECTED_BY_ASSESSOR
+                timestamp = datetime.now(timezone.utc).strftime(
+                    '%Y-%m-%d %H:%M:%S UTC'
+                )
+                issues_str = (
+                    ', '.join(e.issues)
+                    if e.issues
+                    else 'No specific issues provided by LLM.'
+                )
+                comment_log_entry = (
+                    f'Rejected by Quality Assessor at {timestamp}\n'
+                    f'  Assessor Issues: {issues_str}'
+                )
+                if new_exercise.comments:
+                    new_exercise.comments += f'\n---\n{comment_log_entry}'
+                else:
+                    new_exercise.comments = comment_log_entry
 
         BACKEND_LLM_METRICS['exercises_created'].labels(
             exercise_type=exercise_type.value,

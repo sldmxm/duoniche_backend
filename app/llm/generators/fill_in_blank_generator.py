@@ -30,12 +30,12 @@ class FillInTheBlankExerciseLLMOutput(BaseModel):
     )
     correct_words: list[str] = Field(
         description=(
-            'A list of words that correctly fill the blanks, in order.'
+            'A list of SINGLE words that correctly fill the blanks, in order.'
         )
     )
     incorrect_options: list[str] = Field(
         description=(
-            'A list of incorrect word options designed as distractors. '
+            'A list of incorrect SINGLE word options designed as distractors. '
             'These should make the sentence grammatically wrong or '
             'semantically absurd when used in the blanks. '
             'Must use {exercise_language} alphabet only.'
@@ -143,6 +143,8 @@ class FillInTheBlankGenerator(ExerciseGenerator):
             correct_answer=exercise.data.get_answered_by_user_exercise_text(
                 correct_answer
             ),
+            correct_options=llm_output.correct_words,
+            incorrect_options=llm_output.incorrect_options,
             exercise_type=ExerciseType.FILL_IN_THE_BLANK,
             language_level=language_level,
         )

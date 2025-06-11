@@ -143,6 +143,8 @@ class StoryComprehensionGenerator(ExerciseGenerator):
             f'Task: {exercise.exercise_text}',
             options=options,
             correct_answer=llm_output.correct_statement,
+            correct_options=[llm_output.correct_statement],
+            incorrect_options=llm_output.incorrect_statements,
             exercise_type=ExerciseType.STORY_COMPREHENSION,
             language_level=language_level,
         )

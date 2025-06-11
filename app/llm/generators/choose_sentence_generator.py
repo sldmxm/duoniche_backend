@@ -127,6 +127,8 @@ class ChooseSentenceGenerator(ExerciseGenerator):
             text=exercise.exercise_text,
             options=options,
             correct_answer=llm_output.correct_sentence,
+            correct_options=[llm_output.correct_sentence],
+            incorrect_options=llm_output.incorrect_sentences,
             exercise_type=ExerciseType.CHOOSE_SENTENCE,
             language_level=language_level,
         )

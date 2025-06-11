@@ -2,7 +2,6 @@ import pytest
 
 from app.config import settings
 from app.core.entities.exercise import Exercise
-from app.core.entities.user import User
 from app.core.enums import ExerciseType, LanguageLevel
 from app.core.generation.config import ExerciseTopic
 from app.core.value_objects.answer import (
@@ -20,20 +19,10 @@ llm_service = LLMService(
 )
 
 
-@pytest.fixture()
-def user():
-    return User(
-        user_id=1,
-        telegram_id='123',
-        username='testuser',
-        name='Test User',
-    )
-
-
-async def test_generate_fill_in_the_blank_exercise(user):
+async def test_generate_fill_in_the_blank_exercise():
     exercise, answer = await llm_service.generate_exercise(
-        user_language=user.user_language,
-        target_language=user.target_language,
+        user_language='ru',
+        target_language='Bulgarian',
         language_level=LanguageLevel.B1,
         exercise_type=ExerciseType.FILL_IN_THE_BLANK,
         topic=ExerciseTopic.GENERAL,
@@ -46,10 +35,10 @@ async def test_generate_fill_in_the_blank_exercise(user):
     assert answer.words == exercise.data.words[: len(answer.words)]
 
 
-async def test_generate_choose_sentence_exercise(user):
+async def test_generate_choose_sentence_exercise():
     exercise, answer = await llm_service.generate_exercise(
-        user_language=user.user_language,
-        target_language=user.target_language,
+        user_language='ru',
+        target_language='Bulgarian',
         language_level=LanguageLevel.B1,
         exercise_type=ExerciseType.CHOOSE_SENTENCE,
         topic=ExerciseTopic.GENERAL,

@@ -186,6 +186,12 @@ async def _generate_and_upload_audio(
         )
         return None, None, False
 
+    if not settings.generate_audio:
+        logger.warning(
+            'Audio generation is disabled. ' 'Skipping audio generation.'
+        )
+        return None, None, True
+
     DEFAULT_VOICE_NAMES = ['Leda', 'Enceladus']
     if not voice_name:
         voice_name = random.choice(DEFAULT_VOICE_NAMES)

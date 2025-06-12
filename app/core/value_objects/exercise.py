@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -73,9 +73,16 @@ class ChooseSentenceExerciseData(ExerciseData):
 
 class ChooseAccentExerciseData(ExerciseData):
     type: Literal['ChooseAccentExerciseData'] = Field(
-        default='ChooseAccentExerciseData', description='Type of exercise data'
+        default='ChooseAccentExerciseData',
+        description='Type of exercise data',
     )
-    options: List[str] = Field(description='List of accents')
+    options: List[str] = Field(
+        description='List of accents',
+    )
+    meaning: Optional[str] = Field(
+        default=None,
+        description='Meaning of the word',
+    )
 
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         if not isinstance(answer, ChooseAccentAnswer):

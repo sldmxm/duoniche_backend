@@ -18,6 +18,7 @@ from app.core.services.async_task_cache import (
     serialize_exercise_attempt,
 )
 from app.core.value_objects.answer import Answer
+from app.core.value_objects.exercise import ChooseAccentExerciseData
 from app.metrics import BACKEND_EXERCISE_METRICS
 
 logger = logging.getLogger(__name__)
@@ -150,6 +151,12 @@ class AttemptValidator:
                 feedback += ', '.join(
                     [a.answer.get_answer_text() for a in correct_answers]
                 )
+                if (
+                    isinstance(exercise.data, ChooseAccentExerciseData)
+                    and exercise.data.meaning
+                ):
+                    feedback += '\n\n' + exercise.data.meaning
+
                 incorrect_answer = ExerciseAnswer(
                     answer_id=None,
                     exercise_id=exercise.exercise_id,

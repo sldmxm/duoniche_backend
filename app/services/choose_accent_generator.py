@@ -23,10 +23,30 @@ BATCH_FETCH_NUM = 5
 
 MIN_VOWELS = 2
 MAX_VOWELS = 5
-MIN_MEANING_LEN = 0
-MIN_WORD_RANK = 1500
+MIN_MEANING_LEN = 10
+MIN_WORD_RANK = 11000
 
 HTTPX_TIMEOUT = 10
+
+UNDESIRED_MARKERS = {
+    'хим.',
+    'мед.',
+    'остар.',
+    'спец.',
+    'физ.',
+    'техн.',
+    'мат.',
+    'книж.',
+    'поет.',
+    'диал.',
+    'остаряло',
+    'рядко',
+}
+
+TALKOVEN_NOT_FOUND_STR = {
+    'Вероятно сте искали да изпишете',
+    'Няма намерени подобни думи в речника',
+}
 
 
 class ChooseAccentGenerationError(Exception):
@@ -44,6 +64,7 @@ class ChooseAccentGenerator:
             'https://api.wortschatz-leipzig.de/ws/words/'
             'bul_wikipedia_2018_1M/word/'
         )
+        self.talkoven_base_url = 'https://talkoven.onlinerechnik.com/duma/'
 
     async def fetch_word_rank(self, word: str, url: str) -> Optional[int]:
         """Fetches word frequency from Wortschatz Leipzig API."""
@@ -88,6 +109,50 @@ class ChooseAccentGenerator:
             logger.error(
                 f'Unexpected error fetching frequency for '
                 f"'{word_no_accent}': {e}",
+                exc_info=True,
+            )
+        return None
+
+    async def fetch_word_markers_from_talkoven(
+        self, word_no_accent: str
+    ) -> Optional[str]:
+        """Fetches the first paragraph from talkoven.onlinerechnik.com
+        to check for markers."""
+        try:
+            encoded_word = urllib.parse.quote(word_no_accent.lower())
+            url = f'{self.talkoven_base_url}{encoded_word}'
+            response = await self.http_client.get(url, timeout=HTTPX_TIMEOUT)
+            response.raise_for_status()
+            tree = html.fromstring(response.text)
+            paragraph_elements = tree.xpath('//*[@id="maintext"]/p[1]')
+            if not paragraph_elements:
+                paragraph_elements = tree.xpath('/html/body/div/div[2]/p[1]')
+
+            if paragraph_elements:
+                paragraph_text = paragraph_elements[0].text_content().strip()
+                logger.debug(
+                    f"Talkoven paragraph for '{word_no_accent}': "
+                    f'{paragraph_text[:200]}'
+                )
+                return paragraph_text
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.debug(f"Word '{word_no_accent}' not found on Talkoven.")
+            else:
+                logger.error(
+                    f'HTTP error fetching markers for '
+                    f"'{word_no_accent}' from Talkoven: "
+                    f'{e.response.status_code} - {e.response.text}'
+                )
+        except httpx.RequestError as e:
+            logger.error(
+                f"Request error fetching markers for '{word_no_accent}' "
+                f'from Talkoven: {e}'
+            )
+        except Exception as e:
+            logger.error(
+                f'Unexpected error fetching markers for '
+                f"'{word_no_accent}' from Talkoven: {e}",
                 exc_info=True,
             )
         return None
@@ -195,19 +260,65 @@ class ChooseAccentGenerator:
             )
             raise ChooseAccentGenerationError('Failed to fetch any words.')
 
-        for word, meaning in words_data:
+        for word, _ in words_data:
+            # TODO: проверка, что ударение совпадает с официальным словарем
+            #  или хотя бы talkoven
+
             if not (
                 ChooseAccentGenerator.has_accent_nfd(word)
                 and MIN_VOWELS
                 <= len(ChooseAccentGenerator.get_vowels_indexes(word))
                 <= MAX_VOWELS
-                and len(meaning) >= MIN_MEANING_LEN
-                and 'остар.' not in meaning.lower()
-                and 'спец.' not in meaning.lower()
             ):
                 logger.debug(
-                    f"Word '{word}' skipped due to initial validation "
-                    f'(vowels, meaning, etc.).'
+                    f"Word '{word}' skipped due to initial validation"
+                    f' (accent, vowels).'
+                )
+                continue
+
+            word_normalized_nfc = unicodedata.normalize('NFC', word)
+            word_no_accent = ''.join(
+                c
+                for c in unicodedata.normalize('NFD', word_normalized_nfc)
+                if unicodedata.category(c) != 'Mn'
+            )
+
+            talkoven_paragraph = await self.fetch_word_markers_from_talkoven(
+                word_no_accent
+            )
+            if talkoven_paragraph:
+                if any(
+                    marker in talkoven_paragraph.lower()
+                    for marker in UNDESIRED_MARKERS
+                ):
+                    logger.debug(
+                        f"Word '{word}' skipped due to undesired marker "
+                        f'found on Talkoven: '
+                        f"'{next((m for m in UNDESIRED_MARKERS
+                                  if m in talkoven_paragraph.lower()),
+                                 None)}'."
+                    )
+                    continue
+                if any(
+                    not_found_str in talkoven_paragraph
+                    for not_found_str in TALKOVEN_NOT_FOUND_STR
+                ):
+                    logger.debug(
+                        f"Word '{word}' skipped due not found on Talkoven."
+                    )
+                    continue
+
+                if len(talkoven_paragraph) < MIN_MEANING_LEN:
+                    logger.debug(
+                        f"Word '{word}' skipped due to short meaning "
+                        f"from Talkoven: '{talkoven_paragraph}'"
+                    )
+                    continue
+                meaning_to_use = talkoven_paragraph
+            else:
+                logger.debug(
+                    f"Word '{word}' skipped as no valid meaning "
+                    f'was retrieved from Talkoven.'
                 )
                 continue
 
@@ -226,10 +337,16 @@ class ChooseAccentGenerator:
                 word_news_rank > MIN_WORD_RANK
                 or word_wikipedia_rank > MIN_WORD_RANK
             ):
-                logger.debug(f"Word '{word}' skipped due to low word_rank ")
+                logger.debug(
+                    f"Word '{word}' skipped due to low word_rank "
+                    f'(news: {word_news_rank}, wiki: {word_wikipedia_rank}).'
+                )
                 continue
 
-            logger.info(f"Word '{word}' passed word_rank check.")
+            logger.info(
+                f"Word '{word}' passed all checks (markers, rank). "
+                f"Meaning from Talkoven: '{meaning_to_use}'."
+            )
 
             incorrect_options = self.generate_incorrect_accents(word)
             if not incorrect_options:
@@ -252,6 +369,7 @@ class ChooseAccentGenerator:
                 ),
                 data=ChooseAccentExerciseData(
                     options=all_options,
+                    meaning=meaning_to_use,
                 ),
             )
             correct_answer = ChooseAccentAnswer(answer=word)

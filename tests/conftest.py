@@ -718,7 +718,8 @@ async def mock_choose_accent_generator():
     generator = create_autospec(ChooseAccentGenerator, instance=True)
 
     mock_exercise_data = ChooseAccentExerciseData(
-        options=['строя̀вам', 'стро̀явам']
+        options=['строя̀вам', 'стро̀явам'],
+        meaning='',
     )
     mock_exercise = Exercise(
         exercise_id=None,

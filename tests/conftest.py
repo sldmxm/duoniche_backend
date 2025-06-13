@@ -32,13 +32,14 @@ from app.db.repositories.user import SQLAlchemyUserRepository
 from app.db.repositories.user_bot_profile import (
     SQLAlchemyUserBotProfileRepository,
 )
+from app.llm.generators.choose_accent_generator import ChooseAccentGenerator
 from app.llm.llm_translator import LLMTranslator
-from app.services.choose_accent_generator import ChooseAccentGenerator
 from app.services.file_storage_service import R2FileStorageService
 from app.services.tts_service import GoogleTTSService
 
 sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    0,
+    os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')),
 )
 
 from app.api.dependencies import (
@@ -96,7 +97,8 @@ async def async_engine():
 
 @pytest_asyncio.fixture(scope='function')
 async def async_session(
-    async_engine: AsyncEngine, redis: Redis
+    async_engine: AsyncEngine,
+    redis: Redis,
 ) -> AsyncGenerator[AsyncSession, Any]:
     """Create a SQLAlchemy async session for each test function."""
     async with async_engine.begin() as conn:
@@ -140,18 +142,27 @@ async def redis() -> Redis:
     await redis.aclose()
 
 
+@pytest_asyncio.fixture
+async def mock_http_client():
+    """Mock httpx.AsyncClient for testing."""
+    client = create_autospec(httpx.AsyncClient, instance=True)
+    yield client
+
+
 @pytest_asyncio.fixture(scope='function')
-async def exercise_service(db_session: AsyncSession, redis):
+async def exercise_service(db_session: AsyncSession, redis, mock_http_client):
     """Create ExerciseService with test repositories"""
     return ExerciseService(
         exercise_repository=SQLAlchemyExerciseRepository(db_session),
         exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
-            db_session
+            db_session,
         ),
         exercise_answers_repository=SQLAlchemyExerciseAnswerRepository(
-            db_session
+            db_session,
         ),
-        llm_service=LLMService(),
+        llm_service=LLMService(
+            http_client=mock_http_client,
+        ),
         translator=LLMTranslator(),
         async_task_cache=AsyncTaskCache(redis),
     )
@@ -167,7 +178,7 @@ async def user_service(db_session: AsyncSession):
 async def user_bot_profile_service(db_session: AsyncSession):
     """Create UserBotProfileService with test repositories"""
     return UserBotProfileService(
-        profile_repo=SQLAlchemyUserBotProfileRepository(db_session)
+        profile_repo=SQLAlchemyUserBotProfileRepository(db_session),
     )
 
 
@@ -175,7 +186,7 @@ async def user_bot_profile_service(db_session: AsyncSession):
 async def payment_service(db_session: AsyncSession):
     """Create UserBotProfileService with test repositories"""
     return PaymentService(
-        payment_repository=SQLAlchemyPaymentRepository(db_session)
+        payment_repository=SQLAlchemyPaymentRepository(db_session),
     )
 
 
@@ -255,7 +266,8 @@ async def client(
     app.state.exercise_service = exercise_service
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url='http://test'
+        transport=ASGITransport(app=app),
+        base_url='http://test',
     ) as ac:
         try:
             yield ac
@@ -345,7 +357,8 @@ def user_id_for_sample_request(user_data, db_sample_exercise):
 
 @pytest.fixture
 def request_data_correct_answer_for_sample_exercise(
-    user_data, db_sample_exercise
+    user_data,
+    db_sample_exercise,
 ):
     return {
         'user_id': user_data['user_id'],
@@ -359,7 +372,8 @@ def request_data_correct_answer_for_sample_exercise(
 
 @pytest.fixture
 def request_data_incorrect_answer_for_sample_exercise(
-    user_data, db_sample_exercise
+    user_data,
+    db_sample_exercise,
 ):
     return {
         'user_id': user_data['user_id'],
@@ -498,7 +512,7 @@ async def add_db_correct_exercise_answer(
         answer=FillInTheBlankAnswer(
             words=request_data_correct_answer_for_sample_exercise['answer'][
                 'words'
-            ]
+            ],
         ),
         is_correct=True,
         feedback='',
@@ -536,7 +550,7 @@ async def add_db_incorrect_exercise_answer(
         answer=FillInTheBlankAnswer(
             words=request_data_incorrect_answer_for_sample_exercise['answer'][
                 'words'
-            ]
+            ],
         ),
         is_correct=False,
         feedback='incorrect',
@@ -596,9 +610,13 @@ async def mock_exercise_answer_repository():
 
 
 @pytest_asyncio.fixture
-async def mock_llm_service():
+async def mock_llm_service(mock_http_client: httpx.AsyncClient):
     """Mock LLMService for testing."""
-    return create_autospec(LLMService, instance=True)
+    return create_autospec(
+        LLMService,
+        instance=True,
+        http_client=mock_http_client,
+    )
 
 
 @pytest.fixture
@@ -650,7 +668,7 @@ async def mock_file_storage_service():
     """Mock R2FileStorageService."""
     service = create_autospec(R2FileStorageService, instance=True)
     service.upload_audio = AsyncMock(
-        return_value='http://fake-r2-url.com/audio.ogg'
+        return_value='http://fake-r2-url.com/audio.ogg',
     )
     return service
 
@@ -665,7 +683,7 @@ async def mock_http_client_telegram():
         'ok': True,
         'result': {
             'voice': {'file_id': 'fake_telegram_file_id'},
-            'message_id': 12345,  # Добавим message_id для полноты
+            'message_id': 12345,
         },
     }
     client.post = AsyncMock(return_value=mock_response)
@@ -673,9 +691,13 @@ async def mock_http_client_telegram():
 
 
 @pytest_asyncio.fixture
-async def mock_llm_service_for_story(db_session: AsyncSession):
+async def mock_llm_service_for_story(
+    db_session: AsyncSession, mock_http_client: httpx.AsyncClient
+):
     """Specific LLMService mock for Story Comprehension generation."""
-    service = create_autospec(LLMService, instance=True)
+    service = create_autospec(
+        LLMService, instance=True, http_client=mock_http_client
+    )
 
     async def async_generate_story_exercise_mock(*args, **kwargs):
         target_language = kwargs.get('target_language')
@@ -691,6 +713,7 @@ async def mock_llm_service_for_story(db_session: AsyncSession):
                 options=['Correct statement', 'Incorrect 1', 'Incorrect 2'],
             )
             exercise = Exercise(
+                exercise_id=None,
                 exercise_type=ExerciseType.STORY_COMPREHENSION,
                 exercise_language=target_language,
                 language_level=language_level,
@@ -704,7 +727,7 @@ async def mock_llm_service_for_story(db_session: AsyncSession):
             answer_obj = StoryComprehensionAnswer(answer='Correct statement')
             return exercise, answer_obj
         else:
-            return None, None
+            return None, None, None
 
     service.generate_exercise = AsyncMock(
         side_effect=async_generate_story_exercise_mock
@@ -713,13 +736,15 @@ async def mock_llm_service_for_story(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def mock_choose_accent_generator():
+async def mock_choose_accent_generator(mock_http_client: httpx.AsyncClient):
     """Mock ChooseAccentGenerator."""
-    generator = create_autospec(ChooseAccentGenerator, instance=True)
+    generator = create_autospec(
+        ChooseAccentGenerator, instance=True, http_client=mock_http_client
+    )
 
     mock_exercise_data = ChooseAccentExerciseData(
         options=['строя̀вам', 'стро̀явам'],
-        meaning='',
+        meaning='Test meaning',
     )
     mock_exercise = Exercise(
         exercise_id=None,
@@ -732,7 +757,71 @@ async def mock_choose_accent_generator():
         data=mock_exercise_data,
     )
     mock_answer_obj = ChooseAccentAnswer(answer='стро̀явам')
+
     generator.generate = AsyncMock(
-        return_value=(mock_exercise, mock_answer_obj)
+        return_value=(mock_exercise, mock_answer_obj),
     )
     return generator
+
+
+@pytest_asyncio.fixture
+async def mock_llm_service_for_story_and_accent(
+    db_session: AsyncSession, mock_http_client: httpx.AsyncClient
+):
+    """Specific LLMService mock for Story Comprehension
+    and Choose Accent generation."""
+    service = create_autospec(
+        LLMService, instance=True, http_client=mock_http_client
+    )
+
+    async def async_generate_exercise_mock(*args, **kwargs):
+        target_language = kwargs.get('target_language')
+        language_level = kwargs.get('language_level')
+        topic = kwargs.get('topic')
+        exercise_type = kwargs.get('exercise_type')
+
+        if exercise_type == ExerciseType.STORY_COMPREHENSION:
+            story_data = StoryComprehensionExerciseData(
+                content_text='This is a test story.',
+                audio_url='',
+                audio_telegram_file_id='',
+                options=['Correct statement', 'Incorrect 1', 'Incorrect 2'],
+            )
+            exercise = Exercise(
+                exercise_id=None,
+                exercise_type=ExerciseType.STORY_COMPREHENSION,
+                exercise_language=target_language,
+                language_level=language_level,
+                topic=topic,
+                exercise_text=(
+                    'Read the story and choose the correct statement.'
+                ),
+                status=ExerciseStatus.PUBLISHED,
+                data=story_data,
+            )
+            answer_obj = StoryComprehensionAnswer(answer='Correct statement')
+            return exercise, answer_obj
+
+        elif exercise_type == ExerciseType.CHOOSE_ACCENT:
+            accent_data = ChooseAccentExerciseData(
+                options=['дума̀', 'ду̀ма'], meaning='Тестово значение за дума.'
+            )
+            exercise = Exercise(
+                exercise_id=None,
+                exercise_type=ExerciseType.CHOOSE_ACCENT,
+                exercise_language=target_language,  # Должен быть 'bg'
+                language_level=language_level,
+                topic=ExerciseTopic.GENERAL,
+                exercise_text='Изберете правилното ударение.',
+                status=ExerciseStatus.PUBLISHED,
+                data=accent_data,
+            )
+            answer_obj = ChooseAccentAnswer(answer='ду̀ма')
+            return exercise, answer_obj
+        else:
+            return None, None
+
+    service.generate_exercise = AsyncMock(
+        side_effect=async_generate_exercise_mock
+    )
+    return service

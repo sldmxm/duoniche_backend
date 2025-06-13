@@ -2,6 +2,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 
+import httpx
+
 from app.core.entities.exercise import Exercise
 from app.core.enums import (
     ExerciseStatus,
@@ -28,11 +30,13 @@ from app.utils.language_code_converter import (
 
 logger = logging.getLogger(__name__)
 
+ASSESSOR_EXERCISE_TYPES_EXCLUDE = (ExerciseType.CHOOSE_ACCENT,)
+
 
 class LLMService(BaseLLMService, LLMProvider):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, http_client: httpx.AsyncClient, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        self.http_client = http_client
         self.exercise_quality_assessor = ExerciseQualityAssessor(
             *args, **kwargs
         )
@@ -50,6 +54,7 @@ class LLMService(BaseLLMService, LLMProvider):
         generator = ExerciseGeneratorFactory.create_generator(
             exercise_type=exercise_type,
             llm_service=self,
+            http_client=self.http_client,
         )
 
         with (
@@ -66,6 +71,7 @@ class LLMService(BaseLLMService, LLMProvider):
             user_language_for_prompt = (
                 convert_iso639_language_code_to_full_name(user_language)
             )
+
             (
                 new_exercise,
                 new_answer,
@@ -79,31 +85,32 @@ class LLMService(BaseLLMService, LLMProvider):
                 persona=persona,
             )
 
-            try:
-                await self.exercise_quality_assessor.assess(
-                    exercise=exercise_for_quality_assessor,
-                    user_language=user_language_for_prompt,
-                    target_language=target_language,
-                )
-            except RejectedByAssessor as e:
-                logger.warning(f'Exercise rejected by assessor {e}')
-                new_exercise.status = ExerciseStatus.REJECTED_BY_ASSESSOR
-                timestamp = datetime.now(timezone.utc).strftime(
-                    '%Y-%m-%d %H:%M:%S UTC'
-                )
-                issues_str = (
-                    ', '.join(e.issues)
-                    if e.issues
-                    else 'No specific issues provided by LLM.'
-                )
-                comment_log_entry = (
-                    f'Rejected by Quality Assessor at {timestamp}\n'
-                    f'  Assessor Issues: {issues_str}'
-                )
-                if new_exercise.comments:
-                    new_exercise.comments += f'\n---\n{comment_log_entry}'
-                else:
-                    new_exercise.comments = comment_log_entry
+            if exercise_type not in ASSESSOR_EXERCISE_TYPES_EXCLUDE:
+                try:
+                    await self.exercise_quality_assessor.assess(
+                        exercise=exercise_for_quality_assessor,
+                        user_language=user_language_for_prompt,
+                        target_language=target_language,
+                    )
+                except RejectedByAssessor as e:
+                    logger.warning(f'Exercise rejected by assessor {e}')
+                    new_exercise.status = ExerciseStatus.REJECTED_BY_ASSESSOR
+                    timestamp = datetime.now(timezone.utc).strftime(
+                        '%Y-%m-%d %H:%M:%S UTC'
+                    )
+                    issues_str = (
+                        ', '.join(e.issues)
+                        if e.issues
+                        else 'No specific issues provided by LLM.'
+                    )
+                    comment_log_entry = (
+                        f'Rejected by Quality Assessor at {timestamp}\n'
+                        f'  Assessor Issues: {issues_str}'
+                    )
+                    if new_exercise.comments:
+                        new_exercise.comments += f'\n---\n{comment_log_entry}'
+                    else:
+                        new_exercise.comments = comment_log_entry
 
         BACKEND_LLM_METRICS['exercises_created'].labels(
             exercise_type=exercise_type.value,

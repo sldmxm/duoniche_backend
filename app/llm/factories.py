@@ -1,3 +1,5 @@
+import httpx
+
 from app.core.enums import ExerciseType
 from app.llm.generators.choose_accent_generator import ChooseAccentGenerator
 from app.llm.generators.choose_sentence_generator import (
@@ -22,6 +24,7 @@ class ExerciseGeneratorFactory:
     def create_generator(
         exercise_type: ExerciseType,
         llm_service: BaseLLMService,
+        http_client: httpx.AsyncClient,
     ) -> ExerciseGenerator:
         """Create an appropriate exercise generator based on exercise type."""
         generators = {
@@ -37,9 +40,12 @@ class ExerciseGeneratorFactory:
                 f"Exercise type '{exercise_type}' is not implemented"
             )
 
-        return generator_class(
-            llm_service=llm_service,
-        )  # type: ignore[abstract]
+        if exercise_type == ExerciseType.CHOOSE_ACCENT:
+            return generator_class(
+                llm_service=llm_service, http_client=http_client
+            )  # type: ignore
+        else:
+            return generator_class(llm_service=llm_service)  # type: ignore
 
 
 class ExerciseValidatorFactory:
@@ -52,7 +58,6 @@ class ExerciseValidatorFactory:
             ExerciseType.FILL_IN_THE_BLANK: FillInTheBlankValidator,
             ExerciseType.CHOOSE_SENTENCE: ChooseSentenceValidator,
             ExerciseType.CHOOSE_ACCENT: ChooseAccentValidator,
-            # Add new exercise types here
         }
 
         validator_class = validators.get(exercise_type)
@@ -62,4 +67,4 @@ class ExerciseValidatorFactory:
                 f'is not implemented'
             )
 
-        return validator_class(llm_service)  # type: ignore[abstract]
+        return validator_class(llm_service)  # type: ignore

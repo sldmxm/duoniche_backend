@@ -27,12 +27,11 @@ from app.db.repositories.exercise import SQLAlchemyExerciseRepository
 from app.db.repositories.exercise_answers import (
     SQLAlchemyExerciseAnswerRepository,
 )
+from app.llm.generators.choose_accent_generator import (
+    ChooseAccentGenerationError,
+)
 from app.llm.llm_service import LLMService
 from app.metrics import BACKEND_EXERCISE_METRICS
-from app.services.choose_accent_generator import (
-    ChooseAccentGenerationError,
-    ChooseAccentGenerator,
-)
 from app.services.file_storage_service import R2FileStorageService
 from app.services.tts_service import GoogleTTSService
 
@@ -402,12 +401,12 @@ async def generate_and_save_exercise(
     target_language: str,
     exercise_type: ExerciseType,
     llm_service: LLMService,
-    choose_accent_generator: ChooseAccentGenerator,
     tts_service: GoogleTTSService,
     file_storage_service: R2FileStorageService,
     http_client: httpx.AsyncClient,
 ) -> Tuple[bool, bool]:
     tts_failed_this_generation = False
+    created_by: str = 'LLM'
 
     try:
         async with exercise_generation_semaphore:
@@ -437,7 +436,10 @@ async def generate_and_save_exercise(
                 f'Persona: {persona_log_info}\n'
             )
 
-            if exercise_type == ExerciseType.STORY_COMPREHENSION:
+            if (
+                exercise_type == ExerciseType.STORY_COMPREHENSION
+                and not await is_tts_cooldown_active()
+            ):
                 (
                     repaired_and_published,
                     tts_failed_repair,
@@ -457,20 +459,7 @@ async def generate_and_save_exercise(
                     )
                     return True, tts_failed_this_generation
 
-            if exercise_type == ExerciseType.CHOOSE_ACCENT:
-                if target_language == BotID.BG.value:
-                    generator = choose_accent_generator
-                    exercise, answer = await generator.generate(
-                        user_language=settings.default_user_language,
-                    )
-                    created_by = 'scrapper'
-                else:
-                    logger.warning(
-                        f'Skipping CHOOSE_ACCENT generation for non-BG '
-                        f'language: {target_language}',
-                    )
-                    return False, tts_failed_this_generation
-            elif (
+            if (
                 exercise_type == ExerciseType.STORY_COMPREHENSION
                 and await is_tts_cooldown_active()
             ):
@@ -481,7 +470,8 @@ async def generate_and_save_exercise(
                     f'due to TTS cooldown.',
                 )
                 return False, False
-            else:
+
+            try:
                 exercise, answer = await llm_service.generate_exercise(
                     user_language=user_language,
                     target_language=target_language,
@@ -490,57 +480,60 @@ async def generate_and_save_exercise(
                     topic=topic,
                     persona=persona,
                 )
-                created_by = 'LLM'
+            except ChooseAccentGenerationError as e:
+                logger.warning(
+                    f'Error during ChooseAccent exercise generation: {e}',
+                    exc_info=True,
+                )
+                return False, tts_failed_this_generation
 
-                if exercise.status == ExerciseStatus.PUBLISHED and isinstance(
-                    exercise.data,
-                    StoryComprehensionExerciseData,
+            if exercise.status == ExerciseStatus.PUBLISHED and isinstance(
+                exercise.data,
+                StoryComprehensionExerciseData,
+            ):
+                emotion_instruction = None
+                voice_for_tts = None
+                if persona:
+                    if persona.emotion_instruction_for_tts:
+                        emotion_instruction = (
+                            persona.emotion_instruction_for_tts
+                        )
+                    if persona.voice_for_tts:
+                        voice_for_tts = persona.voice_for_tts
+
+                (
+                    audio_url_opt,
+                    telegram_file_id_opt,
+                    audio_generated_successfully,
+                ) = await _generate_and_upload_audio(
+                    exercise_data=exercise.data,
+                    target_language=target_language,
+                    language_level=exercise.language_level,
+                    topic=exercise.topic,
+                    tts_service=tts_service,
+                    file_storage_service=file_storage_service,
+                    http_client=http_client,
+                    emotion_instruction=emotion_instruction,
+                    voice_name=voice_for_tts,
+                )
+
+                if (
+                    audio_generated_successfully
+                    and audio_url_opt
+                    and telegram_file_id_opt
                 ):
-                    emotion_instruction = None
-                    voice_for_tts = None
-                    if persona:
-                        if persona.emotion_instruction_for_tts:
-                            emotion_instruction = (
-                                persona.emotion_instruction_for_tts
-                            )
-                        if persona.voice_for_tts:
-                            voice_for_tts = persona.voice_for_tts
-
-                    (
-                        audio_url_opt,
-                        telegram_file_id_opt,
-                        audio_generated_successfully,
-                    ) = await _generate_and_upload_audio(
-                        exercise_data=exercise.data,
-                        target_language=target_language,
-                        language_level=exercise.language_level,
-                        topic=exercise.topic,
-                        tts_service=tts_service,
-                        file_storage_service=file_storage_service,
-                        http_client=http_client,
-                        emotion_instruction=emotion_instruction,
-                        voice_name=voice_for_tts,
+                    exercise.data.audio_url = audio_url_opt
+                    exercise.data.audio_telegram_file_id = telegram_file_id_opt
+                else:
+                    if not audio_generated_successfully:
+                        tts_failed_this_generation = True
+                    exercise.status = ExerciseStatus.AUDIO_GENERATION_ERROR
+                    logger.error(
+                        f'Audio generation/upload failed for '
+                        f'NEW exercise. Topic: {topic.value}, '
+                        f'Level: {language_level.value}. '
+                        f'TTS failed: {tts_failed_this_generation}',
                     )
-
-                    if (
-                        audio_generated_successfully
-                        and audio_url_opt
-                        and telegram_file_id_opt
-                    ):
-                        exercise.data.audio_url = audio_url_opt
-                        exercise.data.audio_telegram_file_id = (
-                            telegram_file_id_opt
-                        )
-                    else:
-                        if not audio_generated_successfully:
-                            tts_failed_this_generation = True
-                        exercise.status = ExerciseStatus.AUDIO_GENERATION_ERROR
-                        logger.error(
-                            f'Audio generation/upload failed for '
-                            f'NEW exercise. Topic: {topic.value}, '
-                            f'Level: {language_level.value}. '
-                            f'TTS failed: {tts_failed_this_generation}',
-                        )
 
             if exercise and answer:
                 if persona:
@@ -572,12 +565,12 @@ async def generate_and_save_exercise(
 
                     exercise = await exercise_repository.create(exercise)
 
-                    feedback = ''
+                    feedback_for_answer = ''
                     if (
                         isinstance(exercise.data, ChooseAccentExerciseData)
                         and exercise.data.meaning
                     ):
-                        feedback = exercise.data.meaning
+                        feedback_for_answer = exercise.data.meaning
 
                     if exercise.exercise_id:
                         right_answer = ExerciseAnswer(
@@ -586,7 +579,7 @@ async def generate_and_save_exercise(
                             answer=answer,
                             is_correct=True,
                             created_by=created_by,
-                            feedback=feedback,
+                            feedback=feedback_for_answer,
                             feedback_language='',
                             created_at=datetime.now(timezone.utc),
                         )
@@ -609,9 +602,6 @@ async def generate_and_save_exercise(
                 )
                 return False, tts_failed_this_generation
 
-    except ChooseAccentGenerationError as e:
-        logger.warning(f'Failed to generate CHOOSE_ACCENT exercise: {e}')
-        return False, False
     except Exception as e:
         logger.error(
             f'Error during exercise generation '
@@ -625,7 +615,6 @@ async def generate_and_save_exercise(
 
 async def exercise_stock_refill(
     llm_service: LLMService,
-    choose_accent_generator: ChooseAccentGenerator,
     tts_service: GoogleTTSService,
     file_storage_service: R2FileStorageService,
     http_client: httpx.AsyncClient,
@@ -676,7 +665,6 @@ async def exercise_stock_refill(
                                     target_language=lang,
                                     exercise_type=ex_type,
                                     llm_service=llm_service,
-                                    choose_accent_generator=choose_accent_generator,
                                     tts_service=tts_service,
                                     file_storage_service=file_storage_service,
                                     http_client=http_client,
@@ -726,7 +714,6 @@ async def exercise_stock_refill(
 
 async def exercise_stock_refill_loop(
     llm_service: LLMService,
-    choose_accent_generator: ChooseAccentGenerator,
     tts_service: GoogleTTSService,
     file_storage_service: R2FileStorageService,
     http_client: httpx.AsyncClient,
@@ -742,7 +729,6 @@ async def exercise_stock_refill_loop(
             try:
                 tts_failure_detected_in_cycle = await exercise_stock_refill(
                     llm_service=llm_service,
-                    choose_accent_generator=choose_accent_generator,
                     tts_service=tts_service,
                     file_storage_service=file_storage_service,
                     http_client=http_client,

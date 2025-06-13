@@ -33,12 +33,16 @@ def mock_llm_model():
 
 @pytest.fixture
 @patch('tiktoken.encoding_for_model')
-def llm_service(mock_encoding_for_model, mock_llm_model):
+def llm_service(mock_encoding_for_model, mock_llm_model, mock_http_client):
     mock_encoding = MagicMock()
     mock_encoding.encode.return_value = [1, 2, 3, 4, 5]
     mock_encoding_for_model.return_value = mock_encoding
 
-    service = LLMService(openai_api_key='test-key', model_name='test-model')
+    service = LLMService(
+        openai_api_key='test-key',
+        model_name='test-model',
+        http_client=mock_http_client,
+    )
     service.model = mock_llm_model
     return service
 

@@ -1,10 +1,10 @@
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy import select
 
 from app.config import settings
-from app.core.entities.exercise import Exercise
 from app.core.entities.user_bot_profile import BotID
 from app.core.enums import (
     ExerciseStatus,
@@ -33,12 +33,13 @@ async def get_exercise_from_db(exercise_id: int, db_session):
 @pytest.mark.asyncio
 async def test_generate_story_comprehension_successful_first_try(
     db_session,
-    mock_llm_service_for_story,
+    mock_llm_service_for_story_and_accent,  # Используем обновленную фикстуру
     mock_tts_service,
     mock_file_storage_service,
     mock_http_client_telegram,
-    mock_choose_accent_generator,
+    # mock_choose_accent_generator, # Больше не нужен здесь
 ):
+    """Тестирует успешную генерацию Story Comprehension с первой попытки."""
     with patch(
         'app.workers.exercise_stock_refill.async_session_maker'
     ) as mock_session_maker:
@@ -51,8 +52,7 @@ async def test_generate_story_comprehension_successful_first_try(
             user_language=settings.default_user_language,
             target_language=BotID.BG.value,
             exercise_type=ExerciseType.STORY_COMPREHENSION,
-            llm_service=mock_llm_service_for_story,
-            choose_accent_generator=mock_choose_accent_generator,
+            llm_service=mock_llm_service_for_story_and_accent,
             tts_service=mock_tts_service,
             file_storage_service=mock_file_storage_service,
             http_client=mock_http_client_telegram,
@@ -61,8 +61,8 @@ async def test_generate_story_comprehension_successful_first_try(
     assert result_tuple == (
         True,
         False,
-    )  # (published_successfully, tts_failed)
-    mock_llm_service_for_story.generate_exercise.assert_called_once()
+    )
+    mock_llm_service_for_story_and_accent.generate_exercise.assert_called_once()
     mock_tts_service.text_to_speech_ogg.assert_called_once()
     mock_file_storage_service.upload_audio.assert_called_once()
     mock_http_client_telegram.post.assert_called_once()
@@ -94,12 +94,13 @@ async def test_generate_story_comprehension_successful_first_try(
 @pytest.mark.asyncio
 async def test_generate_story_comprehension_tts_fails(
     db_session,
-    mock_llm_service_for_story,
+    mock_llm_service_for_story_and_accent,  # Используем обновленную фикстуру
     mock_tts_service,
     mock_file_storage_service,
     mock_http_client_telegram,
-    mock_choose_accent_generator,
+    # mock_choose_accent_generator, # Больше не нужен здесь
 ):
+    """Тестирует случай, когда TTS не может сгенерировать аудио."""
     mock_tts_service.text_to_speech_ogg = AsyncMock(return_value=None)
 
     with patch(
@@ -114,8 +115,7 @@ async def test_generate_story_comprehension_tts_fails(
             user_language=settings.default_user_language,
             target_language=BotID.BG.value,
             exercise_type=ExerciseType.STORY_COMPREHENSION,
-            llm_service=mock_llm_service_for_story,
-            choose_accent_generator=mock_choose_accent_generator,
+            llm_service=mock_llm_service_for_story_and_accent,
             tts_service=mock_tts_service,
             file_storage_service=mock_file_storage_service,
             http_client=mock_http_client_telegram,
@@ -124,8 +124,8 @@ async def test_generate_story_comprehension_tts_fails(
     assert result_tuple == (
         False,
         True,
-    )  # (published_successfully, tts_failed)
-    mock_llm_service_for_story.generate_exercise.assert_called_once()
+    )
+    mock_llm_service_for_story_and_accent.generate_exercise.assert_called_once()
     mock_tts_service.text_to_speech_ogg.assert_called_once()
     mock_file_storage_service.upload_audio.assert_not_called()
     mock_http_client_telegram.post.assert_not_called()
@@ -151,12 +151,13 @@ async def test_generate_story_comprehension_tts_fails(
 @pytest.mark.asyncio
 async def test_generate_story_comprehension_repair_successful(
     db_session,
-    mock_llm_service_for_story,
+    mock_llm_service_for_story_and_accent,  # Используем обновленную фикстуру
     mock_tts_service,
     mock_file_storage_service,
     mock_http_client_telegram,
-    mock_choose_accent_generator,
+    # mock_choose_accent_generator, # Больше не нужен здесь
 ):
+    """Тестирует успешное восстановление аудио для существующего упражнения."""
     repo = SQLAlchemyExerciseRepository(db_session)
     initial_data = StoryComprehensionExerciseData(
         content_text='Story to be repaired.',
@@ -164,15 +165,19 @@ async def test_generate_story_comprehension_repair_successful(
         audio_telegram_file_id='',
         options=['A', 'B', 'C'],
     )
-    broken_exercise_entity = Exercise(
-        exercise_id=1,
-        exercise_type=ExerciseType.STORY_COMPREHENSION,
-        exercise_language=BotID.BG.value,
-        language_level=LanguageLevel.A1,
-        topic=ExerciseTopic.GENERAL,
-        exercise_text='Test exercise text',
-        status=ExerciseStatus.AUDIO_GENERATION_ERROR,
-        data=initial_data,
+    broken_exercise_entity = await repo._to_entity(
+        ExerciseModel(
+            exercise_id=1,  # Задаем ID для теста
+            exercise_type=ExerciseType.STORY_COMPREHENSION.value,
+            exercise_language=BotID.BG.value,
+            language_level=LanguageLevel.A1.value,
+            topic=ExerciseTopic.GENERAL.value,
+            exercise_text='Test exercise text',
+            status=ExerciseStatus.AUDIO_GENERATION_ERROR.value,
+            data=initial_data.model_dump(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
     )
     db_model_to_create = await repo._to_db_model(broken_exercise_entity)
     db_session.add(db_model_to_create)
@@ -182,7 +187,7 @@ async def test_generate_story_comprehension_repair_successful(
     broken_exercise_id = db_model_to_create.exercise_id
     assert broken_exercise_id is not None
 
-    mock_llm_service_for_story.reset_mock()
+    mock_llm_service_for_story_and_accent.reset_mock()
     mock_tts_service.reset_mock()
     mock_file_storage_service.reset_mock()
     mock_http_client_telegram.reset_mock()
@@ -202,8 +207,7 @@ async def test_generate_story_comprehension_repair_successful(
             user_language=settings.default_user_language,
             target_language=BotID.BG.value,
             exercise_type=ExerciseType.STORY_COMPREHENSION,
-            llm_service=mock_llm_service_for_story,
-            choose_accent_generator=mock_choose_accent_generator,
+            llm_service=mock_llm_service_for_story_and_accent,
             tts_service=mock_tts_service,
             file_storage_service=mock_file_storage_service,
             http_client=mock_http_client_telegram,
@@ -212,17 +216,19 @@ async def test_generate_story_comprehension_repair_successful(
     assert result_tuple == (
         True,
         False,
-    )  # (published_successfully, tts_failed)
-    mock_llm_service_for_story.generate_exercise.assert_not_called()
+    )
+    mock_llm_service_for_story_and_accent.generate_exercise.assert_not_called()
     mock_tts_service.text_to_speech_ogg.assert_called_once()
     mock_file_storage_service.upload_audio.assert_called_once()
     mock_http_client_telegram.post.assert_called_once()
 
-    repaired_exercise_entity = await get_exercise_from_db(
-        broken_exercise_id, db_session
-    )
-    assert repaired_exercise_entity is not None
-    assert repaired_exercise_entity.status == ExerciseStatus.PUBLISHED
+    repaired_exercise_model = await db_session.get(
+        ExerciseModel, broken_exercise_id
+    )  # Получаем модель из БД
+    assert repaired_exercise_model is not None
+    assert repaired_exercise_model.status == ExerciseStatus.PUBLISHED.value
+
+    repaired_exercise_entity = await repo._to_entity(repaired_exercise_model)
     assert isinstance(
         repaired_exercise_entity.data, StoryComprehensionExerciseData
     )
@@ -242,12 +248,13 @@ async def test_generate_story_comprehension_repair_successful(
 @pytest.mark.asyncio
 async def test_generate_choose_accent_successful(
     db_session,
-    mock_llm_service_for_story,
+    mock_llm_service_for_story_and_accent,  # Используем обновленную фикстуру
     mock_tts_service,
     mock_file_storage_service,
     mock_http_client_telegram,
-    mock_choose_accent_generator,
+    # mock_choose_accent_generator, # Больше не нужен здесь
 ):
+    """Тестирует успешную генерацию Choose Accent через LLMService."""
     with patch(
         'app.workers.exercise_stock_refill.async_session_maker'
     ) as mock_session_maker:
@@ -260,8 +267,7 @@ async def test_generate_choose_accent_successful(
             user_language=settings.default_user_language,
             target_language=BotID.BG.value,
             exercise_type=ExerciseType.CHOOSE_ACCENT,
-            llm_service=mock_llm_service_for_story,
-            choose_accent_generator=mock_choose_accent_generator,
+            llm_service=mock_llm_service_for_story_and_accent,
             tts_service=mock_tts_service,
             file_storage_service=mock_file_storage_service,
             http_client=mock_http_client_telegram,
@@ -270,9 +276,8 @@ async def test_generate_choose_accent_successful(
     assert result_tuple == (
         True,
         False,
-    )  # (published_successfully, tts_failed)
-    mock_choose_accent_generator.generate.assert_called_once()
-    mock_llm_service_for_story.generate_exercise.assert_not_called()
+    )
+    mock_llm_service_for_story_and_accent.generate_exercise.assert_called_once()
     mock_tts_service.text_to_speech_ogg.assert_not_called()
 
     repo = SQLAlchemyExerciseRepository(db_session)
@@ -283,7 +288,7 @@ async def test_generate_choose_accent_successful(
     )
     created_exercise_model = result.scalar_one_or_none()
     assert created_exercise_model is not None
-    assert created_exercise_model.status == ExerciseStatus.PUBLISHED
+    assert created_exercise_model.status == ExerciseStatus.PUBLISHED.value
     assert (
         created_exercise_model.exercise_type
         == ExerciseType.CHOOSE_ACCENT.value
@@ -291,3 +296,7 @@ async def test_generate_choose_accent_successful(
 
     exercise_entity = await repo._to_entity(created_exercise_model)
     assert isinstance(exercise_entity.data, ChooseAccentExerciseData)
+    assert exercise_entity.data.options == ['дума̀', 'ду̀ма']  # Из мока
+    assert (
+        exercise_entity.data.meaning == 'Тестово значение за дума.'
+    )  # Из мока

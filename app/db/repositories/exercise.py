@@ -200,7 +200,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
     async def create(self, exercise: Exercise) -> Exercise:
         db_exercise = await self._to_db_model(exercise)
         self.session.add(db_exercise)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(db_exercise)
         return await self._to_entity(db_exercise)
 
@@ -276,7 +276,7 @@ class SQLAlchemyExerciseRepository(ExerciseRepository):
                 logger.error(
                     f'Failed to lock exercise for retry: {e}', exc_info=True
                 )
-                await self.session.rollback()
+                # The transaction will be rolled back by the middleware
                 return None
         return None
 

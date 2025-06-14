@@ -60,7 +60,7 @@ class SQLAlchemyUserRepository(UserRepository):
                     f'on UserDBModel for user_id {user.user_id}'
                 )
 
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(db_user)
         return UserCore.model_validate(db_user)
 
@@ -69,6 +69,6 @@ class SQLAlchemyUserRepository(UserRepository):
         user_data = user.model_dump(exclude_unset=True)
         db_user = UserDBModel(**user_data)
         self.session.add(db_user)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(db_user)
         return UserCore.model_validate(db_user)

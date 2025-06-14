@@ -276,6 +276,7 @@ class NotificationScheduler:
                 reminder_type=NotificationType.LONG_BREAK_REMINDER,
                 session=session,
             )
+            await session.commit()
 
         logger.info('Notification scheduler: Check cycle finished.')
 

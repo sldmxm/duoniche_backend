@@ -35,10 +35,9 @@ class SQLAlchemyPaymentRepository(PaymentRepositoryProtocol):
         )
         self.session.add(db_payment)
         try:
-            await self.session.commit()
+            await self.session.flush()
             await self.session.refresh(db_payment)
         except IntegrityError as e:
-            await self.session.rollback()
             if 'payments_telegram_payment_charge_id_key' in str(e.orig):
                 logger.warning(
                     f'Attempted to create a payment with duplicate '
@@ -49,7 +48,6 @@ class SQLAlchemyPaymentRepository(PaymentRepositoryProtocol):
                 logger.error(f'Error creating DBPayment: {e}', exc_info=True)
             raise
         except Exception as e:
-            await self.session.rollback()
             logger.error(
                 f'Unexpected error creating DBPayment: {e}', exc_info=True
             )

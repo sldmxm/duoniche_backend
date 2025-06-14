@@ -29,10 +29,9 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
         new_db_profile = DBUserBotProfile(**profile.model_dump())
         self.session.add(new_db_profile)
         try:
-            await self.session.commit()
+            await self.session.flush()
             await self.session.refresh(new_db_profile)
         except Exception as e:
-            await self.session.rollback()
             logger.error(f'Error creating UserBotProfile: {e}')
             raise
         return UserBotProfile.model_validate(new_db_profile)
@@ -86,10 +85,9 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
                 setattr(existing_db_profile, key, value)
 
         try:
-            await self.session.commit()
+            await self.session.flush()
             await self.session.refresh(existing_db_profile)
         except Exception as e:
-            await self.session.rollback()
             logger.error(f'Error saving UserBotProfile: {e}', exc_info=True)
             raise
 

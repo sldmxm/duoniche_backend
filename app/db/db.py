@@ -1,5 +1,4 @@
-from typing import Any, AsyncGenerator
-
+from fastapi import Request
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -28,6 +27,16 @@ async def drop_models(engine: AsyncEngine = engine) -> None:
         await conn.run_sync(Base.metadata.drop_all)
 
 
-async def get_async_session() -> AsyncGenerator[AsyncSession, Any]:
-    async with async_session_maker() as session:
-        yield session
+async def get_async_session(request: Request) -> AsyncSession:
+    """
+    Retrieves the request-scoped database session from `request.state`.
+    Raises a RuntimeError if the session is not found, ensuring that the
+    DBSessionMiddleware is correctly installed.
+    """
+    db_session = getattr(request.state, 'db', None)
+    if db_session is None:
+        raise RuntimeError(
+            'Database session not found in request state. '
+            'Ensure DBSessionMiddleware is installed.'
+        )
+    return db_session

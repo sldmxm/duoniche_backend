@@ -7,6 +7,7 @@ import httpx
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
+from app.api.middleware.transaction import DBSessionMiddleware
 from app.api.v1.api import api_router
 from app.config import settings
 from app.core.services.async_task_cache import AsyncTaskCache
@@ -136,6 +137,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
 
 
 app = FastAPI(title='DuoNiche API', lifespan=lifespan)
+
+# Add the transaction management middleware. It should be one of the first.
+app.add_middleware(DBSessionMiddleware)
 
 Instrumentator().instrument(app).expose(app)
 

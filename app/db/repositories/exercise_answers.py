@@ -62,7 +62,7 @@ class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
             created_by=exercise_answers.created_by,
         )
         self.session.add(db_answer)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(db_answer)
         return self._to_entity(db_answer)
 

@@ -79,7 +79,7 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
         attempt.is_correct = is_correct
         attempt.feedback = feedback
         attempt.answer_id = answer_id
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(attempt)
         return self._to_entity(attempt)
 
@@ -97,7 +97,7 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
             answer_id=exercise_attempt.answer_id,
         )
         self.session.add(db_attempt)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(db_attempt)
         return self._to_entity(db_attempt)
 

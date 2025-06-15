@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, create_autospec, patch
 import httpx
 import pytest
 import pytest_asyncio
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import (
@@ -16,6 +17,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from app.api.v1.api import api_router
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
 from app.core.generation.config import ExerciseTopic
 from app.core.interfaces.translate_provider import TranslateProvider
@@ -42,13 +44,6 @@ sys.path.insert(
     os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')),
 )
 
-from app.api.dependencies import (
-    get_exercise_service,
-    get_user_bot_profile_service,
-    get_user_progress_service,
-    get_user_service,
-    get_user_settings_service,
-)
 from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
@@ -69,6 +64,7 @@ from app.core.value_objects.exercise import (
     StoryComprehensionExerciseData,
 )
 from app.db.base import Base
+from app.db.db import get_async_session
 from app.db.models.exercise import Exercise as ExerciseModel
 from app.db.models.exercise_answer import ExerciseAnswer as ExerciseAnswerModel
 from app.db.models.user import User as UserModel
@@ -80,57 +76,70 @@ from app.db.repositories.exercise_attempt import (
     SQLAlchemyExerciseAttemptRepository,
 )
 from app.llm.llm_service import LLMService
-from app.main import app
 
 
-@pytest_asyncio.fixture(scope='session')
+@pytest_asyncio.fixture(scope='function')
 async def async_engine():
     """Create a SQLAlchemy async engine for the test session."""
     engine = create_async_engine(
         settings.test_database_url,
         echo=False,
         future=True,
+        pool_size=20,
+        max_overflow=0,
+        pool_pre_ping=True,
     )
     yield engine
     await engine.dispose()
 
 
 @pytest_asyncio.fixture(scope='function')
+async def async_session_maker(async_engine: AsyncEngine):
+    """Create a SQLAlchemy async session maker for the test session."""
+    return async_sessionmaker(
+        async_engine,
+        expire_on_commit=False,
+        class_=AsyncSession,
+    )
+
+
+@pytest_asyncio.fixture(scope='function')
 async def async_session(
     async_engine: AsyncEngine,
+    async_session_maker,
     redis: Redis,
 ) -> AsyncGenerator[AsyncSession, Any]:
     """Create a SQLAlchemy async session for each test function."""
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-    async_session_factory = async_sessionmaker(
-        async_engine,
-        expire_on_commit=False,
-        autocommit=False,
-        autoflush=False,
-    )
-    async with async_session_factory() as session:
+    async with async_session_maker() as session:
         try:
             yield session
         finally:
             await session.close()
-            await async_engine.dispose()
-            await redis.flushdb()
 
 
 @pytest_asyncio.fixture(scope='function')
 async def db_session(
-    async_session: AsyncSession,
+    async_session_maker: async_sessionmaker[AsyncSession],
 ) -> AsyncGenerator[AsyncSession, Any]:
-    """DB session with nested transaction."""
-    transaction = await async_session.begin_nested()
-    try:
-        yield async_session
-    finally:
-        if transaction.is_active:
-            await transaction.rollback()
-        await async_session.close()
+    """DB session with nested transaction for direct DB access in tests.
+    Rolls back by default. If data needs to be committed for client tests,
+    the test or setup fixture should handle the commit explicitly
+    or use a different session management strategy for setup.
+    """
+    async with async_session_maker() as session:
+        transaction = await session.begin_nested()
+        try:
+            yield session
+        finally:
+            if transaction.is_active:
+                await transaction.rollback()
+
+
+@pytest_asyncio.fixture(scope='function', autouse=True)
+async def clear_db_before_each_test(async_engine: AsyncEngine):
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
 
 
 @pytest_asyncio.fixture
@@ -226,55 +235,35 @@ async def user_progress_service(
 
 @pytest_asyncio.fixture(scope='function')
 async def client(
-    user_progress_service,
-    user_service,
-    exercise_service,
-    user_bot_profile_service,
+    db_session: AsyncSession,
+    redis: Redis,
+    mock_http_client: httpx.AsyncClient,
 ) -> AsyncGenerator[AsyncClient, Any]:
-    """Create test client with overridden dependencies"""
+    """Create test client with proper transaction handling
+    and dependency overrides."""
+    test_app = FastAPI()
+    test_app.include_router(api_router, prefix='/api/v1')
 
-    def override_get_user_progress_service():
-        return user_progress_service
+    test_app.state.async_task_cache = AsyncTaskCache(redis)
+    test_app.state.llm_service = LLMService(http_client=mock_http_client)
+    test_app.state.translator = LLMTranslator()
+    test_app.state.http_client = mock_http_client
+    test_app.state.redis_client = redis
 
-    def override_get_user_service():
-        return user_service
+    async def override_get_async_session() -> (
+        AsyncGenerator[AsyncSession, None]
+    ):
+        yield db_session
 
-    def override_get_exercise_service():
-        return exercise_service
-
-    def override_get_user_bot_profile_service():
-        return user_bot_profile_service
-
-    def override_get_user_settings_service():
-        return user_settings_service
-
-    app.dependency_overrides[get_user_progress_service] = (
-        override_get_user_progress_service
+    test_app.dependency_overrides[get_async_session] = (
+        override_get_async_session
     )
-    app.dependency_overrides[get_user_service] = override_get_user_service
-    app.dependency_overrides[get_exercise_service] = (
-        override_get_exercise_service
-    )
-    app.dependency_overrides[get_user_bot_profile_service] = (
-        override_get_user_bot_profile_service
-    )
-    app.dependency_overrides[get_user_settings_service] = (
-        override_get_user_settings_service
-    )
-
-    app.state.user_progress_service = user_progress_service
-    app.state.exercise_service = exercise_service
 
     async with AsyncClient(
-        transport=ASGITransport(app=app),
+        transport=ASGITransport(app=test_app),
         base_url='http://test',
     ) as ac:
-        try:
-            yield ac
-        finally:
-            del app.state.user_progress_service
-            del app.state.exercise_service
-            app.dependency_overrides.clear()
+        yield ac
 
 
 @pytest.fixture
@@ -295,13 +284,13 @@ def user(user_data):
 @pytest_asyncio.fixture
 async def add_db_user(
     db_session: AsyncSession,
-    user,
+    user: User,
 ):
     db_user_data = user.model_dump()
     db_user = UserModel(**db_user_data)
-
     db_session.add(db_user)
     await db_session.flush()
+    await db_session.refresh(db_user)
     yield db_user
 
 
@@ -309,30 +298,34 @@ async def add_db_user(
 def user_bot_profile_data():
     return {
         'user_id': 12345,
-        'bot_id': BotID.BG,
+        'bot_id': BotID.BG.value,
         'user_language': 'en',
         'language_level': LanguageLevel.A2,
     }
 
 
 @pytest.fixture
-def user_bot_profile(user_bot_profile_data):
-    return UserBotProfile(**user_bot_profile_data)
+def user_bot_profile(user_data, user_bot_profile_data):
+    profile_data = user_bot_profile_data.copy()
+    profile_data['user_id'] = user_data['user_id']
+    return UserBotProfile(**profile_data)
 
 
 @pytest_asyncio.fixture
 async def add_user_bot_profile(
     db_session: AsyncSession,
+    add_db_user,
     user_bot_profile,
 ):
     db_user_bot_profile = DBUserBotProfile(**user_bot_profile.model_dump())
     db_session.add(db_user_bot_profile)
     await db_session.flush()
+    await db_session.refresh(db_user_bot_profile)
     yield db_user_bot_profile
 
 
 @pytest_asyncio.fixture
-async def db_sample_exercise(db_session: AsyncSession, user):
+async def db_sample_exercise(async_session_maker: async_sessionmaker, user):
     exercise_data = FillInTheBlankExerciseData(
         text_with_blanks='This is a test ____ for learning.',
         words=['exercise'],
@@ -345,8 +338,10 @@ async def db_sample_exercise(db_session: AsyncSession, user):
         exercise_text='Fill in the blank in the sentence.',
         data=exercise_data.model_dump(),
     )
-    db_session.add(exercise)
-    await db_session.flush()
+    async with async_session_maker() as session:
+        session.add(exercise)
+        await session.commit()
+        await session.refresh(exercise)
     yield exercise
 
 
@@ -692,11 +687,14 @@ async def mock_http_client_telegram():
 
 @pytest_asyncio.fixture
 async def mock_llm_service_for_story(
-    db_session: AsyncSession, mock_http_client: httpx.AsyncClient
+    db_session: AsyncSession,
+    mock_http_client: httpx.AsyncClient,
 ):
     """Specific LLMService mock for Story Comprehension generation."""
     service = create_autospec(
-        LLMService, instance=True, http_client=mock_http_client
+        LLMService,
+        instance=True,
+        http_client=mock_http_client,
     )
 
     async def async_generate_story_exercise_mock(*args, **kwargs):
@@ -730,7 +728,7 @@ async def mock_llm_service_for_story(
             return None, None, None
 
     service.generate_exercise = AsyncMock(
-        side_effect=async_generate_story_exercise_mock
+        side_effect=async_generate_story_exercise_mock,
     )
     return service
 
@@ -739,7 +737,9 @@ async def mock_llm_service_for_story(
 async def mock_choose_accent_generator(mock_http_client: httpx.AsyncClient):
     """Mock ChooseAccentGenerator."""
     generator = create_autospec(
-        ChooseAccentGenerator, instance=True, http_client=mock_http_client
+        ChooseAccentGenerator,
+        instance=True,
+        http_client=mock_http_client,
     )
 
     mock_exercise_data = ChooseAccentExerciseData(
@@ -766,12 +766,15 @@ async def mock_choose_accent_generator(mock_http_client: httpx.AsyncClient):
 
 @pytest_asyncio.fixture
 async def mock_llm_service_for_story_and_accent(
-    db_session: AsyncSession, mock_http_client: httpx.AsyncClient
+    db_session: AsyncSession,
+    mock_http_client: httpx.AsyncClient,
 ):
     """Specific LLMService mock for Story Comprehension
     and Choose Accent generation."""
     service = create_autospec(
-        LLMService, instance=True, http_client=mock_http_client
+        LLMService,
+        instance=True,
+        http_client=mock_http_client,
     )
 
     async def async_generate_exercise_mock(*args, **kwargs):
@@ -804,7 +807,8 @@ async def mock_llm_service_for_story_and_accent(
 
         elif exercise_type == ExerciseType.CHOOSE_ACCENT:
             accent_data = ChooseAccentExerciseData(
-                options=['дума̀', 'ду̀ма'], meaning='Тестово значение за дума.'
+                options=['дума̀', 'ду̀ма'],
+                meaning='Тестово значение за дума.',
             )
             exercise = Exercise(
                 exercise_id=None,
@@ -822,6 +826,6 @@ async def mock_llm_service_for_story_and_accent(
             return None, None
 
     service.generate_exercise = AsyncMock(
-        side_effect=async_generate_exercise_mock
+        side_effect=async_generate_exercise_mock,
     )
     return service

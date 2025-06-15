@@ -1,7 +1,10 @@
 import asyncio
 
 import pytest
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+)
 
 from app.config import settings
 from app.core.entities.user_bot_profile import BotID
@@ -129,7 +132,6 @@ async def test_multiple_requests_same_user(
     request_data_correct_answer_for_sample_exercise,
     request_data_incorrect_answer_for_sample_exercise,
     add_db_user,
-    async_session,
 ):
     """
     Test simulating a real user making a series of requests:
@@ -221,9 +223,10 @@ async def test_concurrent_requests(
     user_id_for_sample_request,
     request_data_correct_answer_for_sample_exercise,
     add_db_correct_exercise_answer,
-    async_engine,
-    async_session,
+    async_engine,  # Keep for user_task's own session maker
+    async_session_maker,
     redis,
+    db_session: AsyncSession,
 ):
     """Test concurrent requests from multiple users."""
     num_users = 5
@@ -300,23 +303,18 @@ async def test_concurrent_requests(
             response['exercise']['data']['text_with_blanks'] == first_data_text
         )
 
-    async_session_for_check = async_sessionmaker(
-        async_engine, expire_on_commit=False
-    )()
-
+    # Use the existing db_session to verify data within the transaction
     exercise_attempt_repository = SQLAlchemyExerciseAttemptRepository(
-        async_session_for_check
+        db_session
     )
     exercise_attempts = await exercise_attempt_repository.get_by_exercise_id(
         exercise_id=first_id
     )
-
     assert len(exercise_attempts) == num_users
 
     user_ids_with_attempts = {attempt.user_id for attempt in exercise_attempts}
     expected_user_ids = set(range(1, num_users + 1))
     assert user_ids_with_attempts == expected_user_ids
-    await async_session_for_check.close()
 
 
 @pytest.mark.asyncio
@@ -326,7 +324,7 @@ async def test_validation_cache_multiple_requests(
     db_sample_exercise,
     add_db_correct_exercise_answer,
     request_data_correct_answer_for_sample_exercise,
-    add_db_user,
+    add_db_user,  # This fixture now commits the user
     async_session,
 ):
     """

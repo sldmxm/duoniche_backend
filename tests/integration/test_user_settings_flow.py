@@ -1,5 +1,6 @@
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
@@ -7,13 +8,16 @@ from app.core.enums import ExerciseType, LanguageLevel, UserAction, UserStatus
 from app.core.generation.config import ExerciseTopic
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
+from app.db.repositories.user import SQLAlchemyUserRepository
+from app.db.repositories.user_bot_profile import (
+    SQLAlchemyUserBotProfileRepository,
+)
 
 pytestmark = pytest.mark.asyncio
 
 
 async def setup_user_and_profile(
-    user_service: UserService,
-    user_bot_profile_service: UserBotProfileService,
+    async_session_maker: async_sessionmaker,
     user_id: int,
     telegram_id: str,
     user_status: UserStatus,
@@ -22,30 +26,30 @@ async def setup_user_and_profile(
     user_language: str = 'en',
     custom_settings_for_user: dict = None,
 ) -> tuple[User, UserBotProfile]:
-    user_entity = User(
-        user_id=user_id,
-        telegram_id=telegram_id,
-        username=f'testuser{user_id}',
-        name=f'Test User {user_id}',
-        status=user_status,
-        telegram_data={'language_code': user_language},
-        custom_settings=custom_settings_for_user,
-    )
-    db_user, _ = await user_service.get_or_create(user_entity)
+    async with async_session_maker() as session:
+        user_repo = SQLAlchemyUserRepository(session)
+        profile_repo = SQLAlchemyUserBotProfileRepository(session)
+        user_service = UserService(user_repo)
+        user_bot_profile_service = UserBotProfileService(profile_repo)
 
-    user_bot_profile, _ = await user_bot_profile_service.get_or_create(
-        user_id=db_user.user_id,
-        bot_id=bot_id,
-        user_language=user_language,
-        language_level=language_level,
-    )
-    await user_bot_profile_service.reset_and_start_new_session(
-        user_id=db_user.user_id, bot_id=bot_id
-    )
-    # Re-fetch to ensure session data is fresh after reset
-    user_bot_profile = await user_bot_profile_service.get(
-        db_user.user_id, bot_id
-    )
+        user_entity = User(
+            user_id=user_id,
+            telegram_id=telegram_id,
+            username=f'testuser{user_id}',
+            name=f'Test User {user_id}',
+            status=user_status,
+            telegram_data={'language_code': user_language},
+            custom_settings=custom_settings_for_user,
+        )
+        db_user, _ = await user_service.get_or_create(user_entity)
+
+        user_bot_profile, _ = await user_bot_profile_service.get_or_create(
+            user_id=db_user.user_id,
+            bot_id=bot_id,
+            language_level=language_level,
+            user_language=user_language,
+        )
+        await session.commit()
     return db_user, user_bot_profile
 
 
@@ -54,6 +58,7 @@ async def test_free_plan_session_limit_via_custom_settings(
     user_service: UserService,
     user_bot_profile_service: UserBotProfileService,
     fill_sample_exercises,
+    async_session_maker,
 ):
     free_user_id = 101
     free_telegram_id = 'free_user_tg'
@@ -67,8 +72,7 @@ async def test_free_plan_session_limit_via_custom_settings(
     }
 
     db_user, _ = await setup_user_and_profile(
-        user_service,
-        user_bot_profile_service,
+        async_session_maker,
         free_user_id,
         free_telegram_id,
         UserStatus.FREE,
@@ -99,8 +103,7 @@ async def test_free_plan_session_limit_via_custom_settings(
 
 async def test_premium_plan_session_limit_via_custom_settings(
     client: AsyncClient,
-    user_service: UserService,
-    user_bot_profile_service: UserBotProfileService,
+    async_session_maker: async_sessionmaker,
     fill_sample_exercises,
 ):
     premium_user_id = 102
@@ -115,8 +118,7 @@ async def test_premium_plan_session_limit_via_custom_settings(
     }
 
     db_user, _ = await setup_user_and_profile(
-        user_service,
-        user_bot_profile_service,
+        async_session_maker,
         premium_user_id,
         premium_telegram_id,
         UserStatus.PREMIUM,
@@ -145,8 +147,7 @@ async def test_premium_plan_session_limit_via_custom_settings(
 
 async def test_user_settings_exclude_topics_via_custom_settings(
     client: AsyncClient,
-    user_service: UserService,
-    user_bot_profile_service: UserBotProfileService,
+    async_session_maker: async_sessionmaker,
     fill_sample_exercises,
 ):
     user_id = 103
@@ -162,8 +163,7 @@ async def test_user_settings_exclude_topics_via_custom_settings(
     }
 
     db_user, _ = await setup_user_and_profile(
-        user_service,
-        user_bot_profile_service,
+        async_session_maker,
         user_id,
         telegram_id,
         UserStatus.FREE,
@@ -198,15 +198,13 @@ async def test_user_settings_exclude_topics_via_custom_settings(
 
 async def test_user_settings_exercise_type_distribution_via_custom_settings(
     client: AsyncClient,
-    user_service: UserService,
-    user_bot_profile_service: UserBotProfileService,
+    async_session_maker: async_sessionmaker,
     fill_sample_exercises,
 ):
     user_id = 104
     telegram_id = 'type_dist_user_tg'
     bot_id = BotID.BG
 
-    # MODIFIED HERE: Use .value for enum keys
     specific_distribution_values = {ExerciseType.FILL_IN_THE_BLANK.value: 1.0}
     for ex_type in ExerciseType:
         if ex_type != ExerciseType.FILL_IN_THE_BLANK:
@@ -220,8 +218,7 @@ async def test_user_settings_exercise_type_distribution_via_custom_settings(
     }
 
     db_user, _ = await setup_user_and_profile(
-        user_service,
-        user_bot_profile_service,
+        async_session_maker,
         user_id,
         telegram_id,
         UserStatus.FREE,

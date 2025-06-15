@@ -13,7 +13,7 @@ from app.db.models.user_bot_profile import (
 
 @pytest.mark.asyncio
 async def test_get_or_create_user_new_user(
-    client: AsyncClient, async_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession
 ):
     user_data = {
         'telegram_id': '98765',
@@ -39,14 +39,14 @@ async def test_get_or_create_user_new_user(
         == settings.default_language_level.value
     )
 
-    db_user = await async_session.get(UserModel, response_data['user_id'])
+    db_user = await db_session.get(UserModel, response_data['user_id'])
     assert db_user is not None
     assert db_user.telegram_id == user_data['telegram_id']
     assert db_user.username == user_data['username']
     assert db_user.name == user_data['name']
     assert db_user.plan is None
 
-    db_profile = await async_session.get(
+    db_profile = await db_session.get(
         UserBotProfileModel, (response_data['user_id'], BotID.BG)
     )
     assert db_profile is not None
@@ -58,7 +58,7 @@ async def test_get_or_create_user_new_user(
 
 @pytest.mark.asyncio
 async def test_get_or_create_user_existing_user(
-    client: AsyncClient, async_session: AsyncSession, user: User, add_db_user
+    client: AsyncClient, db_session: AsyncSession, user: User, add_db_user
 ):
     user_data = {
         'telegram_id': user.telegram_id,
@@ -82,8 +82,8 @@ async def test_get_or_create_user_existing_user(
         == settings.default_language_level.value
     )
 
-    db_user = await async_session.get(UserModel, response_data['user_id'])
-    db_profile = await async_session.get(
+    db_user = await db_session.get(UserModel, response_data['user_id'])
+    db_profile = await db_session.get(
         UserBotProfileModel, (response_data['user_id'], BotID.BG)
     )
     assert db_user is not None
@@ -130,7 +130,7 @@ async def test_get_user_by_telegram_id_not_found(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_update_user_by_user_id_success(
     client: AsyncClient,
-    async_session: AsyncSession,
+    db_session: AsyncSession,
     user: User,
     add_db_user,
     add_user_bot_profile,
@@ -163,8 +163,8 @@ async def test_update_user_by_user_id_success(
         == add_user_bot_profile.language_level.value
     )
 
-    db_user = await async_session.get(UserModel, response_data['user_id'])
-    db_profile = await async_session.get(
+    db_user = await db_session.get(UserModel, response_data['user_id'])
+    db_profile = await db_session.get(
         UserBotProfileModel, (response_data['user_id'], BotID.BG)
     )
     assert db_user is not None
@@ -230,7 +230,7 @@ async def test_get_next_action_new_path_success(
 ):
     user_id = user_id_for_sample_request
     bot_id_value = (
-        add_user_bot_profile.bot_id.value
+        add_user_bot_profile.bot_id
     )  # Use the bot from the profile fixture
     # This calls the new endpoint /{user_id}/bots/{bot_id}/next-action/
     response = await client.get(
@@ -284,13 +284,13 @@ async def test_get_next_action_new_path_invalid_bot_id(
 @pytest.mark.asyncio
 async def test_block_bot_success(
     client: AsyncClient,
-    async_session: AsyncSession,
+    db_session: AsyncSession,
     add_db_user: UserModel,
     add_user_bot_profile: UserBotProfileModel,
 ):
     user_id = add_db_user.user_id
     bot_to_block = add_user_bot_profile.bot_id
-    bot_id_value_for_url = bot_to_block.value
+    bot_id_value_for_url = bot_to_block
     reason = 'User blocked the bot via notifier'
 
     payload = {'telegram_id': add_db_user.telegram_id, 'reason': reason}
@@ -304,7 +304,7 @@ async def test_block_bot_success(
     response_data = response.json()
     assert response_data == {'status': 'ok'}
 
-    db_profile = await async_session.get(
+    db_profile = await db_session.get(
         UserBotProfileModel, (user_id, bot_to_block)
     )
     assert db_profile is not None

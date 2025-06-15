@@ -59,13 +59,13 @@ async def exercise_answer(
 
 @pytest_asyncio.fixture
 async def exercise_attempt(
-    async_session: AsyncSession,
+    db_session: AsyncSession,
     exercise,
     exercise_answer,
     choose_sentence_answer,
     add_db_user,
 ):
-    async with async_session as session:
+    async with db_session as session:
         db_exercise_attempt = ExerciseAttempt(
             user_id=add_db_user.user_id,
             exercise_id=exercise.exercise_id,

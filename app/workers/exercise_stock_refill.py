@@ -546,6 +546,7 @@ async def generate_and_save_exercise(
                     f'  Language: {exercise.exercise_language}\n'
                     f'  Level: {exercise.language_level.value}\n'
                     f'  Topic: {exercise.topic.value}\n'
+                    f'  Grammar: {exercise.grammar_tags}\n'
                     f'  Status: {exercise.status.value}\n'
                     f'  Text: {exercise.exercise_text}\n'
                     f'  Data: {exercise.data.model_dump_json(indent=2)}\n'

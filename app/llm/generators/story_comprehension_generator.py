@@ -31,6 +31,10 @@ class StoryComprehensionLLMOutput(BaseModel):
         description='A list of two plausible but clearly '
         'false statements about the story.'
     )
+    grammar_tags: dict = Field(
+        description="A JSON object with keys 'grammar' and 'vocabulary' "
+        'listing the topics covered in the story.'
+    )
 
 
 class StoryComprehensionGenerator(ExerciseGenerator):
@@ -126,6 +130,7 @@ class StoryComprehensionGenerator(ExerciseGenerator):
             exercise_text=get_text(
                 ExerciseType.STORY_COMPREHENSION, user_language_code
             ),
+            grammar_tags=llm_output.grammar_tags,
             data=StoryComprehensionExerciseData(
                 audio_url='',
                 audio_telegram_file_id='',

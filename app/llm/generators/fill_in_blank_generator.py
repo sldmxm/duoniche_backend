@@ -41,6 +41,10 @@ class FillInTheBlankExerciseLLMOutput(BaseModel):
             'Must use {exercise_language} alphabet only.'
         )
     )
+    grammar_tags: dict = Field(
+        description="A JSON object with keys 'grammar' and 'vocabulary' "
+        'listing the topics covered in the exercise.'
+    )
 
 
 class FillInTheBlankGenerator(ExerciseGenerator):
@@ -130,6 +134,7 @@ class FillInTheBlankGenerator(ExerciseGenerator):
             exercise_text=get_text(
                 ExerciseType.FILL_IN_THE_BLANK, user_language_code
             ),
+            grammar_tags=llm_output.grammar_tags,
             data=FillInTheBlankExerciseData(
                 text_with_blanks=text_with_blanks,
                 words=words,

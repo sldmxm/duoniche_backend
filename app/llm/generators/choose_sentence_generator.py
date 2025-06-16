@@ -29,6 +29,10 @@ class ChooseSentenceExerciseLLMOutput(BaseModel):
         'Each should be very similar to the correct one '
         'but contain a clear grammatical error.'
     )
+    grammar_tags: dict = Field(
+        description="A JSON object with keys 'grammar' and 'vocabulary' "
+        'listing the topics covered in the exercise.'
+    )
 
 
 class ChooseSentenceGenerator(ExerciseGenerator):
@@ -114,6 +118,7 @@ class ChooseSentenceGenerator(ExerciseGenerator):
             exercise_text=get_text(
                 ExerciseType.CHOOSE_SENTENCE, user_language_code
             ),
+            grammar_tags=llm_output.grammar_tags,
             data=ChooseSentenceExerciseData(
                 options=options,
             ),

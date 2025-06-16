@@ -18,6 +18,7 @@ from app.core.texts import get_text
 from app.core.value_objects.answer import Answer, ChooseAccentAnswer
 from app.core.value_objects.exercise import ChooseAccentExerciseData
 from app.llm.assessors.quality_assessor import ExerciseForAssessor
+from app.llm.generators.prompt_templates import VOCABULARY_TAGS
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
 from app.llm.llm_base import BaseLLMService
 
@@ -55,6 +56,10 @@ class WordDefinitionAndExamples(BaseModel):
         description='One or two example sentences using the word in'
         " the target language, appropriate for the learner's "
         'level.'
+    )
+    grammar_tags: dict = Field(
+        description="A JSON object with key 'vocabulary' "
+        'listing the topics covered in the exercise.'
     )
 
 
@@ -98,7 +103,12 @@ class ChooseAccentGenerator(ExerciseGenerator):
             '1. Is this word commonly used, widely known, and generally '
             'suitable for this level?\n'
             '2. Provide a brief reasoning for your decision.\n'
-            '3. What is your confidence level in this assessment '
+            '3. Provide a list of the vocabulary topics covered in a JSON '
+            "object with key 'vocabulary' in the 'grammar_tags' field.\n"
+            'Use the following tag list. Each tag either is or is not '
+            'in the exercise:\n'
+            f'Vocabulary Tags: {VOCABULARY_TAGS}\n'
+            '4. What is your confidence level in this assessment '
             '(HIGH, MEDIUM, LOW)?\n\n'
             '{format_instructions}'
         )
@@ -449,6 +459,11 @@ class ChooseAccentGenerator(ExerciseGenerator):
 
             all_options = [word_with_accent_nfc] + incorrect_options
 
+            grammar_tags = definition_and_examples.grammar_tags
+            grammar_tags['grammar'] = grammar_tags.get('grammar', []) + [
+                'accent'
+            ]
+
             exercise = Exercise(
                 exercise_id=None,
                 exercise_type=ExerciseType.CHOOSE_ACCENT,
@@ -458,6 +473,7 @@ class ChooseAccentGenerator(ExerciseGenerator):
                 exercise_text=get_text(
                     ExerciseType.CHOOSE_ACCENT, user_language_code
                 ),
+                grammar_tags=grammar_tags,
                 data=ChooseAccentExerciseData(
                     options=all_options,
                     meaning=formatted_meaning,

@@ -1,30 +1,18 @@
-from typing import Tuple
+from typing import Dict, List, Tuple
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from pydantic import BaseModel, Field
 
 from app.core.entities.exercise import Exercise
 from app.core.value_objects.answer import Answer, ChooseSentenceAnswer
 from app.core.value_objects.exercise import ChooseSentenceExerciseData
 from app.llm.interfaces.exercise_validator import ExerciseValidator
 from app.llm.llm_base import BaseLLMService
+from app.llm.validators.models import AttemptValidationResponse
 from app.llm.validators.prompt_templates import (
     BASE_SYSTEM_PROMPT_FOR_VALIDATION,
     CHOOSE_SENTENCE_INSTRUCTIONS,
 )
-
-
-class AttemptValidationResponse(BaseModel):
-    is_correct: bool = Field(description='Whether the answer is correct')
-    feedback: str = Field(
-        description='If answer is correct, empty string. '
-        'Else answer the question "What\'s wrong with this user answer?" '
-        '- clearly shortly explain grammatical, spelling, '
-        'syntactic, semantic or other errors.\n '
-        "Warning! Feedback for the user must be in user's language.\n"
-        'Be concise.'
-    )
 
 
 class ChooseSentenceValidator(ExerciseValidator):
@@ -37,25 +25,26 @@ class ChooseSentenceValidator(ExerciseValidator):
         target_language: str,
         exercise: Exercise,
         answer: Answer,
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, str, Dict[str, List[str]]]:
         """Validate user's answer to the choose-the-sentence exercise."""
         if not isinstance(answer, ChooseSentenceAnswer):
             raise TypeError(
-                f'Expected ChooseSentenceAnswer, got {type(answer).__name__}'
+                f'Expected ChooseSentenceAnswer, got {type(answer).__name__}',
             )
 
         if not isinstance(exercise.data, ChooseSentenceExerciseData):
             raise TypeError(
                 f'Expected ChooseSentenceExerciseData for exercise, '
-                f'got {type(exercise.data).__name__}'
+                f'got {type(exercise.data).__name__}',
             )
 
         parser = PydanticOutputParser(
-            pydantic_object=AttemptValidationResponse
+            pydantic_object=AttemptValidationResponse,
         )
 
         system_prompt_template = BASE_SYSTEM_PROMPT_FOR_VALIDATION.replace(
-            '{specific_exercise_instructions}', CHOOSE_SENTENCE_INSTRUCTIONS
+            '{specific_exercise_instructions}',
+            CHOOSE_SENTENCE_INSTRUCTIONS,
         )
 
         user_prompt_template = (
@@ -73,11 +62,13 @@ class ChooseSentenceValidator(ExerciseValidator):
             [
                 ('system', system_prompt_template),
                 ('user', user_prompt_template),
-            ]
+            ],
         )
 
         chain = await self.llm_service.create_llm_chain(
-            chat_prompt, parser, is_chat_prompt=True
+            chat_prompt,
+            parser,
+            is_chat_prompt=True,
         )
 
         options_formatted_list = [
@@ -100,4 +91,8 @@ class ChooseSentenceValidator(ExerciseValidator):
             input_data=request_data,
         )
 
-        return validation_result.is_correct, validation_result.feedback
+        return (
+            validation_result.is_correct,
+            validation_result.feedback,
+            validation_result.error_tags,
+        )

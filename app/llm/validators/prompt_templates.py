@@ -1,3 +1,5 @@
+from app.core.consts import GRAMMAR_TAGS, VOCABULARY_TAGS
+
 BASE_SYSTEM_PROMPT_FOR_VALIDATION = (
     'You are a language learning assistant specializing in '
     '{exercise_language}.\n'
@@ -5,7 +7,14 @@ BASE_SYSTEM_PROMPT_FOR_VALIDATION = (
     'General Instructions for feedback:\n'
     '- If the answer is correct, the feedback should be an empty string.\n'
     '- If the answer is incorrect, clearly and concisely explain the '
-    'errors (grammatical, spelling, syntactic, semantic, etc.).\n'
+    'errors (grammatical, spelling, syntactic, semantic, etc.) AND '
+    'classify the error type into grammatical and vocabulary themes. '
+    'Return a JSON object with keys "grammar" and "vocabulary" for these '
+    'error themes in the "error_tags" field. '
+    'Use ONLY tags from the provided lists. If no specific tags apply, '
+    'return an empty list for that key or null for "error_tags".\n'
+    f'Available grammar tags for error classification: {GRAMMAR_TAGS}\n'
+    f'Available vocabulary tags for error classification: {VOCABULARY_TAGS}\n'
     '- Explain exactly what the user did wrong. Do not use arguments '
     "like 'because that's how it should be'.\n"
     "- Avoid generic phrases like 'Wrong answer' or 'Try again' "

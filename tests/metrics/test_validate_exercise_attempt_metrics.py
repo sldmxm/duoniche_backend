@@ -58,7 +58,10 @@ def mock_async_task_cache():
     mock = AsyncMock(spec=AsyncTaskCache)
 
     async def mock_get_or_create_task(
-        key, task_func, serializer, deserializer
+        key,
+        task_func,
+        serializer,
+        deserializer,
     ):
         result = await task_func()
         return result
@@ -110,7 +113,8 @@ def mock_backend_exercise_metrics():
         'incorrect_attempts': MagicMock(),
     }
     with patch(
-        'app.core.services.attempt_validator.BACKEND_EXERCISE_METRICS', metrics
+        'app.core.services.attempt_validator.BACKEND_EXERCISE_METRICS',
+        metrics,
     ):
         yield metrics
 
@@ -152,7 +156,11 @@ async def test_validate_exercise_attempt_metrics(
 ):
     # Arrange
     mock_answer_repo.get_all_by_user_answer.return_value = []
-    mock_llm_service.validate_attempt.return_value = False, 'Wrong!'
+    mock_llm_service.validate_attempt.return_value = (
+        False,
+        'Wrong!',
+        {'grammar': 'error1', 'vocabulary': 'error2'},
+    )
 
     # Act
     await exercise_service.validate_exercise_attempt(

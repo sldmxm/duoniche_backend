@@ -72,6 +72,7 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
         is_correct: bool,
         feedback: Optional[str],
         answer_id: int,
+        error_tags: Optional[dict] = None,
     ) -> ExerciseAttemptEntity:
         attempt = await self.session.get(ExerciseAttempt, attempt_id)
         if not attempt:
@@ -79,6 +80,7 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
         attempt.is_correct = is_correct
         attempt.feedback = feedback
         attempt.answer_id = answer_id
+        attempt.error_tags = error_tags
         await self.session.flush()
         await self.session.refresh(attempt)
         return self._to_entity(attempt)

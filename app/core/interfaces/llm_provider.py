@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Dict, List, Tuple
 
 from app.core.entities.exercise import Exercise
 from app.core.enums import ExerciseType, LanguageLevel
@@ -25,5 +25,5 @@ class LLMProvider(ABC):
         user_language: str,
         exercise: Exercise,
         answer: Answer,
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, str, Dict[str, List[str]]]:
         pass

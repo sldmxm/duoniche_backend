@@ -12,7 +12,6 @@ from app.llm.generators.story_comprehension_generator import (
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
 from app.llm.interfaces.exercise_validator import ExerciseValidator
 from app.llm.llm_base import BaseLLMService
-from app.llm.validators.choose_accent_validator import ChooseAccentValidator
 from app.llm.validators.choose_sentence_validator import (
     ChooseSentenceValidator,
 )
@@ -57,7 +56,6 @@ class ExerciseValidatorFactory:
         validators = {
             ExerciseType.FILL_IN_THE_BLANK: FillInTheBlankValidator,
             ExerciseType.CHOOSE_SENTENCE: ChooseSentenceValidator,
-            ExerciseType.CHOOSE_ACCENT: ChooseAccentValidator,
         }
 
         validator_class = validators.get(exercise_type)

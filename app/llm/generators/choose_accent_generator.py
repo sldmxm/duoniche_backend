@@ -9,6 +9,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from lxml import html
 from pydantic import BaseModel, Field
 
+from app.core.consts import VOCABULARY_TAGS
 from app.core.entities.exercise import Exercise
 from app.core.entities.user_bot_profile import BotID
 from app.core.enums import ExerciseType, LanguageLevel
@@ -18,7 +19,6 @@ from app.core.texts import get_text
 from app.core.value_objects.answer import Answer, ChooseAccentAnswer
 from app.core.value_objects.exercise import ChooseAccentExerciseData
 from app.llm.assessors.quality_assessor import ExerciseForAssessor
-from app.llm.generators.prompt_templates import VOCABULARY_TAGS
 from app.llm.interfaces.exercise_generator import ExerciseGenerator
 from app.llm.llm_base import BaseLLMService
 

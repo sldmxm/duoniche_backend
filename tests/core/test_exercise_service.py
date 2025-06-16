@@ -71,7 +71,7 @@ def mock_answer_repo(mocker):
     async def _save_answer(answer: ExerciseAnswer) -> ExerciseAnswer:
         if answer.answer_id is None:
             answer.answer_id = 500 + hash(
-                answer.answer.get_answer_text()
+                answer.answer.get_answer_text(),
             )  # Assign a semi-unique dummy ID
         return answer
 
@@ -84,7 +84,11 @@ def mock_answer_repo(mocker):
 def mock_llm_service(mocker):
     mock = mocker.AsyncMock(spec=LLMProvider)
     # Default mock behavior for validate_attempt
-    mock.validate_attempt.return_value = (False, 'Default LLM Feedback')
+    mock.validate_attempt.return_value = (
+        False,
+        'Default LLM Feedback',
+        {'grammar': 'error1', 'vocabulary': 'error2'},
+    )
     return mock
 
 
@@ -196,7 +200,10 @@ def db_answer_wrong_lang(exercise, answer_vo, user) -> ExerciseAnswer:
 
 @pytest.fixture
 def validated_answer(
-    exercise, answer_vo, user, user_bot_profile
+    exercise,
+    answer_vo,
+    user,
+    user_bot_profile,
 ) -> ExerciseAnswer:
     # Represents an answer generated *by* the LLM validation process
     return ExerciseAnswer(
@@ -209,12 +216,14 @@ def validated_answer(
         feedback_language=user_bot_profile.user_language,
         created_at=datetime.now(),
         created_by=f'LLM:user:{user.user_id}',
+        error_tags={'grammar': 'error1', 'vocabulary': 'error2'},
     )
 
 
 @pytest.fixture
 def translated_answer(
-    db_answer_wrong_lang, user_bot_profile
+    db_answer_wrong_lang,
+    user_bot_profile,
 ) -> ExerciseAnswer:
     return ExerciseAnswer(
         answer_id=504,
@@ -266,7 +275,8 @@ class TestExerciseServiceValidation:
 
         # Assert
         mock_answer_repo.get_all_by_user_answer.assert_awaited_once_with(
-            exercise.exercise_id, answer_vo
+            exercise.exercise_id,
+            answer_vo,
         )
         # Should save the attempt with data from the correct DB answer
         mock_attempt_repo.create.assert_awaited_once()
@@ -327,7 +337,8 @@ class TestExerciseServiceValidation:
 
         # Assert
         mock_answer_repo.get_all_by_user_answer.assert_awaited_once_with(
-            exercise.exercise_id, answer_vo
+            exercise.exercise_id,
+            answer_vo,
         )
         # Should save the attempt with data from the correct language DB answer
         mock_attempt_repo.create.assert_awaited_once()
@@ -377,7 +388,8 @@ class TestExerciseServiceValidation:
 
         # Assert
         mock_answer_repo.get_all_by_user_answer.assert_awaited_once_with(
-            exercise.exercise_id, answer_vo
+            exercise.exercise_id,
+            answer_vo,
         )
         # 1. Initial save of the attempt (before translation)
         mock_attempt_repo.create.assert_awaited_once()
@@ -432,6 +444,7 @@ class TestExerciseServiceValidation:
             feedback=translated_answer.feedback,
             # Use ID from saved translated answer
             answer_id=new_translated_answer.answer_id,
+            error_tags=translated_answer.error_tags,
         )
 
         # 6. Final result check
@@ -475,7 +488,8 @@ class TestExerciseServiceValidation:
 
         # Assert
         mock_answer_repo.get_all_by_user_answer.assert_awaited_once_with(
-            exercise.exercise_id, answer_vo
+            exercise.exercise_id,
+            answer_vo,
         )
         # 1. Initial save of the attempt (before validation)
         mock_attempt_repo.create.assert_awaited_once()
@@ -514,6 +528,7 @@ class TestExerciseServiceValidation:
             is_correct=validated_answer.is_correct,
             feedback='Default LLM Feedback',
             answer_id=saved_answer.answer_id,
+            error_tags=validated_answer.error_tags,
         )
 
         # 6. Final result check
@@ -536,7 +551,11 @@ class TestExerciseServiceValidation:
     ):
         user.user_id = 157
 
-        mock_llm_service.validate_attempt.return_value = False, 'Wrong!'
+        mock_llm_service.validate_attempt.return_value = (
+            False,
+            'Wrong!',
+            {'grammar': 'error1', 'vocabulary': 'error2'},
+        )
         mock_answer_repo.get_all_by_user_answer.return_value = []
         mock_attempt_repo.create.return_value = ExerciseAttempt(
             attempt_id=1,
@@ -565,7 +584,7 @@ class TestExerciseServiceValidation:
                 answer=fill_in_the_blank_answer,
                 user_language='en',
                 last_exercise_at=None,
-            )
+            ),
         )
         task2 = asyncio.create_task(
             exercise_service.validate_exercise_attempt(
@@ -574,12 +593,13 @@ class TestExerciseServiceValidation:
                 answer=fill_in_the_blank_answer,
                 user_language='en',
                 last_exercise_at=None,
-            )
+            ),
         )
 
         # Wait for both tasks to complete
         exercise_attempt1, exercise_attempt2 = await asyncio.gather(
-            task1, task2
+            task1,
+            task2,
         )
 
         # Assertions

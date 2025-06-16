@@ -44,5 +44,6 @@ class ExerciseAttemptRepository(ABC):
         is_correct: bool,
         feedback: Optional[str],
         answer_id: int,
+        error_tags: Optional[dict] = None,
     ) -> ExerciseAttempt:
         raise NotImplementedError

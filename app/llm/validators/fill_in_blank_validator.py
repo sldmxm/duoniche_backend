@@ -1,30 +1,18 @@
-from typing import Tuple
+from typing import Dict, List, Tuple
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from pydantic import BaseModel, Field
 
 from app.core.entities.exercise import Exercise
 from app.core.value_objects.answer import Answer, FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.interfaces.exercise_validator import ExerciseValidator
 from app.llm.llm_base import BaseLLMService
+from app.llm.validators.models import AttemptValidationResponse
 from app.llm.validators.prompt_templates import (
     BASE_SYSTEM_PROMPT_FOR_VALIDATION,
     FILL_IN_THE_BLANK_INSTRUCTIONS,
 )
-
-
-class AttemptValidationResponse(BaseModel):
-    is_correct: bool = Field(description='Whether the answer is correct')
-    feedback: str = Field(
-        description='If answer is correct, empty string. '
-        'Else answer the question "What\'s wrong with this user answer?" '
-        '- clearly shortly explain grammatical, spelling, '
-        'syntactic, semantic or other errors.\n '
-        "Warning! Feedback for the user must be in user's language.\n"
-        'Be concise.'
-    )
 
 
 class FillInTheBlankValidator(ExerciseValidator):
@@ -37,7 +25,7 @@ class FillInTheBlankValidator(ExerciseValidator):
         target_language,
         exercise: Exercise,
         answer: Answer,
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, str, Dict[str, List[str]]]:
         """Validate user's answer to the fill-in-the-blank exercise."""
         if not isinstance(answer, FillInTheBlankAnswer):
             raise TypeError(
@@ -100,4 +88,8 @@ class FillInTheBlankValidator(ExerciseValidator):
             input_data=request_data,
         )
 
-        return validation_result.is_correct, validation_result.feedback
+        return (
+            validation_result.is_correct,
+            validation_result.feedback,
+            validation_result.error_tags,
+        )

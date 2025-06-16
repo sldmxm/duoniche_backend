@@ -114,6 +114,7 @@ class AttemptValidator:
                     is_correct=db_answer.is_correct,
                     feedback=db_answer.feedback,
                     answer_id=db_answer.answer_id,
+                    error_tags=db_answer.error_tags,
                 )
                 return await self.exercise_attempt_repository.create(
                     exercise_attempt
@@ -130,6 +131,7 @@ class AttemptValidator:
                 is_correct=None,
                 feedback=None,
                 answer_id=None,
+                error_tags=None,
             )
 
             pre_saved_attempt = await self.exercise_attempt_repository.create(
@@ -157,6 +159,15 @@ class AttemptValidator:
                 ):
                     feedback += '\n\n' + exercise.data.meaning
 
+                grammar_tags_map = {
+                    ExerciseType.CHOOSE_ACCENT: 'accent',
+                    ExerciseType.STORY_COMPREHENSION: 'listening',
+                }
+                grammar_tags = grammar_tags_map.get(exercise.exercise_type)
+
+                if isinstance(exercise.grammar_tags, dict):
+                    vocabulary_tags = exercise.grammar_tags.get('vocabulary')
+
                 incorrect_answer = ExerciseAnswer(
                     answer_id=None,
                     exercise_id=exercise.exercise_id,
@@ -165,6 +176,10 @@ class AttemptValidator:
                     feedback=feedback,
                     feedback_language=user_language,
                     created_at=datetime.now(timezone.utc),
+                    error_tags={
+                        'grammar': grammar_tags,
+                        'vocabulary': vocabulary_tags,
+                    },
                     created_by=f'auto:{user_id}',
                 )
                 new_answer = await self.exercise_answer_repository.create(
@@ -198,6 +213,7 @@ class AttemptValidator:
                     is_correct=new_answer.is_correct,
                     feedback=new_answer.feedback,
                     answer_id=new_answer.answer_id,
+                    error_tags=new_answer.error_tags,
                 )
             )
             logger.debug(
@@ -273,6 +289,7 @@ class AttemptValidator:
                     (
                         is_correct,
                         feedback,
+                        error_tags,
                     ) = await self.llm_service.validate_attempt(
                         user_language=user_language,
                         exercise=exercise,
@@ -301,6 +318,7 @@ class AttemptValidator:
                 is_correct=is_correct,
                 feedback=feedback,
                 feedback_language=user_language,
+                error_tags=error_tags,
                 created_at=datetime.now(timezone.utc),
                 created_by=f'LLM:user:{user_id}',
             )

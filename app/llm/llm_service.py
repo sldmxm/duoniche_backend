@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import httpx
 
@@ -127,7 +127,7 @@ class LLMService(BaseLLMService, LLMProvider):
         user_language: str,
         exercise: Exercise,
         answer: Answer,
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, str, Dict[str, List[str]]]:
         """Validate user's answer to the exercise."""
         validator = ExerciseValidatorFactory.create_validator(
             exercise_type=exercise.exercise_type,
@@ -150,7 +150,7 @@ class LLMService(BaseLLMService, LLMProvider):
             )
             .time()
         ):
-            is_correct, feedback = await validator.validate(
+            is_correct, feedback, error_tags = await validator.validate(
                 user_language=user_language_for_prompt,
                 target_language=target_language,
                 exercise=exercise,
@@ -165,4 +165,4 @@ class LLMService(BaseLLMService, LLMProvider):
             llm_model=self.model.model_name,
         ).inc()
 
-        return is_correct, feedback
+        return is_correct, feedback, error_tags

@@ -13,5 +13,8 @@ class ExerciseAnswer(BaseModel):
     is_correct: bool = Field()
     feedback: str = Field()
     feedback_language: str = Field()
+    error_tags: Optional[dict] = Field(
+        default=None, description='Categorized error tags.'
+    )
     created_at: datetime = Field()
     created_by: str = Field()

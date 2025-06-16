@@ -33,6 +33,7 @@ class ExerciseAttempt(Base):
     answer_id: Mapped[int | None] = mapped_column(
         ForeignKey('exercise_answers.answer_id', ondelete='SET NULL')
     )
+    error_tags: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.now, nullable=False
     )

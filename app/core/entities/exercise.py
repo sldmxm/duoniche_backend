@@ -38,6 +38,9 @@ class Exercise(BaseModel):
     comments: Optional[str] = Field(
         default=None, description='Exercise comments'
     )
+    grammar_tags: Optional[dict] = Field(
+        default=None, description='Grammar and vocabulary tags.'
+    )
 
     data: Union[
         FillInTheBlankExerciseData,

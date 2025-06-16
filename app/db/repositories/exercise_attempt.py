@@ -95,6 +95,7 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
             is_correct=exercise_attempt.is_correct,
             feedback=exercise_attempt.feedback,
             answer_id=exercise_attempt.answer_id,
+            error_tags=exercise_attempt.error_tags,
         )
         self.session.add(db_attempt)
         await self.session.flush()
@@ -109,5 +110,6 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
             answer=create_answer_model_validate(db_attempt.answer),
             is_correct=db_attempt.is_correct,
             feedback=db_attempt.feedback,
+            error_tags=db_attempt.error_tags,
             answer_id=db_attempt.answer_id,
         )

@@ -28,6 +28,7 @@ class ExerciseAnswer(Base):
     is_correct: Mapped[bool] = mapped_column(Boolean, nullable=False)
     feedback: Mapped[str | None] = mapped_column(String)
     feedback_language: Mapped[str | None] = mapped_column(String)
+    error_tags: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.now, nullable=False
     )

@@ -3,6 +3,9 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 import httpx
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from pydantic import BaseModel, Field
 
 from app.core.entities.exercise import Exercise
 from app.core.enums import (
@@ -31,6 +34,19 @@ from app.utils.language_code_converter import (
 logger = logging.getLogger(__name__)
 
 ASSESSOR_EXERCISE_TYPES_EXCLUDE = (ExerciseType.CHOOSE_ACCENT,)
+
+
+class ReportLLMOutput(BaseModel):
+    short_report: str = Field(
+        description='A concise, summary version of the weekly report,'
+        ' 2-3 sentences long and encouraging.'
+    )
+
+    full_report: str = Field(
+        description='A detailed, comprehensive version of the weekly report '
+        'with sections for progress, common mistakes, '
+        'and suggestions.'
+    )
 
 
 class LLMService(BaseLLMService, LLMProvider):
@@ -166,3 +182,70 @@ class LLMService(BaseLLMService, LLMProvider):
         ).inc()
 
         return is_correct, feedback, error_tags
+
+    async def generate_report_text(
+        self, summary_context: str, user_language: str
+    ) -> Optional[tuple[str, str]]:
+        """Generates a weekly progress report using the LLM."""
+        parser = PydanticOutputParser(pydantic_object=ReportLLMOutput)
+
+        system_prompt = (
+            'You are a supportive and insightful language learning coach. '
+            'Your task is to write a weekly progress report '
+            'for a user based on the provided summary of their activity. '
+            'The report must be in {user_language}. '
+            'The tone should be encouraging, positive, and motivating, '
+            'even when pointing out areas for improvement. '
+            'Start with a positive affirmation. Use markdown for formatting '
+            'the full report (e.g., bold headings like **Progress Summary**).'
+        )
+
+        user_prompt = (
+            "Here is the user's activity summary for the last 7 days:\n"
+            '---\n'
+            '{summary_context}\n'
+            '---\n\n'
+            'Please generate a short (2-3 sentences) and a full (detailed) '
+            'progress report based on this data. '
+            'For the full report, structure it with clear, friendly headings '
+            "in {user_language} (e.g., 'Progress Summary', 'Areas to "
+            "Focus On', 'Keep Going!'). "
+            'Highlight both strengths and common errors. Provide a positive '
+            'and actionable closing statement.'
+            '\n\n{format_instructions}'
+        )
+
+        chat_prompt = ChatPromptTemplate.from_messages(
+            [
+                ('system', system_prompt),
+                ('user', user_prompt),
+            ]
+        )
+
+        chain = await self.create_llm_chain(
+            chat_prompt, parser, is_chat_prompt=True
+        )
+
+        user_language_full_name = convert_iso639_language_code_to_full_name(
+            user_language
+        )
+
+        request_data = {
+            'summary_context': summary_context,
+            'user_language': user_language_full_name,
+            'format_instructions': parser.get_format_instructions(),
+        }
+
+        try:
+            report_output: ReportLLMOutput = await self.run_llm_chain(
+                chain, request_data
+            )
+            return report_output.short_report, report_output.full_report
+        except Exception as e:
+            logger.error(
+                f'Failed to generate report for user language {user_language} '
+                f'with summary: "{summary_context[:100]}...". Error: {e}',
+                exc_info=True,
+            )
+
+            return None

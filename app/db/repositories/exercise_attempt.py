@@ -152,37 +152,77 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
                     AS correct_attempts,
                 (SELECT jsonb_object_agg(tag, count) FROM (
                     SELECT
-                    jsonb_array_elements_text(grammar_tags->'grammar') AS tag,
-                    COUNT(*) as count
+                        jsonb_array_elements_text(
+                            CASE
+                            WHEN
+                            jsonb_typeof(grammar_tags->'grammar') = 'array'
+                            THEN grammar_tags->'grammar'
+                            WHEN
+                            jsonb_typeof(grammar_tags->'grammar') = 'string'
+                            THEN jsonb_build_array(grammar_tags->'grammar')
+                            ELSE '[]'::jsonb
+                            END
+                        ) AS tag,
+                        COUNT(*) as count
                     FROM weekly_attempts
                     WHERE grammar_tags->'grammar' IS NOT NULL
                     GROUP BY tag ORDER BY count DESC
                 ) AS grammar_summary) AS grammar_tags,
                 (SELECT jsonb_object_agg(tag, count) FROM (
                     SELECT
-                    jsonb_array_elements_text(grammar_tags->'vocabulary')
-                        AS tag, COUNT(*) as count
+                        jsonb_array_elements_text(
+                            CASE
+                            WHEN
+                            jsonb_typeof(grammar_tags->'vocabulary') = 'array'
+                            THEN grammar_tags->'vocabulary'
+                            WHEN
+                            jsonb_typeof(grammar_tags->'vocabulary') = 'string'
+                            THEN
+                            jsonb_build_array(grammar_tags->'vocabulary')
+                            ELSE '[]'::jsonb
+                            END
+                        ) AS tag,
+                        COUNT(*) as count
                     FROM weekly_attempts
                     WHERE grammar_tags->'vocabulary' IS NOT NULL
                     GROUP BY tag ORDER BY count DESC
                 ) AS vocab_summary) AS vocab_tags,
                 (SELECT jsonb_object_agg(tag, count) FROM (
                     SELECT
-                    jsonb_array_elements_text(error_tags->'grammar') AS tag,
-                    COUNT(*) as count
+                        jsonb_array_elements_text(
+                            CASE
+                            WHEN jsonb_typeof(error_tags->'grammar') = 'array'
+                            THEN error_tags->'grammar'
+                            WHEN jsonb_typeof(error_tags->'grammar') = 'string'
+                            THEN jsonb_build_array(error_tags->'grammar')
+                            ELSE '[]'::jsonb
+                            END
+                        ) AS tag,
+                        COUNT(*) as count
                     FROM weekly_attempts
                     WHERE is_correct = false
                         AND error_tags->'grammar' IS NOT NULL
                     GROUP BY tag ORDER BY count DESC
-                ) AS error_grammar_tags,
+                ) AS error_grammar_summary) AS error_grammar_tags,
                 (SELECT jsonb_object_agg(tag, count) FROM (
-                    SELECT jsonb_array_elements_text(error_tags->'vocabulary')
-                        AS tag, COUNT(*) as count
+                    SELECT
+                        jsonb_array_elements_text(
+                            CASE
+                            WHEN
+                            jsonb_typeof(error_tags->'vocabulary') = 'array'
+                            THEN error_tags->'vocabulary'
+                            WHEN
+                            jsonb_typeof(error_tags->'vocabulary') = 'string'
+                            THEN jsonb_build_array(error_tags->'vocabulary')
+                            ELSE '[]'::jsonb
+                            END
+                        ) AS tag,
+                        COUNT(*) as count
                     FROM weekly_attempts
                     WHERE is_correct = false
                         AND error_tags->'vocabulary' IS NOT NULL
                     GROUP BY tag ORDER BY count DESC
-                ) AS error_vocab_tags)
+                ) AS error_vocab_summary) AS error_vocab_tags
             FROM
                 weekly_attempts;
             """,
@@ -196,7 +236,14 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
         summary = result.fetchone()
 
         if not summary or summary[0] is None:
-            return {}
+            return {
+                'total_attempts': 0,
+                'correct_attempts': 0,
+                'grammar_tags': {},
+                'vocab_tags': {},
+                'error_grammar_tags': {},
+                'error_vocab_tags': {},
+            }
 
         return {
             'total_attempts': summary[0] or 0,

@@ -84,6 +84,8 @@ class UserBotProfileService:
             rating=None,
             rating_last_calculated_at=None,
             settings=None,
+            last_report_generated_at=None,
+            current_streak_days=0,
         )
         try:
             created_profile = await self._profile_repo.create(new_profile)

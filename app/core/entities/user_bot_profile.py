@@ -77,6 +77,10 @@ class UserBotProfile(BaseModel):
         None, description='Timestamp of the last long break reminder sent'
     )
 
+    last_report_generated_at: Optional[datetime] = Field(
+        None, description='Timestamp of the last report generation'
+    )
+
     rating: Optional[float] = Field(
         None, description="User's calculated rating for this bot/language"
     )

@@ -86,6 +86,10 @@ class DBUserBotProfile(Base):
         )
     )
 
+    last_report_generated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     rating: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     rating_last_calculated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True

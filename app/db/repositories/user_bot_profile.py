@@ -3,7 +3,7 @@ from datetime import datetime, time, timedelta, timezone
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, override
 
-from sqlalchemy import Time, cast, select, text, update
+from sqlalchemy import Time, cast, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -297,6 +297,11 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
         Get profiles of users who have made at least one attempt since the
         specified datetime.
         """
+
+        logger.info(
+            f'Getting active profiles for users who have made at {since}'
+        )
+
         subquery = (
             select(
                 ExerciseAttemptModel.user_id,
@@ -306,7 +311,13 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
         )
         stmt = (
             select(DBUserBotProfile)
-            .where(DBUserBotProfile.user_id.in_(subquery))
+            .where(
+                DBUserBotProfile.user_id.in_(subquery),
+                or_(
+                    DBUserBotProfile.last_report_generated_at.is_not_null(),
+                    DBUserBotProfile.last_report_generated_at <= since,
+                ),
+            )
             .options(joinedload(DBUserBotProfile.user))
         )
         result = await self.session.execute(stmt)

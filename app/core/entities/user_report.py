@@ -1,0 +1,39 @@
+from datetime import date, datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class UserReport(BaseModel):
+    """
+    Represents a personalized weekly progress report for a user.
+    """
+
+    report_id: Optional[int] = Field(None, description='Internal report ID')
+    user_id: int = Field(
+        ...,
+        description='ID of the user for whom the report is generated',
+    )
+    bot_id: str = Field(
+        ...,
+        description='Bot context (e.g., "Bulgarian") for the report.',
+    )
+    week_start_date: date = Field(
+        ...,
+        description='The start date of the week the report covers',
+    )
+    short_report: str = Field(
+        ...,
+        description='A concise, summary version of the report',
+    )
+    full_report: str = Field(
+        ...,
+        description='A detailed, comprehensive version of the report',
+    )
+    generated_at: datetime = Field(
+        ...,
+        description='Timestamp of when the report was generated',
+    )
+    model_config = ConfigDict(
+        from_attributes=True,
+    )

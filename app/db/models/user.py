@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from app.db.models.exercise_attempt import ExerciseAttempt
     from app.db.models.payment import DBPayment
     from app.db.models.user_bot_profile import DBUserBotProfile
+    from app.db.models.user_report import UserReport
 
 
 class User(Base):
@@ -52,6 +53,10 @@ class User(Base):
     )
 
     payments: Mapped[list['DBPayment']] = relationship(
+        back_populates='user', cascade='all, delete-orphan'
+    )
+
+    reports: Mapped[list['UserReport']] = relationship(
         back_populates='user', cascade='all, delete-orphan'
     )
 

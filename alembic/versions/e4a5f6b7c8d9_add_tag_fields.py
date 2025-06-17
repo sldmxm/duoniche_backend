@@ -28,3 +28,5 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_column('exercise_attempts', 'error_tags')
+    op.drop_column('exercises', 'error_tags')
+    op.drop_column('exercise_answers', 'error_tags')

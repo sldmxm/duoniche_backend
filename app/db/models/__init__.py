@@ -5,6 +5,7 @@ from app.db.models.exercise_attempt import ExerciseAttempt
 from app.db.models.payment import DBPayment
 from app.db.models.user import User
 from app.db.models.user_bot_profile import DBUserBotProfile
+from app.db.models.user_report import UserReport
 
 __all__ = [
     'Base',
@@ -14,4 +15,5 @@ __all__ = [
     'User',
     'DBUserBotProfile',
     'DBPayment',
+    'UserReport',
 ]

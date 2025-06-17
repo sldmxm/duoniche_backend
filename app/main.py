@@ -30,6 +30,9 @@ from app.workers.exercise_review_processor import (
 from app.workers.exercise_stock_refill import exercise_stock_refill_loop
 from app.workers.metrics_updater import metrics_loop
 from app.workers.notification_scheduler import notification_scheduler_loop
+from app.workers.report_generator import (
+    report_generator_worker_loop,
+)
 
 configure_logging()
 
@@ -84,6 +87,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     exercise_review_processor_worker_task = asyncio.create_task(
         exercise_review_processor_loop(stop_event=stop_event)
     )
+    report_generator_task = asyncio.create_task(
+        report_generator_worker_loop(stop_event=stop_event)
+    )
 
     logger.info('Application startup complete. All workers started.')
     yield
@@ -95,6 +101,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
         notification_scheduler_task,
         quality_monitoring_worker_task,
         exercise_review_processor_worker_task,
+        report_generator_task,
     ]
     stop_event.set()
     for task in worker_tasks:

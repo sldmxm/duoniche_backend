@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from datetime import datetime
+from typing import Dict, List, Optional
 
 from app.core.entities.exercise_attempt import ExerciseAttempt
 
@@ -47,3 +48,11 @@ class ExerciseAttemptRepository(ABC):
         error_tags: Optional[dict] = None,
     ) -> ExerciseAttempt:
         raise NotImplementedError
+
+    @abstractmethod
+    async def get_period_summary_for_user_and_bot(
+        self, user_id: int, bot_id: str, start_date: datetime
+    ) -> Dict:
+        """
+        Aggregates user's performance data over the last week.
+        """

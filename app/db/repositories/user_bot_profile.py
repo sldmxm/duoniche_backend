@@ -15,7 +15,12 @@ from app.core.entities.user_bot_profile import (
 from app.core.repositories.user_bot_profile_repository import (
     UserBotProfileRepository,
 )
-from app.db.models import DBUserBotProfile
+from app.db.models import (
+    DBUserBotProfile,
+)
+from app.db.models import (
+    ExerciseAttempt as ExerciseAttemptModel,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +43,11 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
 
     @override
     async def get_all_by_user_id(
-        self, user_id: int
+        self,
+        user_id: int,
     ) -> List[Optional[UserBotProfile]]:
         stmt = select(DBUserBotProfile).where(
-            DBUserBotProfile.user_id == user_id
+            DBUserBotProfile.user_id == user_id,
         )
         result = await self.session.execute(stmt)
         db_profiles = result.scalars().all()
@@ -53,7 +59,8 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
     @override
     async def get(self, user_id: int, bot_id: BotID) -> UserBotProfile | None:
         db_profile = await self.session.get(
-            DBUserBotProfile, (user_id, bot_id)
+            DBUserBotProfile,
+            (user_id, bot_id),
         )
         if not db_profile:
             return None
@@ -62,19 +69,21 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
     @override
     async def update(self, profile: UserBotProfile) -> UserBotProfile:
         existing_db_profile = await self.session.get(
-            DBUserBotProfile, (profile.user_id, profile.bot_id)
+            DBUserBotProfile,
+            (profile.user_id, profile.bot_id),
         )
 
         if not existing_db_profile:
             raise ValueError(
                 f'Profile not found for user {profile.user_id} '
-                f'and bot {profile.bot_id}'
+                f'and bot {profile.bot_id}',
             )
 
         profile_data_to_update = profile.model_dump(exclude_unset=True)
         for key, value in profile_data_to_update.items():
             if isinstance(getattr(profile, key, None), Enum) and isinstance(
-                value, str
+                value,
+                str,
             ):
                 enum_field = getattr(profile, key)
                 try:
@@ -94,7 +103,8 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
         return UserBotProfile.model_validate(existing_db_profile)
 
     async def get_by_recent_exercise_with_user_data(
-        self, period_seconds: int
+        self,
+        period_seconds: int,
     ) -> List[DBUserBotProfile]:
         now = datetime.now(timezone.utc)
         stmt = (
@@ -111,7 +121,8 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
         return list(db_user_bot_profiles)
 
     async def get_unfrozen_for_reminder(
-        self, period_seconds: int
+        self,
+        period_seconds: int,
     ) -> List[DBUserBotProfile]:
         now = datetime.now(timezone.utc)
         window_start_time = now - timedelta(seconds=period_seconds)
@@ -262,7 +273,7 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
             except ValueError:
                 logger.warning(
                     f"Unknown language string '{lang_str}' encountered "
-                    f'in rating calculation, cannot map to BotID.'
+                    f'in rating calculation, cannot map to BotID.',
                 )
             except Exception as e:
                 logger.error(
@@ -273,6 +284,32 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
 
         logger.info(
             f'Calculated and attempted to store ratings '
-            f'for {len(updated_ratings_map)} user/bot profiles.'
+            f'for {len(updated_ratings_map)} user/bot profiles.',
         )
         return updated_ratings_map
+
+    @override
+    async def get_active_profiles_for_reporting(
+        self,
+        since: datetime,
+    ) -> List[UserBotProfile]:
+        """
+        Get profiles of users who have made at least one attempt since the
+        specified datetime.
+        """
+        subquery = (
+            select(
+                ExerciseAttemptModel.user_id,
+            )
+            .where(ExerciseAttemptModel.created_at >= since)
+            .distinct()
+        )
+        stmt = (
+            select(DBUserBotProfile)
+            .where(DBUserBotProfile.user_id.in_(subquery))
+            .options(joinedload(DBUserBotProfile.user))
+        )
+        result = await self.session.execute(stmt)
+        db_profiles = result.scalars().unique().all()
+
+        return [UserBotProfile.model_validate(p) for p in db_profiles]

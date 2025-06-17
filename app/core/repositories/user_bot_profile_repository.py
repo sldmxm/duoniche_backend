@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from app.core.entities.user_bot_profile import (
@@ -35,4 +36,10 @@ class UserBotProfileRepository(ABC):
         their attempt history and stores them in the DB.
         Returns a map of (user_id, bot_id) to new rating.
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_active_profiles_for_reporting(
+        self, since: datetime
+    ) -> List[UserBotProfile]:
         raise NotImplementedError

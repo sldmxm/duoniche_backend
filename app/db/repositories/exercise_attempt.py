@@ -1,6 +1,7 @@
-from typing import List, Optional, override
+from datetime import datetime
+from typing import Dict, List, Optional, override
 
-from sqlalchemy import select
+from sqlalchemy import bindparam, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.entities.exercise_attempt import (
@@ -17,7 +18,8 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
 
     @override
     async def get_by_id(
-        self, attempt_id: int
+        self,
+        attempt_id: int,
     ) -> Optional[ExerciseAttemptEntity]:
         result = await self.session.get(ExerciseAttempt, attempt_id)
         if not result:
@@ -33,7 +35,9 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
 
     @override
     async def get_by_user_and_exercise(
-        self, user_id: int, exercise_id: int
+        self,
+        user_id: int,
+        exercise_id: int,
     ) -> Optional[List[ExerciseAttemptEntity]]:
         stmt = select(ExerciseAttempt).where(
             ExerciseAttempt.user_id == user_id,
@@ -45,10 +49,11 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
 
     @override
     async def get_by_user_id(
-        self, user_id: int
+        self,
+        user_id: int,
     ) -> List[ExerciseAttemptEntity]:
         stmt = select(ExerciseAttempt).where(
-            ExerciseAttempt.user_id == user_id
+            ExerciseAttempt.user_id == user_id,
         )
         result = await self.session.execute(stmt)
         attempts = result.scalars().all()
@@ -56,10 +61,11 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
 
     @override
     async def get_by_exercise_id(
-        self, exercise_id: int
+        self,
+        exercise_id: int,
     ) -> List[ExerciseAttemptEntity]:
         stmt = select(ExerciseAttempt).where(
-            ExerciseAttempt.exercise_id == exercise_id
+            ExerciseAttempt.exercise_id == exercise_id,
         )
         result = await self.session.execute(stmt)
         attempts = result.scalars().all()
@@ -87,7 +93,8 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
 
     @override
     async def create(
-        self, exercise_attempt: ExerciseAttemptEntity
+        self,
+        exercise_attempt: ExerciseAttemptEntity,
     ) -> ExerciseAttemptEntity:
         db_attempt = ExerciseAttempt(
             attempt_id=exercise_attempt.attempt_id,
@@ -115,3 +122,87 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
             error_tags=db_attempt.error_tags,
             answer_id=db_attempt.answer_id,
         )
+
+    @override
+    async def get_period_summary_for_user_and_bot(
+        self,
+        user_id: int,
+        bot_id: str,
+        start_date: datetime,
+    ) -> Dict:
+        query = text(
+            """
+            WITH weekly_attempts AS (
+                SELECT
+                    ea.is_correct,
+                    e.grammar_tags,
+                    ea.error_tags
+                FROM
+                    exercise_attempts ea
+                JOIN
+                    exercises e ON ea.exercise_id = e.exercise_id
+                WHERE
+                    ea.user_id = :user_id
+                    AND e.exercise_language = :bot_id
+                    AND ea.created_at >= :start_date
+            )
+            SELECT
+                COUNT(*) AS total_attempts,
+                SUM(CASE WHEN is_correct THEN 1 ELSE 0 END)
+                    AS correct_attempts,
+                (SELECT jsonb_object_agg(tag, count) FROM (
+                    SELECT
+                    jsonb_array_elements_text(grammar_tags->'grammar') AS tag,
+                    COUNT(*) as count
+                    FROM weekly_attempts
+                    WHERE grammar_tags->'grammar' IS NOT NULL
+                    GROUP BY tag ORDER BY count DESC
+                ) AS grammar_summary) AS grammar_tags,
+                (SELECT jsonb_object_agg(tag, count) FROM (
+                    SELECT
+                    jsonb_array_elements_text(grammar_tags->'vocabulary')
+                        AS tag, COUNT(*) as count
+                    FROM weekly_attempts
+                    WHERE grammar_tags->'vocabulary' IS NOT NULL
+                    GROUP BY tag ORDER BY count DESC
+                ) AS vocab_summary) AS vocab_tags,
+                (SELECT jsonb_object_agg(tag, count) FROM (
+                    SELECT
+                    jsonb_array_elements_text(error_tags->'grammar') AS tag,
+                    COUNT(*) as count
+                    FROM weekly_attempts
+                    WHERE is_correct = false
+                        AND error_tags->'grammar' IS NOT NULL
+                    GROUP BY tag ORDER BY count DESC
+                ) AS error_grammar_tags,
+                (SELECT jsonb_object_agg(tag, count) FROM (
+                    SELECT jsonb_array_elements_text(error_tags->'vocabulary')
+                        AS tag, COUNT(*) as count
+                    FROM weekly_attempts
+                    WHERE is_correct = false
+                        AND error_tags->'vocabulary' IS NOT NULL
+                    GROUP BY tag ORDER BY count DESC
+                ) AS error_vocab_tags)
+            FROM
+                weekly_attempts;
+            """,
+        ).bindparams(
+            bindparam('user_id', value=user_id),
+            bindparam('bot_id', value=bot_id),
+            bindparam('start_date', value=start_date),
+        )
+
+        result = await self.session.execute(query)
+        summary = result.fetchone()
+
+        if not summary or summary[0] is None:
+            return {}
+
+        return {
+            'total_attempts': summary[0] or 0,
+            'correct_attempts': summary[1] or 0,
+            'grammar_tags': summary[2] or {},
+            'vocab_tags': summary[3] or {},
+            'error_grammar_tags': summary[4] or {},
+            'error_vocab_tags': summary[5] or {},
+        }

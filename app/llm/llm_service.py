@@ -3,9 +3,6 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 import httpx
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts import ChatPromptTemplate
-from pydantic import BaseModel, Field
 
 from app.core.entities.exercise import Exercise
 from app.core.enums import (
@@ -34,19 +31,6 @@ from app.utils.language_code_converter import (
 logger = logging.getLogger(__name__)
 
 ASSESSOR_EXERCISE_TYPES_EXCLUDE = (ExerciseType.CHOOSE_ACCENT,)
-
-
-class ReportLLMOutput(BaseModel):
-    short_report: str = Field(
-        description='A concise, summary version of the weekly report,'
-        ' 2-3 sentences long and encouraging.'
-    )
-
-    full_report: str = Field(
-        description='A detailed, comprehensive version of the weekly report '
-        'with sections for progress, common mistakes, '
-        'and suggestions.'
-    )
 
 
 class LLMService(BaseLLMService, LLMProvider):
@@ -183,69 +167,123 @@ class LLMService(BaseLLMService, LLMProvider):
 
         return is_correct, feedback, error_tags
 
-    async def generate_report_text(
-        self, summary_context: str, user_language: str
-    ) -> Optional[tuple[str, str]]:
-        """Generates a weekly progress report using the LLM."""
-        parser = PydanticOutputParser(pydantic_object=ReportLLMOutput)
-
-        system_prompt = (
-            'You are a supportive and insightful language learning coach. '
-            'Your task is to write a weekly progress report '
-            'for a user based on the provided summary of their activity. '
-            'The report must be in {user_language}. '
+    async def generate_detailed_report_text(
+        self,
+        context: dict,
+        user_language: str,
+        target_language: str,
+    ) -> str:
+        """
+        Generates a detailed, LLM-powered weekly report with error analysis.
+        """
+        system_prompt_template = (
+            'You are an experienced and supportive language learning coach '
+            'for {target_language}. '
+            'Your task is to generate a detailed weekly learning report '
+            'for a user. '
+            'The report must be written in {user_language} and addressed '
+            'directly to the user (e.g., "You...", "Your..."). '
             'The tone should be encouraging, positive, and motivating, '
-            'even when pointing out areas for improvement. '
-            'Start with a positive affirmation. Use markdown for formatting '
-            'the full report (e.g., bold headings like **Progress Summary**).'
+            'even when discussing areas for improvement. '
+            'Use emojis if it improves readability.\n\n'
+            '**Report Structure (Strictly Follow):**\n\n'
+            '1.  **Progress This Week:**\n'
+            '    *   Summarize the number of exercises completed and overall '
+            'accuracy (percentage).\n'
+            '    *   Identify the 2-3 most frequently studied grammar and '
+            'vocabulary topics based on the exercises done.\n\n'
+            '2.  **Main Challenges:**\n'
+            '    *   Based on incorrect attempts, pinpoint specific grammar '
+            'and vocabulary topics where the user struggled most.\n'
+            '    *   Focus on recurring error patterns. Avoid repeating '
+            'topics from "Progress This Week" unless they were also a '
+            'significant challenge.\n\n'
+            '3.  **Error Examples & Explanations:**\n'
+            '    *   Select 2-3 common or illustrative error types from the '
+            'provided incorrect attempts.\n'
+            '    *   For each, provide:\n'
+            '        *   The original exercise task/question (if available, '
+            'otherwise describe the context).\n'
+            "        *   The user's incorrect answer.\n"
+            '        *   The correct answer.\n'
+            "        *   A concise explanation of why the user's answer was "
+            'incorrect, focusing on the specific error.\n\n'
+            '4.  **Comparison with Previous Report (If Applicable):**\n'
+            '    *   If data for comparison is available (e.g., from a short '
+            'summary of previous performance), comment on positive changes in '
+            'accuracy, activity level, or improvement in specific topics.\n\n'
+            '5.  **Recommendations for Next Week:**\n'
+            '    *   Suggest 2-3 key areas for the user to focus on, such '
+            'as topics to review or new areas to explore.\n'
+            '    *   Prioritize topics where accuracy was low or those that '
+            'were newly introduced and challenging.\n\n'
+            '**Output Guidelines:**\n'
+            '-   Generate a well-structured text with clear, concise, and '
+            'non-repetitive phrasing.\n'
+            '-   Maintain a supportive yet specific and actionable style '
+            'throughout the report.'
         )
 
-        user_prompt = (
-            "Here is the user's activity summary for the last 7 days:\n"
-            '---\n'
-            '{summary_context}\n'
-            '---\n\n'
-            'Please generate a short (2-3 sentences) and a full (detailed) '
-            'progress report based on this data. '
-            'For the full report, structure it with clear, friendly headings '
-            "in {user_language} (e.g., 'Progress Summary', 'Areas to "
-            "Focus On', 'Keep Going!'). "
-            'Highlight both strengths and common errors. Provide a positive '
-            'and actionable closing statement.'
-            '\n\n{format_instructions}'
+        user_prompt_template = (
+            "Here is the context for the user's weekly report:\n"
+            'Detailed Summary of Activity (topics studied, common errors '
+            'based on tags) for previous week:\n'
+            '{prev_summary}\n\n'
+            'Detailed Summary of Activity (topics studied, common errors '
+            'based on tags) for this week:\n'
+            '{current_summary}\n\n'
+            'Examples of Incorrect Attempts This Week (includes feedback '
+            'given at the time of attempt, exercise tags, and error tags):\n'
+            '{incorrect_attempts_str}\n\n'
+            'Based on all this information, please write the detailed '
+            "'Weekly Report' section by section, "
+            'focusing on in-depth analysis and actionable advice as outlined '
+            'in the system prompt. '
+            'Pay special attention to analyzing the incorrect attempts to '
+            'provide meaningful examples and explanations.'
         )
 
-        chat_prompt = ChatPromptTemplate.from_messages(
-            [
-                ('system', system_prompt),
-                ('user', user_prompt),
-            ]
-        )
-
-        chain = await self.create_llm_chain(
-            chat_prompt, parser, is_chat_prompt=True
-        )
-
-        user_language_full_name = convert_iso639_language_code_to_full_name(
+        user_language_for_prompt = convert_iso639_language_code_to_full_name(
             user_language
         )
 
-        request_data = {
-            'summary_context': summary_context,
-            'user_language': user_language_full_name,
-            'format_instructions': parser.get_format_instructions(),
-        }
+        formatted_system_prompt = system_prompt_template.format(
+            target_language=target_language,
+            user_language=user_language_for_prompt,
+        )
 
-        try:
-            report_output: ReportLLMOutput = await self.run_llm_chain(
-                chain, request_data
-            )
-            return report_output.short_report, report_output.full_report
-        except Exception as e:
-            logger.error(
-                f'Failed to generate report for user language {user_language} '
-                f'with summary: "{summary_context[:100]}...". Error: {e}',
-                exc_info=True,
+        incorrect_attempts_str_parts = []
+        if context.get('incorrect_attempts'):
+            for i, attempt_info in enumerate(
+                context.get('incorrect_attempts', [])
+            ):
+                part = (
+                    f"Attempt {i + 1}:\n"
+                    f"  - User's incorrect answer was related to exercise "
+                    f"covering tags: {attempt_info.get('exercise_tags')}\n"
+                    f"  - The error was classified with tags: "
+                    f"{attempt_info.get('error_tags')}\n"
+                    f"  - Feedback given to user at the time: "
+                    f"\"{attempt_info.get('feedback')}\""
+                )
+                incorrect_attempts_str_parts.append(part)
+            incorrect_attempts_str = '\n'.join(incorrect_attempts_str_parts)
+        else:
+            incorrect_attempts_str = (
+                'No specific incorrect attempts data provided for detailed '
+                'analysis this week.'
             )
 
-            return None
+        full_prompt = (
+            f"{formatted_system_prompt}\n\n"
+            f"{user_prompt_template.format(
+                prev_summary=context.get('prev_summary', 'N/A'),
+                current_summary=context.get('current_summary', 'N/A'),
+                incorrect_attempts_str=incorrect_attempts_str
+                )}"
+        )
+
+        logger.info(f'Full prompt for detailed report: {full_prompt}')
+
+        response = await self.model.ainvoke(full_prompt)
+        return response.content

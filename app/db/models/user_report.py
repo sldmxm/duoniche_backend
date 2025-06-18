@@ -33,7 +33,7 @@ class UserReport(Base):
     bot_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     week_start_date: Mapped[date] = mapped_column(Date, nullable=False)
     short_report: Mapped[str] = mapped_column(Text, nullable=False)
-    full_report: Mapped[str] = mapped_column(Text, nullable=False)
+    full_report: Mapped[str | None] = mapped_column(Text, nullable=True)
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

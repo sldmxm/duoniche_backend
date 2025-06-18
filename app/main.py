@@ -88,10 +88,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
         exercise_review_processor_loop(stop_event=stop_event)
     )
     report_generator_task = asyncio.create_task(
-        report_generator_worker_loop(
-            stop_event=stop_event,
-            llm_service=app.state.llm_service,
-        )
+        report_generator_worker_loop(stop_event=stop_event)
     )
 
     logger.info('Application startup complete. All workers started.')

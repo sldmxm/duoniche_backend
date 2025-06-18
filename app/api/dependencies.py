@@ -5,6 +5,7 @@ from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.services.async_task_cache import AsyncTaskCache
+from app.core.services.detailed_report import DetailedReportService
 from app.core.services.exercise import ExerciseService
 from app.core.services.payment import PaymentService
 from app.core.services.user import UserService
@@ -24,6 +25,7 @@ from app.db.repositories.user import SQLAlchemyUserRepository
 from app.db.repositories.user_bot_profile import (
     SQLAlchemyUserBotProfileRepository,
 )
+from app.db.repositories.user_report import SQLAlchemyUserReportRepository
 from app.llm.llm_service import LLMService
 from app.llm.llm_translator import LLMTranslator
 
@@ -129,4 +131,27 @@ def get_user_progress_service(
         exercise_service=exercise_service,
         payment_service=payment_service,
         user_settings_service=user_settings_service,
+    )
+
+
+def get_detailed_report_service(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    llm_service: Annotated[LLMService, Depends(get_llm_service_dependency)],
+    user_bot_profile_service: Annotated[
+        UserBotProfileService, Depends(get_user_bot_profile_service)
+    ],
+) -> DetailedReportService:
+    """
+    Dependency to get the DetailedReportService.
+    """
+    return DetailedReportService(
+        user_report_repository=SQLAlchemyUserReportRepository(session),
+        exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
+            session
+        ),
+        exercise_answers_repository=SQLAlchemyExerciseAnswerRepository(
+            session
+        ),
+        llm_service=llm_service,
+        user_bot_profile_service=user_bot_profile_service,
     )

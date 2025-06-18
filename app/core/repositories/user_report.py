@@ -21,3 +21,15 @@ class UserReportRepository(ABC):
         """
         Retrieves a user report by its ID.
         """
+
+    @abstractmethod
+    async def get_latest_by_user_and_bot(
+        self, user_id: int, bot_id: str
+    ) -> Optional[UserReport]:
+        """
+        Retrieves the most recent user report for a given user and bot.
+        """
+
+    @abstractmethod
+    async def update(self, report: UserReport) -> UserReport:
+        """Updates an existing user report."""

@@ -2,7 +2,10 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from app.core.entities.exercise_attempt import ExerciseAttempt
+from app.core.entities.exercise_attempt import (
+    ExerciseAttempt,
+    IncorrectAttemptDetail,
+)
 
 
 class ExerciseAttemptRepository(ABC):
@@ -51,8 +54,23 @@ class ExerciseAttemptRepository(ABC):
 
     @abstractmethod
     async def get_period_summary_for_user_and_bot(
-        self, user_id: int, bot_id: str, start_date: datetime
+        self,
+        user_id: int,
+        bot_id: str,
+        start_date: datetime,
+        end_date: datetime,
     ) -> Dict:
         """
         Aggregates user's performance data over the last week.
         """
+
+    @abstractmethod
+    async def get_incorrect_attempts_with_details(
+        self,
+        user_id: int,
+        bot_id: str,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int = 3,
+    ) -> List[IncorrectAttemptDetail]:
+        raise NotImplementedError

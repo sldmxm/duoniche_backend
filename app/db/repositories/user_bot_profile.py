@@ -298,10 +298,6 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
         specified datetime.
         """
 
-        logger.info(
-            f'Getting active profiles for users who have made at {since}'
-        )
-
         subquery = (
             select(
                 ExerciseAttemptModel.user_id,
@@ -314,7 +310,7 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
             .where(
                 DBUserBotProfile.user_id.in_(subquery),
                 or_(
-                    DBUserBotProfile.last_report_generated_at.is_not_null(),
+                    DBUserBotProfile.last_report_generated_at.is_(None),
                     DBUserBotProfile.last_report_generated_at <= since,
                 ),
             )

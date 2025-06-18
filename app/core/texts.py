@@ -12,6 +12,7 @@ class Messages(str, Enum):
     CONGRATULATIONS_AND_WAIT_STREAK = 'congratulations_and_wait_streak'
     LIMIT_REACHED = 'limit_reached'
     PRAISE_AND_NEXT_SET = 'praise_and_next_set'
+    WEEKLY_REPORT = 'weekly_report'
 
 
 MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
@@ -108,6 +109,23 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
         'Днів поспіль: {streak_days} 🔥\n'
         '🕑Час на коротку перерву — досягнуто ліміту. '
         'Нова вправа буде готова через {pause_time}. 💪',
+    },
+    Messages.WEEKLY_REPORT: {
+        'bg': '📈Седмичен отчет:\n'
+        '- активни дни: {active_days}\n'
+        '- упражнения: {total_attempts}\n'
+        '- точност: {accuracy:.0f}%\n'
+        'Желаете ли подробен анализ ({user_language})?',
+        'en': '📈Weekly report:\n'
+        '- active days: {active_days}\n'
+        '- exercises completed: {total_attempts}\n'
+        '- accuracy: {accuracy:.0f}%\n'
+        'Would you like a detailed analysis ({user_language})?',
+        'sr': '📈Nedeljni izveštaj:\n'
+        '- aktivnih dana: {active_days}\n'
+        '- urađenih vežbi: {total_attempts}\n'
+        '- tačnost: {accuracy:.0f}%\n'
+        'Želite li detaljnu analizu ({user_language})?',
     },
 }
 

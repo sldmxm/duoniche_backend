@@ -26,9 +26,10 @@ class UserReport(BaseModel):
         ...,
         description='A concise, summary version of the report',
     )
-    full_report: str = Field(
-        ...,
-        description='A detailed, comprehensive version of the report',
+    full_report: Optional[str] = Field(
+        None,
+        description='A detailed, comprehensive version of the report, '
+        'which may be generated on-demand.',
     )
     generated_at: datetime = Field(
         ...,

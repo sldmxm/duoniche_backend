@@ -1,9 +1,9 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 from app.core.entities.user_report import UserReport
+from app.core.texts import Messages, get_text
 from app.db.db import async_session_maker
 from app.db.repositories.exercise_attempt import (
     SQLAlchemyExerciseAttemptRepository,
@@ -12,91 +12,17 @@ from app.db.repositories.user_bot_profile import (
     SQLAlchemyUserBotProfileRepository,
 )
 from app.db.repositories.user_report import SQLAlchemyUserReportRepository
-from app.llm.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
 
-REPORT_GENERATION_INTERVAL_SECONDS = 60 * 60 * 24 * 7  # 7 days
+REPORT_GENERATION_INTERVAL_SECONDS = 60 * 60 * 24 * 7
 MIN_ATTEMPTS_FOR_REPORT = 5
-TOP_TAGS_COUNT = 7
 
 
-def _format_tags_for_summary(
-    tags_dict: dict,
-    label: str,
-    top_n: int = TOP_TAGS_COUNT,
-) -> Optional[str]:
-    """Helper function to format a list of tags and their counts."""
-    if not tags_dict:
-        return None
-
-    sorted_tags = sorted(
-        tags_dict.items(),
-        key=lambda item: item[1],
-        reverse=True,
-    )[:top_n]
-
-    if not sorted_tags:
-        return None
-
-    tags_str = ', '.join(
-        [f'{tag} ({count} times)' for tag, count in sorted_tags],
-    )
-    return f'{label}: {tags_str}.'
-
-
-def _prepare_summary_context(summary: dict) -> str:
-    """
-    Formats the aggregated data into a text context for an LLM.
-    """
-    if not summary or summary.get('total_attempts', 0) == 0:
-        return ''
-
-    total = summary['total_attempts']
-    correct = summary['correct_attempts']
-    accuracy = (correct / total) * 100 if total > 0 else 0
-
-    parts = [
-        f'Over the last 7 days, you completed {total} exercises with '
-        f'{accuracy:.0f}% accuracy.'
-    ]
-
-    exercise_grammar_summary = _format_tags_for_summary(
-        summary.get('grammar_tags', {}),
-        'You focused on grammar topics',
-    )
-    if exercise_grammar_summary:
-        parts.append(exercise_grammar_summary)
-
-    exercise_vocab_summary = _format_tags_for_summary(
-        summary.get('vocab_tags', {}),
-        'You focused on vocabulary topics',
-    )
-    if exercise_vocab_summary:
-        parts.append(exercise_vocab_summary)
-
-    error_grammar_summary = _format_tags_for_summary(
-        summary.get('error_grammar_tags', {}),
-        'Your most common grammar errors were related to',
-    )
-    if error_grammar_summary:
-        parts.append(error_grammar_summary)
-
-    error_vocab_summary = _format_tags_for_summary(
-        summary.get('error_vocab_tags', {}),
-        'Your most common vocabulary errors were related to',
-    )
-    if error_vocab_summary:
-        parts.append(error_vocab_summary)
-
-    return ' '.join(parts)
-
-
-async def run_report_generation_cycle(
-    llm_service: LLMService,
-):
-    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    week_start_date = week_ago.date()
+async def run_report_generation_cycle():
+    end_date_current = datetime.now(timezone.utc)
+    start_date_current = end_date_current - timedelta(days=7)
+    week_start_date_current = start_date_current.date()
 
     async with async_session_maker() as session:
         user_profile_repo = SQLAlchemyUserBotProfileRepository(session)
@@ -105,72 +31,73 @@ async def run_report_generation_cycle(
 
         active_profiles = (
             await user_profile_repo.get_active_profiles_for_reporting(
-                since=week_ago,
+                since=start_date_current,
             )
         )
 
         logger.info(
             f'Found {len(active_profiles)} active users for weekly report '
-            'generation.',
+            'generation.'
         )
 
         for profile in active_profiles:
-            summary = await attempt_repo.get_period_summary_for_user_and_bot(
-                user_id=profile.user_id,
-                bot_id=profile.bot_id.value,
-                start_date=week_ago,
+            current_summary = (
+                await attempt_repo.get_period_summary_for_user_and_bot(
+                    user_id=profile.user_id,
+                    bot_id=profile.bot_id.value,
+                    start_date=start_date_current,
+                    end_date=end_date_current,
+                )
             )
 
+            logger.info(f'Current summary: {current_summary}')
+
             if (
-                not summary
-                or summary.get(
-                    'total_attempts',
-                    0,
-                )
+                not current_summary
+                or current_summary.get('total_attempts', 0)
                 < MIN_ATTEMPTS_FOR_REPORT
             ):
                 logger.info(
                     f'Skipping report for user {profile.user_id}/'
-                    f'{profile.bot_id.value} due to low activity.',
+                    f'{profile.bot_id.value} due to low activity.'
                 )
                 continue
 
-            summary_context = _prepare_summary_context(summary)
-            if not summary_context:
-                continue
+            total_attempts = current_summary.get('total_attempts', 0)
+            correct_attempts = current_summary.get('correct_attempts', 0)
+            accuracy = (
+                (correct_attempts / total_attempts) * 100
+                if total_attempts > 0
+                else 0
+            )
+            active_days = current_summary.get('active_days', 0)
 
-            logger.info(
-                f'Prepared summary for user {profile.user_id}/'
-                f'{profile.bot_id.value}: {summary_context}',
+            short_report_text = get_text(
+                Messages.WEEKLY_REPORT,
+                language_code=profile.bot_id.name.lower(),
+                user_language=profile.user_language,
+                active_days=active_days,
+                total_attempts=total_attempts,
+                accuracy=accuracy,
             )
 
             try:
-                reports = await llm_service.generate_report_text(
-                    summary_context=summary_context,
-                    user_language=profile.user_language,
-                )
-                if reports:
-                    short_report, full_report = reports
-                else:
-                    continue
-
                 new_report = UserReport(
-                    report_id=None,
                     user_id=profile.user_id,
                     bot_id=profile.bot_id.value,
-                    week_start_date=week_start_date,
-                    short_report=short_report,
-                    full_report=full_report,
+                    week_start_date=week_start_date_current,
+                    short_report=short_report_text,
+                    full_report=None,
                     generated_at=datetime.now(timezone.utc),
                 )
 
-                await report_repo.create(new_report)
-                profile.last_report_generated_at = new_report.generated_at
+                saved_report = await report_repo.create(new_report)
+                profile.last_report_generated_at = saved_report.generated_at
                 await user_profile_repo.update(profile)
 
                 logger.info(
                     f'Successfully generated and saved report for user '
-                    f'{profile.user_id}/{profile.bot_id.value}',
+                    f'{profile.user_id}/{profile.bot_id.value}'
                 )
             except Exception as e:
                 logger.error(
@@ -182,15 +109,12 @@ async def run_report_generation_cycle(
         await session.commit()
 
 
-async def report_generator_worker_loop(
-    stop_event: asyncio.Event,
-    llm_service: LLMService,
-):
+async def report_generator_worker_loop(stop_event: asyncio.Event):
     logger.info('Report Generator Worker started.')
     while not stop_event.is_set():
         try:
             logger.info('Report Generator Worker: Starting new cycle.')
-            await run_report_generation_cycle(llm_service=llm_service)
+            await run_report_generation_cycle()
             logger.info('Report Generator Worker: Cycle finished.')
         except Exception as e:
             logger.error(

@@ -1,6 +1,12 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import exercises, next_action, notifications, users
+from app.api.v1.endpoints import (
+    exercises,
+    next_action,
+    notifications,
+    reports,
+    users,
+)
 
 api_router = APIRouter()
 api_router.include_router(
@@ -23,4 +29,9 @@ api_router.include_router(
     notifications.router,
     prefix='/notifications',
     tags=['notifications'],
+)
+api_router.include_router(
+    reports.router,
+    prefix='/users',
+    tags=['reports'],
 )

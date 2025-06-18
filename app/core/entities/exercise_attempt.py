@@ -16,3 +16,9 @@ class ExerciseAttempt(BaseModel):
     error_tags: Optional[dict] = Field(
         default=None, description='Categorized error tags.'
     )
+
+
+class IncorrectAttemptDetail(BaseModel):
+    feedback: str
+    exercise_tags: dict
+    error_tags: dict

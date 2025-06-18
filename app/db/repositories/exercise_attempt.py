@@ -3,11 +3,17 @@ from typing import Dict, List, Optional, override
 
 from sqlalchemy import bindparam, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.core.entities.exercise_attempt import (
     ExerciseAttempt as ExerciseAttemptEntity,
 )
-from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
+from app.core.entities.exercise_attempt import (
+    IncorrectAttemptDetail,
+)
+from app.core.repositories.exercise_attempt import (
+    ExerciseAttemptRepository,
+)
 from app.core.value_objects.answer import create_answer_model_validate
 from app.db.models import ExerciseAttempt
 
@@ -129,11 +135,13 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
         user_id: int,
         bot_id: str,
         start_date: datetime,
+        end_date: datetime,
     ) -> Dict:
         query = text(
             """
             WITH weekly_attempts AS (
                 SELECT
+                    ea.created_at,
                     ea.is_correct,
                     e.grammar_tags,
                     ea.error_tags
@@ -145,8 +153,11 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
                     ea.user_id = :user_id
                     AND e.exercise_language = :bot_id
                     AND ea.created_at >= :start_date
+                    AND ea.created_at < :end_date
             )
             SELECT
+                (SELECT COUNT(DISTINCT DATE(created_at))
+                    FROM weekly_attempts) as active_days,
                 COUNT(*) AS total_attempts,
                 SUM(CASE WHEN is_correct THEN 1 ELSE 0 END)
                     AS correct_attempts,
@@ -230,13 +241,15 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
             bindparam('user_id', value=user_id),
             bindparam('bot_id', value=bot_id),
             bindparam('start_date', value=start_date),
+            bindparam('end_date', value=end_date),
         )
 
         result = await self.session.execute(query)
         summary = result.fetchone()
 
-        if not summary or summary[0] is None:
+        if not summary or summary[1] is None:
             return {
+                'active_days': 0,
                 'total_attempts': 0,
                 'correct_attempts': 0,
                 'grammar_tags': {},
@@ -246,10 +259,50 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
             }
 
         return {
-            'total_attempts': summary[0] or 0,
-            'correct_attempts': summary[1] or 0,
-            'grammar_tags': summary[2] or {},
-            'vocab_tags': summary[3] or {},
-            'error_grammar_tags': summary[4] or {},
-            'error_vocab_tags': summary[5] or {},
+            'active_days': summary[0] or 0,
+            'total_attempts': summary[1] or 0,
+            'correct_attempts': summary[2] or 0,
+            'grammar_tags': summary[3] or {},
+            'vocab_tags': summary[4] or {},
+            'error_grammar_tags': summary[5] or {},
+            'error_vocab_tags': summary[6] or {},
         }
+
+    @override
+    async def get_incorrect_attempts_with_details(
+        self,
+        user_id: int,
+        bot_id: str,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int = 3,
+    ) -> List[IncorrectAttemptDetail]:
+        stmt = (
+            select(ExerciseAttempt)
+            .options(joinedload(ExerciseAttempt.exercise))
+            .join(ExerciseAttempt.exercise)
+            .where(
+                ExerciseAttempt.user_id == user_id,
+                ExerciseAttempt.is_correct.is_(False),
+                ExerciseAttempt.exercise.has(exercise_language=bot_id),
+                ExerciseAttempt.exercise.has(status='published'),
+                ExerciseAttempt.created_at >= start_date,
+                ExerciseAttempt.created_at < end_date,
+            )
+            .order_by(ExerciseAttempt.created_at.desc())
+            .limit(limit)
+        )
+
+        result = await self.session.execute(stmt)
+        incorrect_attempts = result.scalars().all()
+
+        details = []
+        for attempt in incorrect_attempts:
+            details.append(
+                IncorrectAttemptDetail(
+                    feedback=attempt.feedback,
+                    exercise_tags=attempt.exercise.grammar_tags,
+                    error_tags=attempt.error_tags,
+                )
+            )
+        return details

@@ -2,6 +2,12 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
+from asgiref.sync import async_to_sync
+
+from app.celery_producer import notifier_celery_producer as celery_app
+from app.config import settings
+from app.core.entities.user import User
+from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.entities.user_report import UserReport
 from app.core.texts import Messages, get_text
 from app.db.db import async_session_maker
@@ -12,18 +18,26 @@ from app.db.repositories.user_bot_profile import (
     SQLAlchemyUserBotProfileRepository,
 )
 from app.db.repositories.user_report import SQLAlchemyUserReportRepository
+from app.services.notification_producer import NotificationProducerService
 
 logger = logging.getLogger(__name__)
 
-REPORT_GENERATION_INTERVAL_SECONDS = 60 * 60 * 24 * 7
-MIN_ATTEMPTS_FOR_REPORT = 5
+MIN_ATTEMPTS_FOR_REPORT = 15
 
 
-async def run_report_generation_cycle():
+async def _async_run_report_generation_cycle():
+    """
+    Generates short weekly reports for active users, saves them,
+    and enqueues notifications in throttled batches.
+    This task is scheduled to run on Mondays.
+    """
+    # if datetime.now(timezone.utc).weekday() != 0:
+    #     logger.info('Not Monday, skipping weekly report generation.')
+    #     return
+
     end_date_current = datetime.now(timezone.utc)
     start_date_current = end_date_current - timedelta(days=7)
     week_start_date_current = start_date_current.date()
-
     async with async_session_maker() as session:
         user_profile_repo = SQLAlchemyUserBotProfileRepository(session)
         attempt_repo = SQLAlchemyExerciseAttemptRepository(session)
@@ -40,7 +54,8 @@ async def run_report_generation_cycle():
             'generation.'
         )
 
-        for profile in active_profiles:
+        reports_to_notify: list[tuple[UserBotProfile, User, UserReport]] = []
+        for profile, user in active_profiles:
             current_summary = (
                 await attempt_repo.get_period_summary_for_user_and_bot(
                     user_id=profile.user_id,
@@ -49,8 +64,6 @@ async def run_report_generation_cycle():
                     end_date=end_date_current,
                 )
             )
-
-            logger.info(f'Current summary: {current_summary}')
 
             if (
                 not current_summary
@@ -74,8 +87,7 @@ async def run_report_generation_cycle():
 
             short_report_text = get_text(
                 Messages.WEEKLY_REPORT,
-                language_code=profile.bot_id.name.lower(),
-                user_language=profile.user_language,
+                language_code=profile.user_language,
                 active_days=active_days,
                 total_attempts=total_attempts,
                 accuracy=accuracy,
@@ -95,9 +107,12 @@ async def run_report_generation_cycle():
                 profile.last_report_generated_at = saved_report.generated_at
                 await user_profile_repo.update(profile)
 
+                reports_to_notify.append((profile, user, saved_report))
+
                 logger.info(
                     f'Successfully generated and saved report for user '
-                    f'{profile.user_id}/{profile.bot_id.value}'
+                    f'{profile.user_id}/{profile.bot_id.value} '
+                    f'(report_id: {saved_report.report_id})'
                 )
             except Exception as e:
                 logger.error(
@@ -108,33 +123,40 @@ async def run_report_generation_cycle():
 
         await session.commit()
 
+    notification_producer = NotificationProducerService()
+    batch_size = settings.report_notification_batch_size
+    delay = settings.report_notification_batch_delay_seconds
 
-async def report_generator_worker_loop(stop_event: asyncio.Event):
-    logger.info('Report Generator Worker started.')
-    while not stop_event.is_set():
-        try:
-            logger.info('Report Generator Worker: Starting new cycle.')
-            await run_report_generation_cycle()
-            logger.info('Report Generator Worker: Cycle finished.')
-        except Exception as e:
-            logger.error(
-                f'Error in Report Generator Worker cycle: {e}',
-                exc_info=True,
+    for i in range(0, len(reports_to_notify), batch_size):
+        batch = reports_to_notify[i : i + batch_size]
+        for profile, user, report in batch:
+            if not user:
+                logger.warning(
+                    f'Profile {profile.user_id}/{profile.bot_id.value} '
+                    'is missing user data. Skipping notification.'
+                )
+                continue
+            await notification_producer.enqueue_weekly_report_notification(
+                user=user, profile=profile, report=report
             )
+        if i + batch_size < len(reports_to_notify):
+            await asyncio.sleep(delay)
 
-        try:
-            await asyncio.wait_for(
-                stop_event.wait(),
-                timeout=REPORT_GENERATION_INTERVAL_SECONDS,
-            )
-            if stop_event.is_set():
-                break
-        except asyncio.TimeoutError:
-            pass
-        except asyncio.CancelledError:
-            logger.info(
-                'Report Generator Worker loop task cancelled '
-                'during sleep interval.',
-            )
-            break
-    logger.info('Report Generator Worker loop terminated.')
+
+@celery_app.task(name='report_generator.run_report_generation_cycle')
+def run_report_generation_cycle():
+    """
+    Synchronous wrapper for the Celery task that runs the async logic.
+    """
+    logger.info(
+        "Synchronous Celery task 'run_report_generation_cycle' started."
+    )
+    try:
+        async_to_sync(_async_run_report_generation_cycle)()
+        logger.info(
+            "Asynchronous part of 'run_report_generation_cycle' completed."
+        )
+    except Exception as e:
+        logger.error(
+            f"Error in 'run_report_generation_cycle': {e}", exc_info=True
+        )

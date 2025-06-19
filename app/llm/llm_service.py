@@ -283,7 +283,5 @@ class LLMService(BaseLLMService, LLMProvider):
                 )}"
         )
 
-        logger.info(f'Full prompt for detailed report: {full_prompt}')
-
         response = await self.model.ainvoke(full_prompt)
         return response.content

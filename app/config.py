@@ -105,6 +105,9 @@ class Settings(BaseSettings):  # type: ignore
 
     async_task_cache_ttl: int = 60 * 2
 
+    report_notification_batch_size: int = 10
+    report_notification_batch_delay_seconds: int = 1
+
     model_config = SettingsConfigDict(
         env_file='.env',
         env_file_encoding='utf-8',

@@ -111,21 +111,36 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
         'Нова вправа буде готова через {pause_time}. 💪',
     },
     Messages.WEEKLY_REPORT: {
-        'bg': '📈Седмичен отчет:\n'
-        '- активни дни: {active_days}\n'
-        '- упражнения: {total_attempts}\n'
-        '- точност: {accuracy:.0f}%\n'
-        'Желаете ли подробен анализ ({user_language})?',
-        'en': '📈Weekly report:\n'
-        '- active days: {active_days}\n'
+        'ru': '📈Ваш прогресс за прошедшую неделю:\n'
+        '- активных дней: {active_days} / 7\n'
+        '- упражнений выполнено: {total_attempts}\n'
+        '- точность ответов: {accuracy:.0f}%\n'
+        'Хочешь подробный разбор с советами и анализом ошибок?',
+        'en': '📈Your progress this week:\n'
+        '- active days: {active_days} / 7\n'
         '- exercises completed: {total_attempts}\n'
         '- accuracy: {accuracy:.0f}%\n'
-        'Would you like a detailed analysis ({user_language})?',
-        'sr': '📈Nedeljni izveštaj:\n'
-        '- aktivnih dana: {active_days}\n'
+        'Want a detailed breakdown with tips and error analysis?',
+        'bg': '📈Вашият напредък тази седмица:\n'
+        '- активни дни: {active_days} / 7\n'
+        '- решени упражнения: {total_attempts}\n'
+        '- точност: {accuracy:.0f}%\n'
+        'Искате ли подробен разбор със съвети и анализ на грешките?',
+        'sr': '📈Vaš napredak ove nedelje:\n'
+        '- dana sa vežbanjem: {active_days} / 7\n'
         '- urađenih vežbi: {total_attempts}\n'
         '- tačnost: {accuracy:.0f}%\n'
-        'Želite li detaljnu analizu ({user_language})?',
+        'Hoćete li detaljan pregled sa savetima i analizom grešaka?',
+        'tr': '📈Bu haftaki ilerlemen:\n'
+        '- aktif gün: {active_days} / 7\n'
+        '- tamamlanan alıştırma: {total_attempts}\n'
+        '- doğruluk: {accuracy:.0f}%\n'
+        'Detaylı analiz ve öneriler ister misin?',
+        'uk': '📈Ваш прогрес за тиждень:\n'
+        '- днів з практикою: {active_days} / 7\n'
+        '- виконаних вправ: {total_attempts}\n'
+        '- точність: {accuracy:.0f}%\n'
+        'Хочеш детальний розбір з порадами та аналізом помилок?',
     },
 }
 
@@ -347,6 +362,10 @@ class PaymentMessages(str, Enum):
     ITEM_LABEL_TIER_4 = 'payment_item_label_tier_4'
     ITEM_LABEL_TIER_5 = 'payment_item_label_tier_5'
     ITEM_LABEL_TIER_6 = 'payment_item_label_tier_6'
+    REPORT_DONATION_BUTTON_TEXT = 'report_donation_button_text'
+    REPORT_DONATION_TITLE = 'report_donation_title'
+    REPORT_DONATION_DESCRIPTION = 'report_donation_description'
+    REPORT_DONATION_ITEM_LABEL = 'report_donation_item_label'
 
 
 PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
@@ -430,6 +449,34 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'tr': '👑 Efsanevi destek',
         'uk': '👑 Легендарна підтримка',
     },
+    PaymentMessages.REPORT_DONATION_BUTTON_TEXT: {
+        'ru': '☕️ Поддержать проект',
+        'en': '☕️ Support the project',
+        'bg': '☕️ Подкрепи проекта',
+        'tr': '☕️ Projeyi destekle',
+        'uk': '☕️ Підтримати проект',
+    },
+    PaymentMessages.REPORT_DONATION_TITLE: {
+        'ru': 'Поддержка',
+        'en': 'Support',
+        'bg': 'Подкрепа',
+        'tr': 'Destek',
+        'uk': 'Підтримка',
+    },
+    PaymentMessages.REPORT_DONATION_DESCRIPTION: {
+        'ru': 'Ваша поддержка помогает нам становиться лучше!',
+        'en': 'Your support helps us improve!',
+        'bg': 'Вашата подкрепа ни помага да се подобряваме!',
+        'tr': 'Desteğiniz gelişmemize yardımcı oluyor!',
+        'uk': 'Ваша підтримка допомагає нам ставати кращими!',
+    },
+    PaymentMessages.REPORT_DONATION_ITEM_LABEL: {
+        'ru': '☕ Чашка кофе',
+        'en': '☕ A cup of coffee',
+        'bg': '☕ Чаша кафе',
+        'tr': '☕ Bir fincan kahve',
+        'uk': '☕ Чашка кави',
+    },
 }
 
 
@@ -439,7 +486,8 @@ def get_text(
     **kwargs,
 ) -> str:
     if not isinstance(
-        key, Messages | ExerciseType | Reminder | PaymentMessages
+        key,
+        Messages | ExerciseType | Reminder | PaymentMessages,
     ):
         raise ValueError(f'Unknown key type: {type(key)}')
 
@@ -447,7 +495,8 @@ def get_text(
 
     if isinstance(key, Messages):
         dictionary = cast(
-            Dict[Any, Dict[str, Union[str, List[str]]]], MESSAGES_TRANSLATIONS
+            Dict[Any, Dict[str, Union[str, List[str]]]],
+            MESSAGES_TRANSLATIONS,
         )
     elif isinstance(key, ExerciseType):
         dictionary = cast(
@@ -456,15 +505,17 @@ def get_text(
         )
     elif isinstance(key, Reminder):
         dictionary = cast(
-            Dict[Any, Dict[str, Union[str, List[str]]]], REMINDERS_TRANSLATIONS
+            Dict[Any, Dict[str, Union[str, List[str]]]],
+            REMINDERS_TRANSLATIONS,
         )
     elif isinstance(key, PaymentMessages):
         dictionary = cast(
-            Dict[Any, Dict[str, Union[str, List[str]]]], PAYMENT_TRANSLATIONS
+            Dict[Any, Dict[str, Union[str, List[str]]]],
+            PAYMENT_TRANSLATIONS,
         )
     else:
         raise ValueError(
-            f'Unhandled key type for dictionary selection: {type(key)}'
+            f'Unhandled key type for dictionary selection: {type(key)}',
         )
 
     if key not in dictionary:
@@ -472,7 +523,7 @@ def get_text(
 
     translations = dictionary[key]
     text_options = translations.get(language_code) or translations.get(
-        settings.default_bot_message_language
+        settings.default_bot_message_language,
     )
 
     if text_options is None:
@@ -480,7 +531,7 @@ def get_text(
             f'No translation found for key '
             f"'{key.value if isinstance(key, Enum) else key}' "
             f"in language '{language_code}' "
-            f"or default '{settings.default_bot_message_language}'."
+            f"or default '{settings.default_bot_message_language}'.",
         )
 
     if isinstance(text_options, list):
@@ -491,7 +542,7 @@ def get_text(
         raise ValueError(
             f'Invalid translation format for key '
             f"'{key.value if isinstance(key, Enum) else key}'. "
-            f'Expected str or list, got {type(text_options)}.'
+            f'Expected str or list, got {type(text_options)}.',
         )
 
     if isinstance(key, Reminder):

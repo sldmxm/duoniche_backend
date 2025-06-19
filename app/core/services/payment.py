@@ -73,6 +73,36 @@ class PaymentService:
         )
         return payment_details
 
+    def get_weekly_report_donation_details(
+        self, user_language: str
+    ) -> TelegramPayment:
+        prices = [
+            TelegramPaymentItem(
+                label=get_text(
+                    PaymentMessages.REPORT_DONATION_ITEM_LABEL, user_language
+                ),
+                amount=50,
+            )
+        ]
+
+        payment_details = TelegramPayment(
+            button_text=get_text(
+                PaymentMessages.REPORT_DONATION_BUTTON_TEXT, user_language
+            ),
+            title=get_text(
+                PaymentMessages.REPORT_DONATION_TITLE, user_language
+            ),
+            description=get_text(
+                PaymentMessages.REPORT_DONATION_DESCRIPTION, user_language
+            ),
+            currency='XTR',
+            prices=prices,
+            thanks_answer=get_text(
+                PaymentMessages.THANKS_ANSWER, user_language
+            ),
+        )
+        return payment_details
+
     async def record_successful_payment(
         self,
         user_id: int,

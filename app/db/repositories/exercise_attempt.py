@@ -300,9 +300,9 @@ class SQLAlchemyExerciseAttemptRepository(ExerciseAttemptRepository):
         for attempt in incorrect_attempts:
             details.append(
                 IncorrectAttemptDetail(
-                    feedback=attempt.feedback,
-                    exercise_tags=attempt.exercise.grammar_tags,
-                    error_tags=attempt.error_tags,
+                    feedback=attempt.feedback or 'N/A',
+                    exercise_tags=attempt.exercise.grammar_tags or {},
+                    error_tags=attempt.error_tags or {},
                 )
             )
         return details

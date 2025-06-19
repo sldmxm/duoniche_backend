@@ -1,6 +1,10 @@
 services:
   backend:
     image: ${BACKEND_IMAGE_TAG}
+  celery-beat:
+    image: ${BACKEND_IMAGE_TAG}
+  celery-worker:
+    image: ${BACKEND_IMAGE_TAG}
   nginx:
     ports:
       - "80:80"

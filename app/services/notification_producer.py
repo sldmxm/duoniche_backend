@@ -11,6 +11,7 @@ from app.config import settings
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
 from app.core.texts import DEFAULT_LONG_BREAK_REMINDER, Reminder, get_text
+from app.db.models import UserReport
 from app.metrics import BACKEND_NOTIFICATION_METRICS
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 class NotificationType(str, Enum):
     SESSION_REMINDER = 'session_reminder'
     LONG_BREAK_REMINDER = 'long_break_reminder'
+    WEEKLY_REPORT = 'weekly_report'
     # STREAK_REMINDER = "streak_reminder"
     # CUSTOM_BROADCAST = "custom_broadcast"
 
@@ -291,6 +293,51 @@ class NotificationProducerService:
         logger.info(
             f'Preparing long break reminder (type: {reminder_type}) '
             f'for user {user.user_id}, profile bot_id {user_profile.bot_id}.'
+        )
+        return await self.enqueue_notification(task_data)
+
+    async def enqueue_weekly_report_notification(
+        self, user: User, profile: UserBotProfile, report: UserReport
+    ) -> bool:
+        """
+        Prepares and enqueues a weekly report notification.
+        """
+        if not user.user_id:
+            logger.error('Cannot send report to user without user_id.')
+            return False
+        if not user.telegram_id:
+            logger.error(
+                f'Cannot send report to user {user.user_id} without '
+                f'telegram_id.'
+            )
+            return False
+
+        reply_markup = {
+            'inline_keyboard': [
+                [
+                    {'text': '✅', 'callback_data': 'full_weekly_report:yes'},
+                    {'text': '⛔️', 'callback_data': 'full_weekly_report:no'},
+                ]
+            ]
+        }
+
+        task_data = NotificationTaskData(
+            user_id=user.user_id,
+            bot_id=profile.bot_id,
+            text=report.short_report,
+            notification_type=NotificationType.WEEKLY_REPORT,
+            payload=TelegramMessagePayload(
+                telegram_id=int(user.telegram_id),
+                parse_mode='HTML',
+                reply_markup=reply_markup,
+                disable_web_page_preview=True,
+            ),
+            metadata={'report_id': report.report_id},
+            scheduled_at=None,
+        )
+        logger.info(
+            f'Preparing weekly report notification for user {user.user_id}, '
+            f'profile bot_id {profile.bot_id.value}.'
         )
         return await self.enqueue_notification(task_data)
 

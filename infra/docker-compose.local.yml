@@ -1,6 +1,10 @@
 services:
   backend:
     build: ../.
+  celery-beat:
+    build: ../.
+  celery-worker:
+    build: ../.
   nginx:
     ports:
       - "8080:80" # ngrok

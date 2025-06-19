@@ -7,6 +7,7 @@ from sqlalchemy import Time, cast, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from app.core.entities.user import User
 from app.core.entities.user_bot_profile import (
     BotID,
     UserBotProfile,
@@ -292,7 +293,7 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
     async def get_active_profiles_for_reporting(
         self,
         since: datetime,
-    ) -> List[UserBotProfile]:
+    ) -> List[Tuple[UserBotProfile, User]]:
         """
         Get profiles of users who have made at least one attempt since the
         specified datetime.
@@ -317,6 +318,18 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
             .options(joinedload(DBUserBotProfile.user))
         )
         result = await self.session.execute(stmt)
-        db_profiles = result.scalars().unique().all()
+        db_profiles_list = result.scalars().unique().all()
 
-        return [UserBotProfile.model_validate(p) for p in db_profiles]
+        profiles_with_users: List[Tuple[UserBotProfile, User]] = []
+        for db_profile_instance in db_profiles_list:
+            profile_validated = UserBotProfile.model_validate(
+                db_profile_instance,
+            )
+            user_validated = User.model_validate(
+                db_profile_instance.user,
+            )
+            profiles_with_users.append(
+                (profile_validated, user_validated),
+            )
+
+        return profiles_with_users

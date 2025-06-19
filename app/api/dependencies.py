@@ -137,9 +137,6 @@ def get_user_progress_service(
 def get_detailed_report_service(
     session: Annotated[AsyncSession, Depends(get_async_session)],
     llm_service: Annotated[LLMService, Depends(get_llm_service_dependency)],
-    user_bot_profile_service: Annotated[
-        UserBotProfileService, Depends(get_user_bot_profile_service)
-    ],
 ) -> DetailedReportService:
     """
     Dependency to get the DetailedReportService.
@@ -153,5 +150,4 @@ def get_detailed_report_service(
             session
         ),
         llm_service=llm_service,
-        user_bot_profile_service=user_bot_profile_service,
     )

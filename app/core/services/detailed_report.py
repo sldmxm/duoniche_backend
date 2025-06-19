@@ -2,12 +2,11 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
-from app.core.entities.user_bot_profile import BotID
+from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.entities.user_report import UserReport
 from app.core.repositories.exercise_answer import ExerciseAnswerRepository
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
 from app.core.repositories.user_report import UserReportRepository
-from app.core.services.user_bot_profile import UserBotProfileService
 from app.llm.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
@@ -26,19 +25,16 @@ class DetailedReportService:
         user_report_repository: UserReportRepository,
         exercise_attempt_repository: ExerciseAttemptRepository,
         exercise_answers_repository: ExerciseAnswerRepository,
-        user_bot_profile_service: UserBotProfileService,
         llm_service: LLMService,
     ):
         self.user_report_repo = user_report_repository
         self.attempt_repo = exercise_attempt_repository
         self.answer_repo = exercise_answers_repository
-        self.user_bot_profile_service = user_bot_profile_service
         self.llm_service = llm_service
 
     async def generate_detailed_report(
         self,
-        user_id: int,
-        bot_id: BotID,
+        profile: UserBotProfile,
     ) -> UserReport:
         """
         Generates and returns the detailed weekly report for a user.
@@ -52,34 +48,30 @@ class DetailedReportService:
             ReportNotFoundError: If no weekly report record exists for
                                  the user.
         """
-        profile = await self.user_bot_profile_service.get(
-            user_id=user_id,
-            bot_id=bot_id,
-        )
-
         if not profile:
             raise ReportNotFoundError()
 
         latest_report = await self.user_report_repo.get_latest_by_user_and_bot(
-            user_id=user_id,
-            bot_id=bot_id.value,
+            user_id=profile.user_id,
+            bot_id=profile.bot_id.value,
         )
 
         if not latest_report:
             raise ReportNotFoundError(
-                f'No report found for user {user_id} and bot {bot_id.value}',
+                f'No report found for user {profile.user_id} and bot'
+                f' {profile.bot_id.value}',
             )
 
         if latest_report.full_report:
             logger.info(
-                f'Full report for user {user_id} (report_id: '
+                f'Full report for user {profile.user_id} (report_id: '
                 f'{latest_report.report_id}) already exists. Returning it.',
             )
             return latest_report
 
         logger.info(
-            f'Generating detailed report for user {user_id} (report_id: '
-            f'{latest_report.report_id}) on-demand.',
+            f'Generating detailed report for user {profile.user_id} '
+            f'(report_id: {latest_report.report_id}) on-demand.',
         )
 
         start_date_current = datetime.combine(
@@ -92,8 +84,8 @@ class DetailedReportService:
 
         incorrect_attempts = (
             await self.attempt_repo.get_incorrect_attempts_with_details(
-                user_id=user_id,
-                bot_id=bot_id.value,
+                user_id=profile.user_id,
+                bot_id=profile.bot_id.value,
                 start_date=start_date_current,
                 end_date=end_date_current,
                 limit=INCORRECT_ATTEMPTS_FOR_LLM_NUMBER,
@@ -147,7 +139,7 @@ class DetailedReportService:
 
         logger.info(
             f'Successfully generated and saved full report '
-            f'for user {user_id}.',
+            f'for user {profile.user_id}.',
         )
         return updated_report
 

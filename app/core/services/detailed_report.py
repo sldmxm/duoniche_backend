@@ -2,12 +2,16 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
+from app.celery_producer import notifier_celery_producer
 from app.core.entities.user_bot_profile import UserBotProfile
-from app.core.entities.user_report import UserReport
-from app.core.repositories.exercise_answer import ExerciseAnswerRepository
+from app.core.enums import ReportStatus
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
 from app.core.repositories.user_report import UserReportRepository
 from app.llm.llm_service import LLMService
+
+DETAILED_REPORT_WORKER_TASK_NAME = (
+    'detailed_report.generate_and_send_detailed_report_task'
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,32 +28,58 @@ class DetailedReportService:
         self,
         user_report_repository: UserReportRepository,
         exercise_attempt_repository: ExerciseAttemptRepository,
-        exercise_answers_repository: ExerciseAnswerRepository,
         llm_service: LLMService,
     ):
         self.user_report_repo = user_report_repository
         self.attempt_repo = exercise_attempt_repository
-        self.answer_repo = exercise_answers_repository
         self.llm_service = llm_service
 
-    async def generate_detailed_report(
+    async def request_detailed_report(
         self,
         profile: UserBotProfile,
-    ) -> UserReport:
-        """
-        Generates and returns the detailed weekly report for a user.
+    ) -> ReportStatus:
+        """Handles a user's request for a detailed weekly report.
 
-        - Fetches the latest report record.
-        - If a full report already exists, returns it.
-        - If not, it gathers necessary data, generates the full report
-          via an LLM, updates the record, and returns it.
-
-        Raises:
-            ReportNotFoundError: If no weekly report record exists for
-                                 the user.
+        It checks the status of the latest report. If a detailed report is
+        already being generated or is ready, it returns a message.
+        Otherwise, it enqueues a background task to generate the report.
         """
         if not profile:
             raise ReportNotFoundError()
+
+        latest_report = await self.user_report_repo.get_latest_by_user_and_bot(
+            user_id=profile.user_id, bot_id=profile.bot_id.value
+        )
+
+        if not latest_report:
+            raise ReportNotFoundError(
+                f'No weekly report found for user {profile.user_id}, '
+                f'bot {profile.bot_id.value}'
+            )
+
+        if latest_report.status in [
+            ReportStatus.GENERATING,
+            ReportStatus.GENERATED,
+            ReportStatus.SENT,
+        ]:
+            return latest_report.status
+
+        notifier_celery_producer.send_task(
+            DETAILED_REPORT_WORKER_TASK_NAME,
+            args=[latest_report.report_id],
+        )
+        logger.info(
+            f'Enqueued detailed report generation for report_id: '
+            f'{latest_report.report_id}'
+        )
+
+        return ReportStatus.GENERATING
+
+    async def generate_full_report_text(
+        self,
+        profile: UserBotProfile,
+    ) -> str:
+        """Generates the full report text content using an LLM."""
 
         latest_report = await self.user_report_repo.get_latest_by_user_and_bot(
             user_id=profile.user_id,
@@ -61,13 +91,6 @@ class DetailedReportService:
                 f'No report found for user {profile.user_id} and bot'
                 f' {profile.bot_id.value}',
             )
-
-        if latest_report.full_report:
-            logger.info(
-                f'Full report for user {profile.user_id} (report_id: '
-                f'{latest_report.report_id}) already exists. Returning it.',
-            )
-            return latest_report
 
         logger.info(
             f'Generating detailed report for user {profile.user_id} '
@@ -134,14 +157,7 @@ class DetailedReportService:
             )
         )
 
-        latest_report.full_report = full_report_text
-        updated_report = await self.user_report_repo.update(latest_report)
-
-        logger.info(
-            f'Successfully generated and saved full report '
-            f'for user {profile.user_id}.',
-        )
-        return updated_report
+        return full_report_text
 
     @staticmethod
     def _format_tags_for_summary(

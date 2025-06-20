@@ -3,6 +3,8 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.enums import ReportStatus
+
 
 class UserReport(BaseModel):
     """
@@ -30,6 +32,10 @@ class UserReport(BaseModel):
         None,
         description='A detailed, comprehensive version of the report, '
         'which may be generated on-demand.',
+    )
+    status: ReportStatus = Field(
+        default=ReportStatus.PENDING,
+        description='The generation status of the detailed report.',
     )
     generated_at: datetime = Field(
         ...,

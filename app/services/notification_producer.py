@@ -10,8 +10,13 @@ from app.celery_producer import NOTIFIER_TASK_NAME, notifier_celery_producer
 from app.config import settings
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
-from app.core.texts import DEFAULT_LONG_BREAK_REMINDER, Reminder, get_text
-from app.db.models import UserReport
+from app.core.entities.user_report import UserReport
+from app.core.texts import (
+    DEFAULT_LONG_BREAK_REMINDER,
+    PaymentMessages,
+    Reminder,
+    get_text,
+)
 from app.metrics import BACKEND_NOTIFICATION_METRICS
 
 logger = logging.getLogger(__name__)
@@ -338,6 +343,64 @@ class NotificationProducerService:
         logger.info(
             f'Preparing weekly report notification for user {user.user_id}, '
             f'profile bot_id {profile.bot_id.value}.'
+        )
+        return await self.enqueue_notification(task_data)
+
+    async def enqueue_detailed_report_notification(
+        self, user: User, profile: UserBotProfile, report: UserReport
+    ) -> bool:
+        """
+        Prepares and enqueues a full detailed weekly report notification
+        with a donation button.
+        """
+        if not user.user_id or not user.telegram_id:
+            logger.error(
+                f'Cannot send full detailed report to user {user.user_id} '
+                f'without user_id or telegram_id.'
+            )
+            return False
+
+        if not report.full_report:
+            logger.error(
+                f'Full report content is missing for report_id '
+                f'{report.report_id}. Cannot send notification.'
+            )
+            return False
+
+        button_text = get_text(
+            PaymentMessages.REPORT_DONATION_BUTTON_TEXT, profile.user_language
+        )
+
+        callback_data_donate = (
+            f'initiate_payment:report_donation:{report.report_id}'
+        )
+
+        reply_markup = {
+            'inline_keyboard': [
+                [{'text': button_text, 'callback_data': callback_data_donate}]
+            ]
+        }
+
+        task_data = NotificationTaskData(
+            user_id=user.user_id,
+            bot_id=profile.bot_id,
+            text=report.full_report,
+            notification_type=NotificationType.WEEKLY_REPORT,
+            payload=TelegramMessagePayload(
+                telegram_id=int(user.telegram_id),
+                parse_mode='HTML',
+                reply_markup=reply_markup,
+                disable_web_page_preview=True,
+            ),
+            metadata={'report_id': report.report_id, 'is_full_report': True},
+            # TODO: перенести задержку отправки сюда
+            scheduled_at=None,
+        )
+        logger.info(
+            f'Preparing full detailed weekly report notification '
+            f'for user {user.user_id}, '
+            f'profile bot_id {profile.bot_id.value}, '
+            f'report_id {report.report_id}.'
         )
         return await self.enqueue_notification(task_data)
 

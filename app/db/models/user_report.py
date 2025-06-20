@@ -12,6 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
+from app.core.enums import ReportStatus
 from app.db.base import Base
 
 if TYPE_CHECKING:
@@ -34,6 +35,12 @@ class UserReport(Base):
     week_start_date: Mapped[date] = mapped_column(Date, nullable=False)
     short_report: Mapped[str] = mapped_column(Text, nullable=False)
     full_report: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        index=True,
+        server_default=ReportStatus.PENDING.value,
+    )
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

@@ -68,7 +68,8 @@ services:
 
   celery-worker:
     container_name: duo_celery_worker
-    command: ["celery", "-A", "app.celery_producer.notifier_celery_producer", "worker", "--loglevel=info"]
+#    command: ["celery", "-A", "app.celery_producer.notifier_celery_producer", "worker", "-P", "threads", "-c", "10", "--loglevel=info"]
+    command: ["celery", "-A", "app.celery_producer.notifier_celery_producer", "worker", "-P", "gevent", "-c", "10", "--loglevel=info"]
     env_file: .env
     restart: always
     logging: *json_logging
@@ -79,7 +80,6 @@ services:
         condition: service_healthy
     networks:
       - duo_shared
-
 
   prometheus:
     image: prom/prometheus

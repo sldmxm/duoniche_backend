@@ -2,8 +2,6 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
-from asgiref.sync import async_to_sync
-
 from app.celery_producer import notifier_celery_producer as celery_app
 from app.config import settings
 from app.core.entities.user import User
@@ -143,20 +141,12 @@ async def _async_run_report_generation_cycle():
             await asyncio.sleep(delay)
 
 
-@celery_app.task(name='report_generator.run_report_generation_cycle')
+@celery_app.task(
+    name='report_generator.run_report_generation_cycle',
+)
 def run_report_generation_cycle():
     """
     Synchronous wrapper for the Celery task that runs the async logic.
     """
-    logger.info(
-        "Synchronous Celery task 'run_report_generation_cycle' started."
-    )
-    try:
-        async_to_sync(_async_run_report_generation_cycle)()
-        logger.info(
-            "Asynchronous part of 'run_report_generation_cycle' completed."
-        )
-    except Exception as e:
-        logger.error(
-            f"Error in 'run_report_generation_cycle': {e}", exc_info=True
-        )
+    with asyncio.Runner() as runner:
+        return runner.run(_async_run_report_generation_cycle())

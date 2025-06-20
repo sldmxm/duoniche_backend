@@ -146,8 +146,5 @@ def get_detailed_report_service(
         exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
             session
         ),
-        exercise_answers_repository=SQLAlchemyExerciseAnswerRepository(
-            session
-        ),
         llm_service=llm_service,
     )

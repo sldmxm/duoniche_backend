@@ -15,7 +15,8 @@ notifier_celery_producer = Celery(
     'backend_to_notifier_producer',
     broker=notifier_broker_url,
     include=[
-        'app.workers.report_generator',
+        'app.workers.celery_tasks.detailed_report_worker',
+        'app.workers.celery_tasks.report_generator',
     ],
 )
 

@@ -363,9 +363,6 @@ class PaymentMessages(str, Enum):
     ITEM_LABEL_TIER_5 = 'payment_item_label_tier_5'
     ITEM_LABEL_TIER_6 = 'payment_item_label_tier_6'
     REPORT_DONATION_BUTTON_TEXT = 'report_donation_button_text'
-    REPORT_DONATION_TITLE = 'report_donation_title'
-    REPORT_DONATION_DESCRIPTION = 'report_donation_description'
-    REPORT_DONATION_ITEM_LABEL = 'report_donation_item_label'
 
 
 PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
@@ -455,27 +452,6 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'bg': '☕️ Подкрепи проекта',
         'tr': '☕️ Projeyi destekle',
         'uk': '☕️ Підтримати проект',
-    },
-    PaymentMessages.REPORT_DONATION_TITLE: {
-        'ru': 'Поддержка',
-        'en': 'Support',
-        'bg': 'Подкрепа',
-        'tr': 'Destek',
-        'uk': 'Підтримка',
-    },
-    PaymentMessages.REPORT_DONATION_DESCRIPTION: {
-        'ru': 'Ваша поддержка помогает нам становиться лучше!',
-        'en': 'Your support helps us improve!',
-        'bg': 'Вашата подкрепа ни помага да се подобряваме!',
-        'tr': 'Desteğiniz gelişmemize yardımcı oluyor!',
-        'uk': 'Ваша підтримка допомагає нам ставати кращими!',
-    },
-    PaymentMessages.REPORT_DONATION_ITEM_LABEL: {
-        'ru': '☕ Чашка кофе',
-        'en': '☕ A cup of coffee',
-        'bg': '☕ Чаша кафе',
-        'tr': '☕ Bir fincan kahve',
-        'uk': '☕ Чашка кави',
     },
 }
 

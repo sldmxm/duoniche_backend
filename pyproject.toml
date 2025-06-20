@@ -26,7 +26,6 @@ dependencies = [
     "celery>=5.5.2",
     "google-genai>=1.17.0",
     "aioboto3>=14.3.0",
-    "asgiref>=3.8.1",
 ]
 
 [dependency-groups]

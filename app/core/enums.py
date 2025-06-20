@@ -117,7 +117,6 @@ class UserAction(str, Enum):
     congratulations_and_wait = 'congratulations_and_wait'
     limit_reached = 'limit_reached'
     error = 'error'
-    SHOW_MESSAGE_WITH_DONATION = 'show_message_with_donation'
 
 
 class ExerciseStatus(str, Enum):
@@ -136,3 +135,11 @@ class UserStatus(str, Enum):
     TRIAL = 'trial'
     PREMIUM = 'premium'
     CUSTOM = 'custom'
+
+
+class ReportStatus(str, Enum):
+    PENDING = 'PENDING'
+    GENERATING = 'GENERATING'
+    GENERATED = 'GENERATED'
+    SENT = 'SENT'
+    FAILED = 'FAILED'

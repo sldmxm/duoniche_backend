@@ -6,12 +6,12 @@ from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.services.async_task_cache import AsyncTaskCache
-from app.core.services.detailed_report import DetailedReportService
 from app.core.services.exercise import ExerciseService
 from app.core.services.payment import PaymentService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_progress import UserProgressService
+from app.core.services.user_report import UserReportService
 from app.core.services.user_settings import UserSettingsService
 from app.db.db import get_async_session
 from app.db.repositories.exercise import SQLAlchemyExerciseRepository
@@ -41,13 +41,6 @@ def get_user_bot_profile_service(
     session: Annotated[AsyncSession, Depends(get_async_session)],
 ) -> UserBotProfileService:
     return UserBotProfileService(SQLAlchemyUserBotProfileRepository(session))
-
-
-def get_payment_service(
-    session: Annotated[AsyncSession, Depends(get_async_session)],
-) -> PaymentService:
-    """Dependency to get the payment service."""
-    return PaymentService(SQLAlchemyPaymentRepository(session))
 
 
 async def get_redis_dependency(request: Request) -> AsyncRedis:
@@ -119,6 +112,41 @@ def get_exercise_service(
     )
 
 
+def get_user_report_service(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    arq_pool: Annotated[ArqRedis, Depends(get_arq_pool)],
+    llm_service: Annotated[LLMService, Depends(get_llm_service_dependency)],
+) -> UserReportService:
+    """
+    Dependency to get the UserReportService.
+    """
+    return UserReportService(
+        user_report_repository=SQLAlchemyUserReportRepository(session),
+        exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
+            session
+        ),
+        arq_pool=arq_pool,
+        llm_service=llm_service,
+    )
+
+
+def get_payment_service(
+    session: Annotated[AsyncSession, Depends(get_async_session)],
+    user_bot_profile_service: Annotated[
+        UserBotProfileService, Depends(get_user_bot_profile_service)
+    ],
+    user_report_service: Annotated[
+        UserReportService, Depends(get_user_report_service)
+    ],
+) -> PaymentService:
+    """Dependency to get the payment service."""
+    return PaymentService(
+        payment_repository=SQLAlchemyPaymentRepository(session),
+        user_bot_profile_service=user_bot_profile_service,
+        user_report_service=user_report_service,
+    )
+
+
 def get_user_progress_service(
     user_service: Annotated[UserService, Depends(get_user_service)],
     user_bot_profile_service: Annotated[
@@ -138,22 +166,4 @@ def get_user_progress_service(
         exercise_service=exercise_service,
         payment_service=payment_service,
         user_settings_service=user_settings_service,
-    )
-
-
-def get_detailed_report_service(
-    session: Annotated[AsyncSession, Depends(get_async_session)],
-    arq_pool: Annotated[ArqRedis, Depends(get_arq_pool)],
-    llm_service: Annotated[LLMService, Depends(get_llm_service_dependency)],
-) -> DetailedReportService:
-    """
-    Dependency to get the DetailedReportService.
-    """
-    return DetailedReportService(
-        user_report_repository=SQLAlchemyUserReportRepository(session),
-        exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
-            session
-        ),
-        arq_pool=arq_pool,
-        llm_service=llm_service,
     )

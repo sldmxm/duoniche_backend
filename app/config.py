@@ -73,7 +73,8 @@ class Settings(BaseSettings):  # type: ignore
         seconds=int(delta_between_sessions.total_seconds() // sets_in_session)
     )
 
-    min_session_unlock_payment: int = 50
+    min_session_unlock_payment_xtr: int = 50
+    report_donation_amount_xtr: int = 50
 
     update_user_metrics_interval: int = 60
     session_ttl_since_last_exercise: timedelta = timedelta(minutes=5)

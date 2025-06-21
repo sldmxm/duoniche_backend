@@ -33,3 +33,10 @@ class UserReportRepository(ABC):
     @abstractmethod
     async def update(self, report: UserReport) -> UserReport:
         """Updates an existing user report."""
+
+    @abstractmethod
+    async def get_by_id_and_user(
+        self, report_id: int, user_id: int
+    ) -> Optional[UserReport]:
+        """Retrieves a report by its ID, ensuring it belongs to the user."""
+        raise NotImplementedError

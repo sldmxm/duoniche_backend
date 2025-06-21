@@ -88,7 +88,9 @@ def mock_user_bot_profile_service():
 def mock_payment_service():
     service = AsyncMock(spec=PaymentService)
 
-    def _get_mock_payment_details(user_language: str):
+    def _get_mock_payment_details(
+        user_id: int, bot_id: BotID, user_language: str
+    ):
         payment_tiers_config = [
             (20, PaymentMessages.ITEM_LABEL_TIER_1),
             (50, PaymentMessages.ITEM_LABEL_TIER_2),
@@ -124,7 +126,7 @@ def mock_payment_service():
             ),
         )
 
-    service.get_payment_unlock_details.side_effect = _get_mock_payment_details
+    service.get_unlock_payment_details.side_effect = _get_mock_payment_details
     return service
 
 

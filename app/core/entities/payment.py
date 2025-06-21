@@ -29,6 +29,7 @@ class Payment(BaseModel):
         ..., description='Amount paid in the specified currency'
     )
     invoice_payload: str = Field(..., description='Payload from the invoice')
+    source: str = Field(..., description='Source of the payment')
 
     processed_at: Optional[datetime] = Field(
         ...,

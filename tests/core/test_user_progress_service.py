@@ -70,7 +70,7 @@ def mock_payment_service(mocker):
             prices.append(
                 TelegramPaymentItem(
                     label=get_text(PaymentMessages.ITEM_LABEL, user_language),
-                    amount=settings.min_session_unlock_payment,
+                    amount=settings.min_session_unlock_payment_xtr,
                 )
             )
         return TelegramPayment(

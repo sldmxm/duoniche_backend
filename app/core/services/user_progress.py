@@ -140,8 +140,10 @@ class UserProgressService:
                     user_bot_profile.session_frozen_until - now
                 ).split('.')[0]
                 payment_details = (
-                    self.payment_service.get_payment_unlock_details(
-                        user_language=user_bot_profile.user_language
+                    self.payment_service.get_unlock_payment_details(
+                        user_id=user_id,
+                        bot_id=bot_id,
+                        user_language=user_bot_profile.user_language,
                     )
                 )
 
@@ -200,8 +202,13 @@ class UserProgressService:
                 f'Current streak: {user_bot_profile.current_streak_days} days.'
             )
 
-            payment_details = self.payment_service.get_payment_unlock_details(
-                user_language=user_bot_profile.user_language
+            payment_details = self.payment_service.get_unlock_payment_details(
+                user_id=user_id,
+                bot_id=bot_id,
+                user_language=user_bot_profile.user_language,
+            )
+            payment_details.invoice_payload = (
+                f'session_unlock:{user.user_id}:{bot_id.value}'
             )
             message_key: Messages
             message_kwargs: dict[str, Any] = {

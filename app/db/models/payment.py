@@ -45,6 +45,9 @@ class DBPayment(Base):
     currency: Mapped[str] = mapped_column(String(10), nullable=False)
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
     invoice_payload: Mapped[str] = mapped_column(String, nullable=True)
+    source: Mapped[str] = mapped_column(
+        String(50), nullable=False, server_default='session_unlock'
+    )
 
     processed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

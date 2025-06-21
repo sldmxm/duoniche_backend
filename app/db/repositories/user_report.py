@@ -1,6 +1,6 @@
 from typing import Optional, override
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.entities.user_report import UserReport as UserReportEntity
@@ -45,6 +45,22 @@ class SQLAlchemyUserReportRepository(UserReportRepository):
             )
             .order_by(UserReportModel.week_start_date.desc())
             .limit(1)
+        )
+        result = await self.session.execute(stmt)
+        db_report = result.scalar_one_or_none()
+        if db_report:
+            return self._to_entity(db_report)
+        return None
+
+    @override
+    async def get_by_id_and_user(
+        self, report_id: int, user_id: int
+    ) -> Optional[UserReportEntity]:
+        stmt = select(UserReportModel).where(
+            and_(
+                UserReportModel.report_id == report_id,
+                UserReportModel.user_id == user_id,
+            )
         )
         result = await self.session.execute(stmt)
         db_report = result.scalar_one_or_none()

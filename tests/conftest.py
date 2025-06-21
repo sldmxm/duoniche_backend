@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, AsyncGenerator, List
 from unittest.mock import AsyncMock, create_autospec, patch
 
+import arq
 import httpx
 import pytest
 import pytest_asyncio
@@ -27,6 +28,7 @@ from app.core.services.payment import PaymentService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_progress import UserProgressService
+from app.core.services.user_report import UserReportService
 from app.core.services.user_settings import UserSettingsService
 from app.db.models import DBUserBotProfile
 from app.db.repositories.payment import SQLAlchemyPaymentRepository
@@ -34,6 +36,7 @@ from app.db.repositories.user import SQLAlchemyUserRepository
 from app.db.repositories.user_bot_profile import (
     SQLAlchemyUserBotProfileRepository,
 )
+from app.db.repositories.user_report import SQLAlchemyUserReportRepository
 from app.llm.generators.choose_accent_generator import ChooseAccentGenerator
 from app.llm.llm_translator import LLMTranslator
 from app.services.file_storage_service import R2FileStorageService
@@ -192,10 +195,29 @@ async def user_bot_profile_service(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture(scope='function')
-async def payment_service(db_session: AsyncSession):
+async def user_report_service(db_session: AsyncSession, mock_http_client):
+    """Create UserBotProfileService with test repositories"""
+    return UserReportService(
+        user_report_repository=SQLAlchemyUserReportRepository(db_session),
+        exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
+            db_session,
+        ),
+        arq_pool=None,
+        llm_service=LLMService(
+            http_client=mock_http_client,
+        ),
+    )
+
+
+@pytest_asyncio.fixture(scope='function')
+async def payment_service(
+    db_session: AsyncSession, user_bot_profile_service, user_report_service
+):
     """Create UserBotProfileService with test repositories"""
     return PaymentService(
         payment_repository=SQLAlchemyPaymentRepository(db_session),
+        user_bot_profile_service=user_bot_profile_service,
+        user_report_service=user_report_service,
     )
 
 
@@ -233,11 +255,19 @@ async def user_progress_service(
     )
 
 
+@pytest_asyncio.fixture
+async def mock_arq_create_pool():
+    """Mock httpx.AsyncClient for testing."""
+    pool = create_autospec(arq.create_pool())
+    yield pool
+
+
 @pytest_asyncio.fixture(scope='function')
 async def client(
     db_session: AsyncSession,
     redis: Redis,
     mock_http_client: httpx.AsyncClient,
+    mock_arq_create_pool,
 ) -> AsyncGenerator[AsyncClient, Any]:
     """Create test client with proper transaction handling
     and dependency overrides."""
@@ -249,6 +279,7 @@ async def client(
     test_app.state.translator = LLMTranslator()
     test_app.state.http_client = mock_http_client
     test_app.state.redis_client = redis
+    test_app.state.arq_pool = mock_arq_create_pool
 
     async def override_get_async_session() -> (
         AsyncGenerator[AsyncSession, None]

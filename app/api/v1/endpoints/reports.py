@@ -4,16 +4,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 
 from app.api.dependencies import (
-    get_detailed_report_service,
     get_user_bot_profile_service,
+    get_user_report_service,
 )
 from app.api.schemas.report import DetailedReportResponse, ReportNotFoundDetail
 from app.core.entities.user_bot_profile import BotID
-from app.core.services.detailed_report import (
-    DetailedReportService,
-    ReportNotFoundError,
-)
 from app.core.services.user_bot_profile import UserBotProfileService
+from app.core.services.user_report import (
+    ReportNotFoundError,
+    UserReportService,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -39,7 +39,7 @@ router = APIRouter()
 )
 async def get_latest_detailed_report(
     report_service: Annotated[
-        DetailedReportService, Depends(get_detailed_report_service)
+        UserReportService, Depends(get_user_report_service)
     ],
     user_bot_profile_service: Annotated[
         UserBotProfileService, Depends(get_user_bot_profile_service)

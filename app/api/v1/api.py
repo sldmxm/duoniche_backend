@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     exercises,
     next_action,
     notifications,
+    payments,
     reports,
     users,
 )
@@ -25,6 +26,11 @@ api_router.include_router(
     tags=['users'],
 )
 
+api_router.include_router(
+    payments.router,
+    prefix='/payments',
+    tags=['payments'],
+)
 api_router.include_router(
     notifications.router,
     prefix='/notifications',

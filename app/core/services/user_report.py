@@ -5,6 +5,7 @@ from typing import Optional
 from arq.connections import ArqRedis
 
 from app.core.entities.user_bot_profile import UserBotProfile
+from app.core.entities.user_report import UserReport
 from app.core.enums import ReportStatus
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
 from app.core.repositories.user_report import UserReportRepository
@@ -20,7 +21,7 @@ class ReportNotFoundError(Exception):
     pass
 
 
-class DetailedReportService:
+class UserReportService:
     def __init__(
         self,
         user_report_repository: UserReportRepository,
@@ -32,6 +33,16 @@ class DetailedReportService:
         self.attempt_repo = exercise_attempt_repository
         self.arq_pool = arq_pool
         self.llm_service = llm_service
+
+    async def get_by_id(self, report_id: int) -> Optional[UserReport]:
+        return await self.user_report_repo.get_by_id(report_id)
+
+    async def get_by_id_and_user(
+        self, report_id: int, user_id: int
+    ) -> Optional[UserReport]:
+        return await self.user_report_repo.get_by_id_and_user(
+            report_id, user_id
+        )
 
     async def request_detailed_report(
         self,
@@ -122,7 +133,7 @@ class DetailedReportService:
                 end_date=end_date_current,
             )
         )
-        current_summary = DetailedReportService._prepare_summary_context(
+        current_summary = UserReportService._prepare_summary_context(
             current_summary_data
         )
 
@@ -134,7 +145,7 @@ class DetailedReportService:
                 end_date=end_date_prev,
             )
         )
-        prev_summary = DetailedReportService._prepare_summary_context(
+        prev_summary = UserReportService._prepare_summary_context(
             prev_summary_data
         )
 
@@ -202,32 +213,28 @@ class DetailedReportService:
             f'an accuracy of {accuracy:.0f}%.'
         ]
 
-        exercise_grammar_summary = (
-            DetailedReportService._format_tags_for_summary(
-                summary.get('grammar_tags', {}),
-                'You focused on grammar topics',
-            )
+        exercise_grammar_summary = UserReportService._format_tags_for_summary(
+            summary.get('grammar_tags', {}),
+            'You focused on grammar topics',
         )
         if exercise_grammar_summary:
             parts.append(exercise_grammar_summary)
 
-        exercise_vocab_summary = (
-            DetailedReportService._format_tags_for_summary(
-                summary.get('vocab_tags', {}),
-                'You focused on vocabulary topics',
-            )
+        exercise_vocab_summary = UserReportService._format_tags_for_summary(
+            summary.get('vocab_tags', {}),
+            'You focused on vocabulary topics',
         )
         if exercise_vocab_summary:
             parts.append(exercise_vocab_summary)
 
-        error_grammar_summary = DetailedReportService._format_tags_for_summary(
+        error_grammar_summary = UserReportService._format_tags_for_summary(
             summary.get('error_grammar_tags', {}),
             'Your most common grammar errors were related to',
         )
         if error_grammar_summary:
             parts.append(error_grammar_summary)
 
-        error_vocab_summary = DetailedReportService._format_tags_for_summary(
+        error_vocab_summary = UserReportService._format_tags_for_summary(
             summary.get('error_vocab_tags', {}),
             'Your most common vocabulary errors were related to',
         )

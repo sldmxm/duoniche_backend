@@ -31,9 +31,6 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
         'tr': '🥺Üzgünüm, limitinize ulaştınız. '
         'Bir sonraki egzersiz {pause_time}’te hazır olacak.',
     },
-    # TODO: Разные сообщения для разного количества ошибок
-    #  найти за что хвалить, например,
-    #  за короткое или длинное время сета
     Messages.PRAISE_AND_NEXT_SET: {
         'en': [
             '🎉You are doing great! Keep going!',

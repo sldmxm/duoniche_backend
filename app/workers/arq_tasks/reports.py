@@ -7,7 +7,7 @@ from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
 from app.core.entities.user_report import UserReport
 from app.core.enums import ReportStatus
-from app.core.services.detailed_report import DetailedReportService
+from app.core.services.user_report import UserReportService
 from app.core.texts import Messages, get_text
 from app.db.db import async_session_maker
 from app.db.repositories.exercise_attempt import (
@@ -54,7 +54,7 @@ async def _async_generate_detailed_report_task(
             attempt_repo = SQLAlchemyExerciseAttemptRepository(session)
             profile_repo = SQLAlchemyUserBotProfileRepository(session)
 
-            detailed_report_service = DetailedReportService(
+            detailed_report_service = UserReportService(
                 user_report_repository=report_repo,
                 exercise_attempt_repository=attempt_repo,
                 arq_pool=arq_pool,

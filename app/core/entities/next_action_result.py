@@ -20,6 +20,7 @@ class TelegramPayment(BaseModel):
     currency: str
     prices: List[TelegramPaymentItem]
     thanks_answer: str
+    invoice_payload: Optional[str] = None
 
 
 class NextAction(BaseModel):

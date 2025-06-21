@@ -321,7 +321,6 @@ class NotificationProducerService:
             'inline_keyboard': [
                 [
                     {'text': '✅', 'callback_data': 'full_weekly_report:yes'},
-                    {'text': '⛔️', 'callback_data': 'full_weekly_report:no'},
                 ]
             ]
         }
@@ -393,7 +392,6 @@ class NotificationProducerService:
                 disable_web_page_preview=True,
             ),
             metadata={'report_id': report.report_id, 'is_full_report': True},
-            # TODO: перенести задержку отправки сюда
             scheduled_at=None,
         )
         logger.info(

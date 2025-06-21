@@ -2,16 +2,13 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
-from app.celery_producer import notifier_celery_producer
+from arq.connections import ArqRedis
+
 from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.enums import ReportStatus
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
 from app.core.repositories.user_report import UserReportRepository
 from app.llm.llm_service import LLMService
-
-DETAILED_REPORT_WORKER_TASK_NAME = (
-    'detailed_report.generate_and_send_detailed_report_task'
-)
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +25,12 @@ class DetailedReportService:
         self,
         user_report_repository: UserReportRepository,
         exercise_attempt_repository: ExerciseAttemptRepository,
+        arq_pool: ArqRedis,
         llm_service: LLMService,
     ):
         self.user_report_repo = user_report_repository
         self.attempt_repo = exercise_attempt_repository
+        self.arq_pool = arq_pool
         self.llm_service = llm_service
 
     async def request_detailed_report(
@@ -64,9 +63,9 @@ class DetailedReportService:
         ]:
             return latest_report.status
 
-        notifier_celery_producer.send_task(
-            DETAILED_REPORT_WORKER_TASK_NAME,
-            args=[latest_report.report_id],
+        await self.arq_pool.enqueue_job(
+            'generate_and_send_detailed_report_arq',
+            latest_report.report_id,
         )
         logger.info(
             f'Enqueued detailed report generation for report_id: '

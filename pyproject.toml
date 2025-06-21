@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.14.1",
+    "arq>=0.26.0",
     "fastapi[standard]>=0.115.10",
     "langchain>=0.3.19",
     "psycopg2-binary>=2.9.10",
@@ -13,7 +14,6 @@ dependencies = [
     "pydantic>=2.0",
     "sqlalchemy>=2.0",
     "asyncpg>=0.30.0",
-    "greenlet>=3.1.1",
     "sqlalchemy-utils>=0.41.2",
     "langchain-openai>=0.3.8",
     "redis>=5.2.1",
@@ -26,6 +26,7 @@ dependencies = [
     "celery>=5.5.2",
     "google-genai>=1.17.0",
     "aioboto3>=14.3.0",
+    "greenlet>=3.2.3",
 ]
 
 [dependency-groups]

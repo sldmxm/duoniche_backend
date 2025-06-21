@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from arq.connections import ArqRedis
 from fastapi import Depends, Request
 from redis.asyncio import Redis as AsyncRedis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,6 +54,12 @@ async def get_redis_dependency(request: Request) -> AsyncRedis:
     if not hasattr(request.app.state, 'redis_client'):
         raise RuntimeError('Redis client not initialized in app.state')
     return request.app.state.redis_client
+
+
+async def get_arq_pool(request: Request) -> ArqRedis:
+    if not hasattr(request.app.state, 'arq_pool'):
+        raise RuntimeError('ARQ pool not initialized in app.state')
+    return request.app.state.arq_pool
 
 
 def get_user_settings_service(
@@ -136,6 +143,7 @@ def get_user_progress_service(
 
 def get_detailed_report_service(
     session: Annotated[AsyncSession, Depends(get_async_session)],
+    arq_pool: Annotated[ArqRedis, Depends(get_arq_pool)],
     llm_service: Annotated[LLMService, Depends(get_llm_service_dependency)],
 ) -> DetailedReportService:
     """
@@ -146,5 +154,6 @@ def get_detailed_report_service(
         exercise_attempt_repository=SQLAlchemyExerciseAttemptRepository(
             session
         ),
+        arq_pool=arq_pool,
         llm_service=llm_service,
     )

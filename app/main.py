@@ -4,11 +4,13 @@ from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 
 import httpx
+from arq import create_pool
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.api.middleware.transaction import DBSessionMiddleware
 from app.api.v1.api import api_router
+from app.arq_config import WorkerSettings
 from app.config import settings
 from app.core.services.async_task_cache import AsyncTaskCache
 from app.db.db import init_db
@@ -45,6 +47,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
 
     app.state.http_client = httpx.AsyncClient()
     app.state.redis_client = await get_redis_client()
+    app.state.arq_pool = await create_pool(WorkerSettings.redis_settings)
     app.state.async_task_cache = AsyncTaskCache(app.state.redis_client)
     app.state.async_task_cache.clear()
     app.state.file_storage_service = R2FileStorageService()
@@ -126,6 +129,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
 
     if hasattr(app.state, 'http_client') and app.state.http_client:
         await app.state.http_client.aclose()
+    if hasattr(app.state, 'arq_pool') and app.state.arq_pool:
+        await app.state.arq_pool.close()
     if hasattr(app.state, 'async_task_cache') and app.state.async_task_cache:
         app.state.async_task_cache.clear()
     if hasattr(app.state, 'tts_service') and app.state.tts_service:

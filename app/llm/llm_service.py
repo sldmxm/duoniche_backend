@@ -185,8 +185,8 @@ class LLMService(BaseLLMService, LLMProvider):
             'directly to the user (e.g., "You...", "Your..."). '
             'The tone should be encouraging, positive, and motivating, '
             'even when discussing areas for improvement. \n'
-            'Use HTML-like tags (only <b>, <i>, <u>, <code>, <s>) for text '
-            'formating.\n'
+            'For text formating use *only* thees tags <b>, <i>, <u>, <code>, '
+            "<s>. Don't use <ul>, <li> <h>-like. \n"
             'Use emojis if it improves readability.\n\n'
             '**Report Structure (Strictly Follow):**\n\n'
             '1.  **Progress This Week:**\n'

@@ -54,25 +54,12 @@ services:
     networks:
       - duo_shared
 
-  celery-beat:
-    container_name: duo_celery_beat
+  arq-worker:
+    container_name: duo_arq_worker
     env_file: .env
     restart: always
     logging: *json_logging
-    command: ["celery", "-A", "app.celery_producer.notifier_celery_producer", "beat", "--loglevel=info"]
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - duo_shared
-
-  celery-worker:
-    container_name: duo_celery_worker
-#    command: ["celery", "-A", "app.celery_producer.notifier_celery_producer", "worker", "-P", "threads", "-c", "10", "--loglevel=info"]
-    command: ["celery", "-A", "app.celery_producer.notifier_celery_producer", "worker", "-P", "gevent", "-c", "10", "--loglevel=info"]
-    env_file: .env
-    restart: always
-    logging: *json_logging
+    command: ["arq", "app.arq_config.WorkerSettings"]
     depends_on:
       redis:
         condition: service_healthy

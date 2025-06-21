@@ -1,14 +1,12 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 from app.config import settings
-from app.core.entities.user import User
-from app.core.entities.user_bot_profile import BotID, UserBotProfile
-from app.core.entities.user_report import UserReport
+from app.core.entities.user_bot_profile import BotID
 from app.core.enums import ReportStatus
+from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_report import UserReportService
-from app.core.texts import Messages, get_text
 from app.db.db import async_session_maker
 from app.db.repositories.exercise_attempt import (
     SQLAlchemyExerciseAttemptRepository,
@@ -24,7 +22,6 @@ from app.services.notification_producer import NotificationProducerService
 logger = logging.getLogger(__name__)
 
 FULL_WEEKLY_REPORT_SENDING_DELAY = 3  # 10 * 60
-MIN_ATTEMPTS_FOR_WEEKLY_REPORT = 15
 
 
 async def _async_generate_detailed_report_task(
@@ -52,23 +49,22 @@ async def _async_generate_detailed_report_task(
             bot_id = BotID(report.bot_id)
 
             attempt_repo = SQLAlchemyExerciseAttemptRepository(session)
-            profile_repo = SQLAlchemyUserBotProfileRepository(session)
+            user_bot_profile_service = UserBotProfileService(
+                SQLAlchemyUserBotProfileRepository(session)
+            )
 
             detailed_report_service = UserReportService(
                 user_report_repository=report_repo,
+                user_bot_profile_service=user_bot_profile_service,
                 exercise_attempt_repository=attempt_repo,
                 arq_pool=arq_pool,
                 llm_service=llm_service,
             )
 
-            profile = await profile_repo.get(user_id=user_id, bot_id=bot_id)
-
-            if not profile:
-                logger.error(f'Profile not found for user_id {user_id} ')
-                return False
-
             full_report_text = await (
-                detailed_report_service.generate_full_report_text(profile)
+                detailed_report_service.generate_full_report_text(
+                    user_id=user_id, bot_id=bot_id
+                )
             )
 
             report.full_report = full_report_text
@@ -204,96 +200,46 @@ async def run_report_generation_cycle_arq(ctx):
     This task is scheduled to run on Mondays via cron.
     """
     logger.info('Starting ARQ task for weekly report generation cycle.')
-    end_date_current = datetime.now(timezone.utc)
-    start_date_current = end_date_current - timedelta(days=7)
-    week_start_date_current = start_date_current.date()
 
     async with async_session_maker() as session:
         user_profile_repo = SQLAlchemyUserBotProfileRepository(session)
         attempt_repo = SQLAlchemyExerciseAttemptRepository(session)
         report_repo = SQLAlchemyUserReportRepository(session)
 
-        active_profiles = (
-            await user_profile_repo.get_active_profiles_for_reporting(
-                since=start_date_current,
-            )
+        user_bot_profile_service = UserBotProfileService(
+            profile_repo=user_profile_repo
         )
 
-        logger.info(
-            f'Found {len(active_profiles)} active users for weekly report '
-            'generation.'
+        arq_pool = ctx.get('arq_pool') or ctx.get('redis')
+        llm_service = ctx.get('llm_service')
+
+        if not arq_pool or not llm_service:
+            logger.error(
+                'arq_pool or llm_service not found in ARQ context. '
+                'Check on_startup hook.'
+            )
+            return
+
+        report_service = UserReportService(
+            user_report_repository=report_repo,
+            exercise_attempt_repository=attempt_repo,
+            user_bot_profile_service=user_bot_profile_service,
+            arq_pool=arq_pool,
+            llm_service=llm_service,
         )
 
-        reports_to_notify: list[tuple[UserBotProfile, User, UserReport]] = []
-        for profile, user in active_profiles:
-            current_summary = (
-                await attempt_repo.get_period_summary_for_user_and_bot(
-                    user_id=profile.user_id,
-                    bot_id=profile.bot_id.value,
-                    start_date=start_date_current,
-                    end_date=end_date_current,
-                )
-            )
-
-            if (
-                not current_summary
-                or current_summary.get('total_attempts', 0)
-                < MIN_ATTEMPTS_FOR_WEEKLY_REPORT
-            ):
-                logger.info(
-                    f'Skipping report for user {profile.user_id}/'
-                    f'{profile.bot_id.value} due to low activity.'
-                )
-                continue
-
-            total_attempts = current_summary.get('total_attempts', 0)
-            correct_attempts = current_summary.get('correct_attempts', 0)
-            accuracy = (
-                (correct_attempts / total_attempts) * 100
-                if total_attempts > 0
-                else 0
-            )
-            active_days = current_summary.get('active_days', 0)
-
-            short_report_text = get_text(
-                Messages.WEEKLY_REPORT,
-                language_code=profile.user_language,
-                active_days=active_days,
-                total_attempts=total_attempts,
-                accuracy=accuracy,
-            )
-
-            try:
-                new_report = UserReport(
-                    user_id=profile.user_id,
-                    bot_id=profile.bot_id.value,
-                    week_start_date=week_start_date_current,
-                    short_report=short_report_text,
-                    full_report=None,
-                    generated_at=datetime.now(timezone.utc),
-                )
-
-                saved_report = await report_repo.create(new_report)
-                profile.last_report_generated_at = saved_report.generated_at
-                await user_profile_repo.update(profile)
-
-                reports_to_notify.append((profile, user, saved_report))
-
-                logger.info(
-                    f'Successfully generated and saved report for user '
-                    f'{profile.user_id}/{profile.bot_id.value} '
-                    f'(report_id: {saved_report.report_id})'
-                )
-            except Exception as e:
-                logger.error(
-                    f'Failed to generate or save report for user '
-                    f'{profile.user_id}/{profile.bot_id.value}. Error: {e}',
-                    exc_info=True,
-                )
+        reports_to_notify = await (
+            report_service.generate_and_save_short_weekly_reports()
+        )
 
         await session.commit()
 
+    if not reports_to_notify:
+        logger.info('No reports were generated, finishing task.')
+        return
+
     notification_producer = NotificationProducerService()
+
     batch_size = settings.report_notification_batch_size
     delay = settings.report_notification_batch_delay_seconds
 

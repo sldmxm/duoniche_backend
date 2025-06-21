@@ -195,7 +195,11 @@ async def user_bot_profile_service(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture(scope='function')
-async def user_report_service(db_session: AsyncSession, mock_http_client):
+async def user_report_service(
+    db_session: AsyncSession,
+    mock_http_client,
+    user_bot_profile_service,
+):
     """Create UserBotProfileService with test repositories"""
     return UserReportService(
         user_report_repository=SQLAlchemyUserReportRepository(db_session),
@@ -203,9 +207,8 @@ async def user_report_service(db_session: AsyncSession, mock_http_client):
             db_session,
         ),
         arq_pool=None,
-        llm_service=LLMService(
-            http_client=mock_http_client,
-        ),
+        llm_service=LLMService(http_client=mock_http_client),
+        user_bot_profile_service=user_bot_profile_service,
     )
 
 

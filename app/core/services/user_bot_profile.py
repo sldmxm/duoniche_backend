@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from app.config import settings
+from app.core.entities.user import User
 from app.core.entities.user_bot_profile import (
     BotID,
     UserBotProfile,
@@ -253,3 +254,11 @@ class UserBotProfileService:
             f'Session unlocked for user {user_id}, ' f'bot {bot_id.value}.'
         )
         return updated_profile
+
+    async def get_active_profiles_for_reporting(
+        self,
+        since: datetime,
+    ) -> List[Tuple[UserBotProfile, User]]:
+        return await self._profile_repo.get_active_profiles_for_reporting(
+            since=since,
+        )

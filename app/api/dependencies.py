@@ -116,6 +116,9 @@ def get_user_report_service(
     session: Annotated[AsyncSession, Depends(get_async_session)],
     arq_pool: Annotated[ArqRedis, Depends(get_arq_pool)],
     llm_service: Annotated[LLMService, Depends(get_llm_service_dependency)],
+    user_bot_profile_service: Annotated[
+        UserBotProfileService, Depends(get_user_bot_profile_service)
+    ],
 ) -> UserReportService:
     """
     Dependency to get the UserReportService.
@@ -127,6 +130,7 @@ def get_user_report_service(
         ),
         arq_pool=arq_pool,
         llm_service=llm_service,
+        user_bot_profile_service=user_bot_profile_service,
     )
 
 

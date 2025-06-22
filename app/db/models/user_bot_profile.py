@@ -113,6 +113,6 @@ class DBUserBotProfile(Base):
     def __repr__(self) -> str:
         return (
             f'<DBUserBotProfile(user_id={self.user_id}, '
-            f"bot_id='{self.bot_id.value}', "
+            f"bot_id='{self.bot_id}', "
             f"status='{self.status.value}')>"
         )

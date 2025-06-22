@@ -16,7 +16,10 @@ from app.core.texts import PaymentMessages, get_text
 
 logger = logging.getLogger(__name__)
 
-INVOICE_PAYLOAD_PREFIX = 'invoice_payload_prefix'
+INVOICE_PAYLOAD_PREFIX = 'invoice_payload'
+REPORT_DONATION_PREFIX = 'report_donation'
+SESSION_UNLOCK_PREFIX = 'session_unlock'
+INITIATE_PAYMENT_PREFIX = 'initiate_payment'
 
 
 class DuplicatePaymentError(ValueError):
@@ -41,7 +44,7 @@ class PaymentService:
         self._user_bot_profile_service = user_bot_profile_service
         self._user_report_service = user_report_service
         self.payment_source_actions = {
-            'session_unlock': self._handle_session_unlock,
+            SESSION_UNLOCK_PREFIX: self._handle_session_unlock,
         }
 
     def _get_invoice_payload(
@@ -57,7 +60,7 @@ class PaymentService:
             f':{user_id}'
             f':{bot_id.value}'
             f':{item_id}'
-            f'_time_{int(datetime.now(timezone.utc).timestamp())}'
+            f':{int(datetime.now(timezone.utc).timestamp())}'
         )
         return invoice_payload
 
@@ -69,7 +72,7 @@ class PaymentService:
 
         payload_parts = invoice_payload.split(':')
         source = payload_parts[1]
-        if source not in ('report_donation', 'session_unlock'):
+        if source not in (REPORT_DONATION_PREFIX, SESSION_UNLOCK_PREFIX):
             raise ValueError(f'Unknown payment source: {source}')
 
         user_id = int(payload_parts[2])
@@ -118,7 +121,7 @@ class PaymentService:
                 )
             )
         invoice_payload = self._get_invoice_payload(
-            source='session_unlock',
+            source=SESSION_UNLOCK_PREFIX,
             user_id=user_id,
             bot_id=bot_id,
             item_id=-1,
@@ -127,7 +130,9 @@ class PaymentService:
         payment_details = TelegramPayment(
             button_text=get_text(PaymentMessages.BUTTON_TEXT, user_language),
             title=get_text(PaymentMessages.TITLE, user_language),
-            description=get_text(PaymentMessages.DESCRIPTION, user_language),
+            description=get_text(
+                PaymentMessages.DESCRIPTION_NEW_SESSION, user_language
+            ),
             currency='XTR',
             prices=prices,
             thanks_answer=get_text(
@@ -153,7 +158,7 @@ class PaymentService:
             )
 
         invoice_payload = self._get_invoice_payload(
-            source='report_donation',
+            source=REPORT_DONATION_PREFIX,
             user_id=user_id,
             bot_id=bot_id,
             item_id=report_id,
@@ -171,7 +176,9 @@ class PaymentService:
                 PaymentMessages.REPORT_DONATION_BUTTON_TEXT, user_language
             ),
             title=get_text(PaymentMessages.TITLE, user_language),
-            description=get_text(PaymentMessages.DESCRIPTION, user_language),
+            description=get_text(
+                PaymentMessages.DESCRIPTION_FOR_NOTHING, user_language
+            ),
             currency='XTR',
             prices=[price_item],
             thanks_answer=get_text(
@@ -194,11 +201,11 @@ class PaymentService:
         Retrieves payment details for a given source.
         This acts as a dispatcher to specific payment detail getters.
         """
-        if source == 'report_donation':
+        if source == REPORT_DONATION_PREFIX:
             if item_id is None:
                 raise ValueError(
                     'item_id (report_id) is required for '
-                    "'report_donation' source."
+                    f'{REPORT_DONATION_PREFIX} source.'
                 )
             return await self.get_report_donation_details(
                 user_id=user_id,
@@ -206,7 +213,7 @@ class PaymentService:
                 report_id=item_id,
                 user_language=user_language,
             )
-        elif source == 'session_unlock':
+        elif source == SESSION_UNLOCK_PREFIX:
             return self.get_unlock_payment_details(
                 user_id=user_id,
                 bot_id=bot_id,
@@ -235,7 +242,7 @@ class PaymentService:
             invoice_payload
         )
 
-        if source == 'report_donation':
+        if source == REPORT_DONATION_PREFIX:
             report_id = item_id
             report = await self._user_report_service.get_by_id(report_id)
             if not report:
@@ -295,6 +302,3 @@ class PaymentService:
         await self._user_bot_profile_service.reset_and_start_new_session(
             user_id=user_id, bot_id=bot_id
         )
-
-        # TODO: И отправить следующее задание? Хотя, это бот должен запросить
-        #  сразу

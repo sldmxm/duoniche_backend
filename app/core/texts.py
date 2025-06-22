@@ -112,32 +112,38 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
         '- активных дней: {active_days} / 7\n'
         '- упражнений выполнено: {total_attempts}\n'
         '- точность ответов: {accuracy:.0f}%\n'
-        'Хочешь подробный разбор с советами и анализом ошибок?',
+        'Хочешь подробный разбор с советами и анализом ошибок '
+        '(будет готов через 10–15 минут)?',
         'en': '📈Your progress this week:\n'
         '- active days: {active_days} / 7\n'
         '- exercises completed: {total_attempts}\n'
         '- accuracy: {accuracy:.0f}%\n'
-        'Want a detailed breakdown with tips and error analysis?',
+        'Want a detailed breakdown with tips and error analysis '
+        '(ready in 10–15 minutes)?',
         'bg': '📈Вашият напредък тази седмица:\n'
         '- активни дни: {active_days} / 7\n'
         '- решени упражнения: {total_attempts}\n'
         '- точност: {accuracy:.0f}%\n'
-        'Искате ли подробен разбор със съвети и анализ на грешките?',
+        'Искате ли подробен разбор със съвети и анализ на грешките '
+        '(готов след 10–15 минути)?',
         'sr': '📈Vaš napredak ove nedelje:\n'
         '- dana sa vežbanjem: {active_days} / 7\n'
         '- urađenih vežbi: {total_attempts}\n'
         '- tačnost: {accuracy:.0f}%\n'
-        'Hoćete li detaljan pregled sa savetima i analizom grešaka?',
+        'Hoćete li detaljan pregled sa savetima i analizom grešaka '
+        '(biće spreman za 10–15 minuta)?',
         'tr': '📈Bu haftaki ilerlemen:\n'
         '- aktif gün: {active_days} / 7\n'
         '- tamamlanan alıştırma: {total_attempts}\n'
         '- doğruluk: {accuracy:.0f}%\n'
-        'Detaylı analiz ve öneriler ister misin?',
+        'Detaylı analiz ve öneriler ister misin? '
+        '(10–15 dakika içinde hazır olur)',
         'uk': '📈Ваш прогрес за тиждень:\n'
         '- днів з практикою: {active_days} / 7\n'
         '- виконаних вправ: {total_attempts}\n'
         '- точність: {accuracy:.0f}%\n'
-        'Хочеш детальний розбір з порадами та аналізом помилок?',
+        'Хочеш детальний розбір з порадами та аналізом помилок '
+        '(буде готовий за 10–15 хвилин)?',
     },
 }
 
@@ -350,7 +356,8 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, Union[str, List[str]]]] = {
 class PaymentMessages(str, Enum):
     BUTTON_TEXT = 'payment_button_text'
     TITLE = 'payment_title'
-    DESCRIPTION = 'payment_description'
+    DESCRIPTION_NEW_SESSION = 'payment_description'
+    DESCRIPTION_FOR_NOTHING = 'description_for_nothing'
     ITEM_LABEL = 'payment_item_label'
     THANKS_ANSWER = 'payment_thanks_answer'
     ITEM_LABEL_TIER_1 = 'payment_item_label_tier_1'
@@ -377,7 +384,7 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'tr': '☕️ Destek',
         'uk': '☕️ Підтримка',
     },
-    PaymentMessages.DESCRIPTION: {
+    PaymentMessages.DESCRIPTION_NEW_SESSION: {
         'ru': 'Поддержите проект — и еще одна сессия '
         'упражнений откроется сразу',
         'en': 'Support the project — and the next '
@@ -386,6 +393,18 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'сесия ще се отключи веднага',
         'tr': 'Projeyi destekle — bir sonraki ' 'oturum hemen açılacak',
         'uk': 'Підтримайте проєкт — і наступна ' 'сесія відкриється одразу',
+    },
+    PaymentMessages.DESCRIPTION_FOR_NOTHING: {
+        'ru': 'Поддержите проект, если он вам полезен '
+        '— это помогает нам развиваться и улучшать упражнения',
+        'en': 'If you find the project useful, support it '
+        '— it helps us grow and improve the exercises',
+        'bg': 'Ако проектът ви е полезен, подкрепете ни '
+        '— това ни помага да се развиваме и подобряваме упражненията',
+        'tr': 'Proje işinize yarıyorsa destek olun '
+        '— gelişmemize ve alıştırmaları iyileştirmemize yardımcı olur',
+        'uk': 'Якщо проєкт корисний для вас — підтримайте його. '
+        'Це допомагає нам розвиватися і вдосконалювати вправи',
     },
     PaymentMessages.ITEM_LABEL: {
         'ru': 'Открыть одну сессию',

@@ -160,6 +160,11 @@ async def get_universal_invoice_details(
             item_id=item_id,
             user_language=user_language,
         )
+
+        logger.info(
+            f'Invoice details retrieved for user {user_id}: {payment_details}'
+        )
+
         return payment_details
     except ValueError as e:
         logger.warning(f'Could not get invoice details for {source}: {e}')

@@ -13,7 +13,11 @@ from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
 from app.core.entities.user_settings import UserSettings
 from app.core.enums import LanguageLevel, UserAction
-from app.core.services.payment import PaymentService
+from app.core.services.payment import (
+    INITIATE_PAYMENT_PREFIX,
+    SESSION_UNLOCK_PREFIX,
+    PaymentService,
+)
 from app.core.services.user_progress import UserProgressService
 from app.core.texts import Messages, PaymentMessages, get_text
 
@@ -118,7 +122,9 @@ def mock_payment_service():
         return TelegramPayment(
             button_text=get_text(PaymentMessages.BUTTON_TEXT, user_language),
             title=get_text(PaymentMessages.TITLE, user_language),
-            description=get_text(PaymentMessages.DESCRIPTION, user_language),
+            description=get_text(
+                PaymentMessages.DESCRIPTION_NEW_SESSION, user_language
+            ),
             currency='XTR',
             prices=prices,
             thanks_answer=get_text(
@@ -167,8 +173,6 @@ async def test_get_next_action_when_frozen_offers_payment(
     now = datetime.now(timezone.utc)
     sample_user_bot_profile.session_frozen_until = now + timedelta(hours=1)
     user_language = sample_user_bot_profile.user_language
-    expected_payment_amount = 20
-    expected_item_label_key = PaymentMessages.ITEM_LABEL_TIER_1
 
     user_progress_service.user_service.get_by_id.return_value = sample_user
     (
@@ -183,19 +187,13 @@ async def test_get_next_action_when_frozen_offers_payment(
     )
 
     assert next_action.action == UserAction.limit_reached
-    assert next_action.payment_info is not None
-    assert isinstance(next_action.payment_info, TelegramPayment)
-    assert next_action.payment_info.currency == 'XTR'
-    assert next_action.payment_info.button_text == get_text(
+    assert next_action.keyboard is not None
+    assert next_action.keyboard[0]['text'] == get_text(
         PaymentMessages.BUTTON_TEXT, user_language
     )
-    assert next_action.payment_info.title == get_text(
-        PaymentMessages.TITLE, user_language
+    assert next_action.keyboard[0]['callback_data'] == (
+        f'{INITIATE_PAYMENT_PREFIX}:{SESSION_UNLOCK_PREFIX}'
     )
-    assert next_action.payment_info.prices[0].label == get_text(
-        expected_item_label_key, user_language
-    )
-    assert next_action.payment_info.prices[0].amount == expected_payment_amount
 
     expected_message_key = Messages.LIMIT_REACHED
     delta_to_next_session = str(
@@ -231,8 +229,6 @@ async def test_get_next_action_when_session_limit_reached_offers_payment(
     sample_user_bot_profile.exercises_get_in_session = test_session_limit
     sample_user_bot_profile.session_frozen_until = None
     user_language = sample_user_bot_profile.user_language
-    expected_payment_amount = 20
-    expected_item_label_key = PaymentMessages.ITEM_LABEL_TIER_1
 
     user_progress_service.user_service.get_by_id.return_value = sample_user
 
@@ -251,16 +247,14 @@ async def test_get_next_action_when_session_limit_reached_offers_payment(
     )
 
     assert next_action.action == UserAction.congratulations_and_wait
-    assert next_action.payment_info is not None
-    assert isinstance(next_action.payment_info, TelegramPayment)
-    assert next_action.payment_info.currency == 'XTR'
-    assert next_action.payment_info.button_text == get_text(
+
+    assert next_action.keyboard is not None
+    assert next_action.keyboard[0]['text'] == get_text(
         PaymentMessages.BUTTON_TEXT, user_language
     )
-    assert next_action.payment_info.prices[0].label == get_text(
-        expected_item_label_key, user_language
+    assert next_action.keyboard[0]['callback_data'] == (
+        f'{INITIATE_PAYMENT_PREFIX}:{SESSION_UNLOCK_PREFIX}'
     )
-    assert next_action.payment_info.prices[0].amount == expected_payment_amount
 
     expected_message_key = Messages.CONGRATULATIONS_AND_WAIT
     expected_message = get_text(

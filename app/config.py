@@ -108,6 +108,7 @@ class Settings(BaseSettings):  # type: ignore
 
     report_notification_batch_size: int = 10
     report_notification_batch_delay_seconds: int = 1
+    full_weekly_report_sending_delay: int = 10 * 60
 
     model_config = SettingsConfigDict(
         env_file='.env',

@@ -11,6 +11,10 @@ from app.config import settings
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
 from app.core.entities.user_report import UserReport
+from app.core.services.payment import (
+    INITIATE_PAYMENT_PREFIX,
+    REPORT_DONATION_PREFIX,
+)
 from app.core.texts import (
     DEFAULT_LONG_BREAK_REMINDER,
     PaymentMessages,
@@ -317,10 +321,11 @@ class NotificationProducerService:
             )
             return False
 
+        callback_data = f'full_weekly_report:yes:{report.report_id}'
         reply_markup = {
             'inline_keyboard': [
                 [
-                    {'text': '✅', 'callback_data': 'full_weekly_report:yes'},
+                    {'text': '✅⏳📊', 'callback_data': callback_data},
                 ]
             ]
         }
@@ -371,7 +376,9 @@ class NotificationProducerService:
         )
 
         callback_data_donate = (
-            f'initiate_payment:report_donation:{report.report_id}'
+            f'{INITIATE_PAYMENT_PREFIX}'
+            f':{REPORT_DONATION_PREFIX}'
+            f':{report.report_id}'
         )
 
         reply_markup = {

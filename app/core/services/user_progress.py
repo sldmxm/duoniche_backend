@@ -21,11 +21,15 @@ from app.core.enums import (
 )
 from app.core.generation.config import ExerciseTopic
 from app.core.services.exercise import ExerciseService
-from app.core.services.payment import PaymentService
+from app.core.services.payment import (
+    INITIATE_PAYMENT_PREFIX,
+    SESSION_UNLOCK_PREFIX,
+    PaymentService,
+)
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_settings import UserSettingsService
-from app.core.texts import Messages, get_text
+from app.core.texts import Messages, PaymentMessages, get_text
 from app.metrics import BACKEND_EXERCISE_METRICS, BACKEND_USER_METRICS
 
 logger = logging.getLogger(__name__)
@@ -139,12 +143,12 @@ class UserProgressService:
                 delta_to_next_session = str(
                     user_bot_profile.session_frozen_until - now
                 ).split('.')[0]
-                payment_details = (
-                    self.payment_service.get_unlock_payment_details(
-                        user_id=user_id,
-                        bot_id=bot_id,
-                        user_language=user_bot_profile.user_language,
-                    )
+
+                payment_button_text = get_text(
+                    PaymentMessages.BUTTON_TEXT, user_bot_profile.user_language
+                )
+                payment_button_callback_data = (
+                    f'{INITIATE_PAYMENT_PREFIX}:{SESSION_UNLOCK_PREFIX}'
                 )
 
                 return NextAction(
@@ -154,7 +158,12 @@ class UserProgressService:
                         language_code=user_bot_profile.user_language,
                         pause_time=delta_to_next_session,
                     ),
-                    payment_info=payment_details,
+                    keyboard=[
+                        {
+                            'text': payment_button_text,
+                            'callback_data': payment_button_callback_data,
+                        },
+                    ],
                 )
             else:
                 logger.info(
@@ -202,14 +211,6 @@ class UserProgressService:
                 f'Current streak: {user_bot_profile.current_streak_days} days.'
             )
 
-            payment_details = self.payment_service.get_unlock_payment_details(
-                user_id=user_id,
-                bot_id=bot_id,
-                user_language=user_bot_profile.user_language,
-            )
-            payment_details.invoice_payload = (
-                f'session_unlock:{user.user_id}:{bot_id.value}'
-            )
             message_key: Messages
             message_kwargs: dict[str, Any] = {
                 'exercise_num': user_bot_profile.exercises_get_in_session,
@@ -224,6 +225,12 @@ class UserProgressService:
             else:
                 message_key = Messages.CONGRATULATIONS_AND_WAIT
 
+            payment_button_text = get_text(
+                PaymentMessages.BUTTON_TEXT, user_bot_profile.user_language
+            )
+            payment_button_callback_data = (
+                f'{INITIATE_PAYMENT_PREFIX}:{SESSION_UNLOCK_PREFIX}'
+            )
             return NextAction(
                 action=UserAction.congratulations_and_wait,
                 message=get_text(
@@ -232,7 +239,12 @@ class UserProgressService:
                     **message_kwargs,
                 ),
                 pause=session_pause,
-                payment_info=payment_details,
+                keyboard=[
+                    {
+                        'text': payment_button_text,
+                        'callback_data': payment_button_callback_data,
+                    },
+                ],
             )
 
         if (

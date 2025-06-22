@@ -15,7 +15,11 @@ from app.core.entities.user_bot_profile import BotID, UserBotProfile
 from app.core.entities.user_settings import UserSettings
 from app.core.enums import UserAction
 from app.core.services.exercise import ExerciseService
-from app.core.services.payment import PaymentService
+from app.core.services.payment import (
+    INITIATE_PAYMENT_PREFIX,
+    SESSION_UNLOCK_PREFIX,
+    PaymentService,
+)
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_progress import UserProgressService
@@ -76,7 +80,9 @@ def mock_payment_service(mocker):
         return TelegramPayment(
             button_text=get_text(PaymentMessages.BUTTON_TEXT, user_language),
             title=get_text(PaymentMessages.TITLE, user_language),
-            description=get_text(PaymentMessages.DESCRIPTION, user_language),
+            description=get_text(
+                PaymentMessages.DESCRIPTION_NEW_SESSION, user_language
+            ),
             currency='XTR',
             prices=prices,
             thanks_answer=get_text(
@@ -132,9 +138,14 @@ async def test_get_next_action_returns_limit_reached_when_session_frozen(
         user_id=user.user_id, bot_id=user_bot_profile.bot_id
     )
     assert result.action == UserAction.limit_reached
-    assert result.payment_info is not None
-    assert isinstance(result.payment_info, TelegramPayment)
-    assert len(result.payment_info.prices) > 0
+
+    assert result.keyboard is not None
+    assert result.keyboard[0]['text'] == get_text(
+        PaymentMessages.BUTTON_TEXT, user_bot_profile.user_language
+    )
+    assert result.keyboard[0]['callback_data'] == (
+        f'{INITIATE_PAYMENT_PREFIX}:{SESSION_UNLOCK_PREFIX}'
+    )
 
     assert result.message == get_text(
         Messages.LIMIT_REACHED,
@@ -365,7 +376,15 @@ async def test_get_next_action_returns_congratulations_and_wait(
         wants_session_reminders=None,
     )
     assert result.action == UserAction.congratulations_and_wait
-    assert result.payment_info is not None
+
+    assert result.keyboard is not None
+    assert result.keyboard[0]['text'] == get_text(
+        PaymentMessages.BUTTON_TEXT, user_bot_profile.user_language
+    )
+    assert result.keyboard[0]['callback_data'] == (
+        f'{INITIATE_PAYMENT_PREFIX}:{SESSION_UNLOCK_PREFIX}'
+    )
+
     assert result.message == get_text(
         Messages.CONGRATULATIONS_AND_WAIT,
         language_code=user_bot_profile.user_language,

@@ -21,8 +21,6 @@ from app.services.notification_producer import NotificationProducerService
 
 logger = logging.getLogger(__name__)
 
-FULL_WEEKLY_REPORT_SENDING_DELAY = 3  # 10 * 60
-
 
 async def _async_generate_detailed_report_task(
     report_id: int, llm_service: LLMService, arq_pool
@@ -176,15 +174,17 @@ async def generate_and_send_detailed_report_arq(ctx, report_id: int):
             )
             return
 
+        delay = settings.full_weekly_report_sending_delay
+
         logger.info(
             f'Report for report_id {report_id} generated. '
             f'Enqueuing notification send task with a delay of '
-            f'{FULL_WEEKLY_REPORT_SENDING_DELAY}s.'
+            f'{delay}s.'
         )
         await arq_pool.enqueue_job(
             'send_detailed_report_notification_arq',
             report_id,
-            _defer_by=timedelta(seconds=FULL_WEEKLY_REPORT_SENDING_DELAY),
+            _defer_by=timedelta(seconds=delay),
         )
     else:
         logger.info(

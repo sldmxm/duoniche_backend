@@ -32,6 +32,7 @@ class SQLAlchemyPaymentRepository(PaymentRepositoryProtocol):
             invoice_payload=payment_data.invoice_payload,
             processed_at=payment_data.processed_at,
             raw_payment_data=payment_data.raw_payment_data,
+            source=payment_data.source,
         )
         self.session.add(db_payment)
         try:

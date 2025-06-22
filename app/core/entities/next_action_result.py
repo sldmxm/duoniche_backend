@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -16,7 +16,6 @@ class TelegramPayment(BaseModel):
     button_text: str
     title: str
     description: str
-    provider_token: str = ''
     currency: str
     prices: List[TelegramPaymentItem]
     thanks_answer: str
@@ -28,4 +27,4 @@ class NextAction(BaseModel):
     exercise: Optional[Exercise] = None
     message: Optional[str] = None
     pause: Optional[timedelta] = None
-    payment_info: Optional[TelegramPayment] = None
+    keyboard: Optional[List[Dict[str, str]]] = None

@@ -6,6 +6,7 @@ from arq.connections import RedisSettings
 
 from app.config import settings
 from app.llm.llm_service import LLMService
+from app.logging_config import configure_logging
 from app.workers.arq_tasks.reports import (
     generate_and_send_detailed_report_arq,
     run_report_generation_cycle_arq,
@@ -16,10 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 async def startup(ctx):
-    """
-    Выполняется один раз при старте воркера.
-    Создаем здесь все необходимые зависимости.
-    """
+    configure_logging()
     logger.info('ARQ worker starting up...')
     http_client = httpx.AsyncClient()
     ctx['http_client'] = http_client
@@ -30,10 +28,6 @@ async def startup(ctx):
 
 
 async def shutdown(ctx):
-    """
-    Выполняется один раз при остановке воркера.
-    Закрываем здесь все открытые ресурсы.
-    """
     logger.info('ARQ worker shutting down...')
     http_client: httpx.AsyncClient = ctx.get('http_client')
     if http_client:

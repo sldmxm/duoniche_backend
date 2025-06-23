@@ -106,7 +106,7 @@ class UserReportService:
                 if total_attempts > 0
                 else 0
             )
-            active_days = current_summary.get('active_days', 0)
+            active_days = min(current_summary.get('active_days', 0), 7)
 
             short_report_text = get_text(
                 Messages.WEEKLY_REPORT,
@@ -314,7 +314,7 @@ class UserReportService:
         if not summary or summary.get('total_attempts', 0) == 0:
             return ''
 
-        active_days = summary.get('active_days', 0)
+        active_days = min(summary.get('active_days', 0), 7)
         total = summary['total_attempts']
         correct = summary['correct_attempts']
         accuracy = (correct / total) * 100 if total > 0 else 0

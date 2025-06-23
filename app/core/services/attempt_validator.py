@@ -167,6 +167,8 @@ class AttemptValidator:
 
                 if isinstance(exercise.grammar_tags, dict):
                     vocabulary_tags = exercise.grammar_tags.get('vocabulary')
+                else:
+                    vocabulary_tags = None
 
                 incorrect_answer = ExerciseAnswer(
                     answer_id=None,

@@ -24,6 +24,7 @@ from app.llm.factories import (
 )
 from app.llm.llm_base import BaseLLMService
 from app.metrics import BACKEND_LLM_METRICS
+from app.utils.html_cleaner import clean_html_for_telegram
 from app.utils.language_code_converter import (
     convert_iso639_language_code_to_full_name,
 )
@@ -186,7 +187,7 @@ class LLMService(BaseLLMService, LLMProvider):
             'The tone should be encouraging, positive, and motivating, '
             'even when discussing areas for improvement. \n'
             'For text formating use *only* thees tags <b>, <i>, <u>, <code>, '
-            "<s>. Don't use <ul>, <li> <h>-like. \n"
+            "<s>. Don't use <ul>, <li>, <br>, <h>-like. \n"
             'Use emojis if it improves readability.\n\n'
             '**Report Structure (Strictly Follow):**\n\n'
             '1.  **Progress This Week:**\n'
@@ -286,4 +287,7 @@ class LLMService(BaseLLMService, LLMProvider):
         )
 
         response = await self.model.ainvoke(full_prompt)
-        return response.content
+
+        report_text = clean_html_for_telegram(response.content)
+
+        return report_text

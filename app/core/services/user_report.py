@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 INCORRECT_ATTEMPTS_FOR_LLM_NUMBER = 15
 TOP_TAGS_COUNT = 7
 MIN_ATTEMPTS_FOR_WEEKLY_REPORT = 15
+MAX_LENGTH_TELEGRAM_MESSAGE = 4096
+MAX_LENGTH_FULL_REPORT = MAX_LENGTH_TELEGRAM_MESSAGE - 100
+MAX_RETRIES_FULL_REPORT_GENERATION = 2
 
 
 class ReportNotFoundError(Exception):
@@ -62,12 +65,19 @@ class UserReportService:
         for sending notifications.
         """
         logger.info('Starting short weekly report generation cycle.')
-        end_date_current = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
+
+        current_week_start = now - timedelta(days=now.weekday())
+        current_week_start = current_week_start.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+
+        end_date_current = current_week_start
         start_date_current = end_date_current - timedelta(days=7)
         week_start_date_current = start_date_current.date()
 
-        active_profiles = (
-            await self.profile_service.get_active_profiles_for_reporting(
+        active_profiles = await (
+            self.profile_service.get_active_profiles_for_reporting(
                 since=start_date_current,
             )
         )
@@ -222,6 +232,7 @@ class UserReportService:
         start_date_current = datetime.combine(
             latest_report.week_start_date,
             datetime.min.time(),
+            tzinfo=timezone.utc,
         )
         end_date_current = start_date_current + timedelta(days=7)
         end_date_prev = start_date_current
@@ -271,12 +282,41 @@ class UserReportService:
 
         logger.info(f'Context for report:{context}')
 
-        full_report_text = await (
-            self.llm_service.generate_detailed_report_text(
-                context=context,
-                user_language=profile.user_language,
-                target_language=profile.bot_id.value,
+        current_retry = 0
+        full_report_text = ''
+        while current_retry <= MAX_RETRIES_FULL_REPORT_GENERATION:
+            full_report_text = await (
+                self.llm_service.generate_detailed_report_text(
+                    context=context,
+                    user_language=profile.user_language,
+                    target_language=profile.bot_id.value,
+                )
             )
+
+            if len(full_report_text) <= MAX_LENGTH_FULL_REPORT:
+                break
+
+            current_retry += 1
+            logger.warning(
+                f'Report text too long ({len(full_report_text)} chars). '
+                f'Retrying '
+                f'({current_retry}/{MAX_RETRIES_FULL_REPORT_GENERATION})...'
+            )
+            context['prompt_hint'] = (
+                'The previous text was too long. Make it more concise.'
+            )
+        else:
+            logger.error(
+                f'Failed to generate a report of acceptable length after '
+                f'{MAX_RETRIES_FULL_REPORT_GENERATION} retries. Truncating.'
+            )
+            full_report_text = (
+                full_report_text[:MAX_LENGTH_FULL_REPORT] + '...'
+            )
+
+        logger.info(
+            f'Full report text: {full_report_text}\n'
+            f'Final report text length: {len(full_report_text)}',
         )
 
         return full_report_text
@@ -320,7 +360,7 @@ class UserReportService:
         accuracy = (correct / total) * 100 if total > 0 else 0
 
         parts = [
-            f'Over the last 7 days, you you have been active for '
+            f'Over the last 7 days, you have been active for '
             f'{active_days} days and completed {total} exercises with '
             f'an accuracy of {accuracy:.0f}%.'
         ]

@@ -80,7 +80,7 @@ async def fill_sample_exercises(
 
 @pytest.fixture
 def fixed_test_time():
-    return datetime(2025, 6, 15, 10, 0, 0, tzinfo=timezone.utc)
+    return datetime(2025, 6, 23, 12, 0, 0, tzinfo=timezone.utc)
 
 
 @pytest_asyncio.fixture

@@ -3,7 +3,6 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from app.config import settings
-from app.core.entities.user_bot_profile import BotID
 from app.core.enums import ExerciseType
 from app.core.generation.config import ExerciseTopic
 
@@ -28,17 +27,21 @@ class UserSettings(BaseModel):
         default=settings.exercises_in_set,
         description='Number of exercises in one set before a praise message.',
     )
-    exercise_type_distribution: Optional[Dict[ExerciseType, float]] = Field(
-        default=None,
-        description='Weights for choosing the next exercise type. '
-        'If None, default logic is used.',
+    available_exercise_types: List[ExerciseType] = Field(
+        default_factory=list,
+        description='List of available exercise types for a user.',
     )
+    exercise_type_distribution: Dict[ExerciseType, float] = Field(
+        default_factory=dict,
+        description='Distribution of exercise types for a user.',
+    )
+
     exclude_topics: Optional[List[ExerciseTopic]] = Field(
         default=None,
         description='List of allowed topics. '
         'If None, all topics are allowed.',
     )
-    allowed_languages: Optional[List[BotID]] = Field(
+    allowed_languages: Optional[List[str]] = Field(
         default=None,
         description='List of allowed languages. '
         'If None, all languages are allowed.',

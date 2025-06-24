@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 from app.celery_producer import NOTIFIER_TASK_NAME, notifier_celery_producer
 from app.config import settings
 from app.core.entities.user import User
-from app.core.entities.user_bot_profile import BotID, UserBotProfile
+from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.entities.user_report import UserReport
 from app.core.services.payment import (
     INITIATE_PAYMENT_PREFIX,
@@ -64,7 +64,7 @@ class NotificationTaskData(BaseModel):
         default_factory=lambda: str(uuid.uuid4()),
         description='Unique ID of the task',
     )
-    bot_id: BotID = Field(
+    bot_id: str = Field(
         ...,
         description='Bot (language) identifier, determines '
         'which bot sends the message',
@@ -346,7 +346,7 @@ class NotificationProducerService:
         )
         logger.info(
             f'Preparing weekly report notification for user {user.user_id}, '
-            f'profile bot_id {profile.bot_id.value}.'
+            f'profile bot_id {profile.bot_id}.'
         )
         return await self.enqueue_notification(task_data)
 
@@ -404,7 +404,7 @@ class NotificationProducerService:
         logger.info(
             f'Preparing full detailed weekly report notification '
             f'for user {user.user_id}, '
-            f'profile bot_id {profile.bot_id.value}, '
+            f'profile bot_id {profile.bot_id}, '
             f'report_id {report.report_id}.'
         )
         return await self.enqueue_notification(task_data)

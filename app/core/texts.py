@@ -30,6 +30,9 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
         'Следующее упражнение будет доступно через {pause_time}',
         'tr': '🥺Üzgünüm, limitinize ulaştınız. '
         'Bir sonraki egzersiz {pause_time}’te hazır olacak.',
+        'sr': '🥺Žao nam je, dostigli ste limit za sada. '
+        'Molimo vas, sačekajte. '
+        'Sledeća vežba će biti dostupna za {pause_time}',
     },
     Messages.PRAISE_AND_NEXT_SET: {
         'en': [
@@ -67,6 +70,13 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
             'Хочеш змінити мову інтерфейсу? Зараз вибрано 🇺🇦, '
             'але можна обрати іншу: 🇧🇬🇬🇧🇷🇺🇹🇷 — через /my_language',
         ],
+        'sr': [
+            '🎉Odlično ti ide! Samo tako nastavi!',
+            '👏Sjajan napredak! Nastavimo niz!',
+            '💪Razbijaš! Idemo na sledeću!\n'
+            'Želiš da promeniš jezik interfejsa? Trenutno je 🇷🇸, '
+            'ali možeš izabrati drugi: 🇧🇬🇬🇧🇷🇺🇹🇷🇺🇦 putem /my_language',
+        ],
     },
     Messages.CONGRATULATIONS_AND_WAIT: {
         'en': '🥳Awesome! You’ve nailed {exercise_num} exercises!\n'
@@ -84,6 +94,9 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
         'uk': '🥳Круто! Виконано вже {exercise_num} вправ!\n'
         '🕑Час на коротку перерву — досягнуто ліміту на зараз. '
         'Наступна вправа буде доступна через {pause_time}. 💪',
+        'sr': '🥳Sjajno! Uspešno si uradio/la {exercise_num} vežbi!\n'
+        '🕑Vreme je za kratku pauzu — dostigao/la si limit za sada. '
+        'Nova vežba će biti spremna za {pause_time}. 💪',
     },
     Messages.CONGRATULATIONS_AND_WAIT_STREAK: {
         'en': '🥳Awesome! Exercises completed: {exercise_num}! '
@@ -106,6 +119,10 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
         'Днів поспіль: {streak_days} 🔥\n'
         '🕑Час на коротку перерву — досягнуто ліміту. '
         'Нова вправа буде готова через {pause_time}. 💪',
+        'sr': '🥳Sjajno! Urađeno vežbi: {exercise_num}! '
+        'Dana zaredom: {streak_days} 🔥\n'
+        '🕑Vreme je za kratku pauzu — dostigao/la si limit. '
+        'Nova vežba će biti spremna za {pause_time}. 💪',
     },
     Messages.WEEKLY_REPORT: {
         'ru': '📈Ваш прогресс за прошедшую неделю:\n'
@@ -155,6 +172,7 @@ EXERCISES_TASKS_TRANSLATIONS: Dict[
         'en': 'Fill in the blanks in the sentence',
         'bg': 'Попълнете празните места в изречението',
         'tr': 'Cümledeki boşlukları doldurun',
+        'sr': 'Popunite praznine u rečenici',
         'uk': 'Заповніть пропуски у реченні',
     },
     ExerciseType.CHOOSE_SENTENCE: {
@@ -162,6 +180,7 @@ EXERCISES_TASKS_TRANSLATIONS: Dict[
         'en': 'Choose the correct sentence',
         'bg': 'Изберете правилното изречение',
         'tr': 'Doğru cümleyi seçin',
+        'sr': 'Izaberite tačnu rečenicu',
         'uk': 'Виберіть правильне речення',
     },
     ExerciseType.CHOOSE_ACCENT: {
@@ -169,6 +188,7 @@ EXERCISES_TASKS_TRANSLATIONS: Dict[
         'en': 'Choose the correct accent',
         'bg': 'Изберете правилния акцент',
         'tr': 'Doğru aksanı seçin',
+        'sr': 'Izaberite tačan akcenat',
         'uk': 'Виберіть правильний акцент',
     },
     ExerciseType.STORY_COMPREHENSION: {
@@ -176,6 +196,7 @@ EXERCISES_TASKS_TRANSLATIONS: Dict[
         'en': 'Listen to the text and choose the correct statement',
         'bg': 'Чуй текста и избери вярното твърдение',
         'tr': 'Metni dinle ve doğru ifadeyi seç',
+        'sr': 'Poslušaj tekst i izaberi tačnu tvrdnju',
         'uk': 'Прослухай текст і вибери правильне твердження',
     },
 }
@@ -204,6 +225,8 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, Union[str, List[str]]]] = {
         '— време е да подобрите уменията си!',
         'tr': '🚀Hazır mısınız? Yeni oturum geldi '
         '— becerilerinizi geliştirme zamanı!',
+        'sr': '🚀Spreman/na za napredak? Tvoja nova sesija je tu '
+        '— vreme je da usavršiš svoje veštine!',
         'ru': '🚀Готовы прокачаться? Новая сессия уже доступна '
         '— время тренироваться!',
         'uk': '🚀Готові підкорювати нові вершини? Нова сесія чекає на вас '
@@ -236,6 +259,16 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, Union[str, List[str]]]] = {
             '✚ 1️⃣ Как ти се струва да добавим още '
             'един ден към {streak_days}?',
         ],
+        'sr': [
+            '🚀{streak_days} 📆 dana zaredom — impresivno! '
+            'Samo tako nastavi!',
+            '🔥{streak_days} 📆 dana za sada. '
+            'Samo par minuta da održiš vatru!',
+            '🏄‍♂️{streak_days} 📆 dana jašeš na talasu! '
+            'Savršeno vreme da nastaviš!',
+            '✚ 1️⃣ Kako bi bilo da dodaš još jedan '
+            'dan svom nizu od {streak_days}?',
+        ],
         'tr': [
             '🚀{streak_days} 📆 gün üst üste — harika bir başarı! ' 'Durma!',
             '🔥{streak_days} 📆 gün oldu. Devam etmek için sadece '
@@ -259,6 +292,8 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, Union[str, List[str]]]] = {
         'справяше страхотно! Продължавай в същия дух!',
         'ru': '📚Пора немного позаниматься — вчера ты в это время '
         'был молодцом и прокачивал язык! Держим темп!',
+        'sr': '📚Vreme je za malo vežbe — otprilike u ovo vreme juče '
+        'si briljirao/la! Nastavimo tako!',
         'tr': '📚Hadi biraz pratik yapalım — dün tam bu '
         'saatte harikaydın! Aynı tempoda devam!',
         'uk': '📚Час трохи попрактикуватися — у цей час учора '
@@ -271,6 +306,8 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, Union[str, List[str]]]] = {
         'Една бърза сесия и си обратно в играта!',
         'ru': '⌛Прошло 3 дня без практики. '
         'Одна быстрая сессия — и ты снова в игре!',
+        'sr': '⌛Prošlo je 3 dana bez vežbe. '
+        'Jedna brza sesija — i ponovo si u igri!',
         'tr': '⌛3 gündür pratik yok. ' 'Kısa bir seansla yeniden oyundasın!',
         'uk': '⌛Минуло 3 дні без практики. '
         'Швидка сесія — і ти знову в грі!',
@@ -282,6 +319,8 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, Union[str, List[str]]]] = {
         'Второто най-добро е сега. С езика е същото.',
         'ru': '🌱Лучшее время посадить дерево было 20 лет назад. '
         'Второе лучшее — сейчас. С языком то же самое.',
+        'sr': '🌱Najbolje vreme da se posadi drvo bilo je pre 20 godina. '
+        'Drugo najbolje je sada. Isto važi i za učenje jezika.',
         'tr': '🌱Bir ağacı dikmek için en iyi zaman 20 yıl önceydi. '
         'İkincisi ise şimdi. Dil öğrenmek de böyle.',
         'uk': '🌱Найкращий час посадити дерево був 20 років тому. '
@@ -294,6 +333,8 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, Union[str, List[str]]]] = {
         'Напредъкът ти те очаква!',
         'ru': '🌟Каждый шаг важен — даже спустя 8 дней. '
         'Твой прогресс ждёт тебя!',
+        'sr': '🌟Svaki korak se računa — čak i posle 8 dana. '
+        'Tvoj napredak te čeka!',
         'tr': '🌟Her adım önemli — 8 gün sonra bile. '
         'Gelişimin seni bekliyor!',
         'uk': '🌟Кожен крок має значення — навіть після 8 днів. '
@@ -306,6 +347,8 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, Union[str, List[str]]]] = {
         'Готов ли си за следващата стъпка?',
         'ru': '⏳13 дней без практики? Не беда. Путь всё ещё ждёт тебя. '
         'Готов сделать следующий шаг?',
+        'sr': '⏳13 dana pauze? Nema problema. Putovanje i dalje čeka. '
+        'Spreman/na za sledeći korak?',
         'tr': '⏳13 gündür ara mı verdin? '
         'Sorun değil. Yolculuk seni bekliyor. '
         'Bir adım daha atmaya var mısın?',
@@ -320,6 +363,8 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, Union[str, List[str]]]] = {
         'ru': '⌛Понимаем — времени ни на что не хватает, язык '
         '— не на первом месте. Но даже пара минут помогут '
         'не остановиться.',
+        'sr': '⌛Znamo da je vremena malo i da jezik nije glavni prioritet '
+        '— ali čak i nekoliko minuta može te pokrenuti napred.',
         'tr': '⌛Zamanın dar olduğunu ve dilin öncelikli olmadığını '
         'biliyoruz — ama birkaç dakika bile ilerlemeni sağlar.',
         'uk': '⌛Розуміємо — часу бракує і мова не на першому місці. '
@@ -333,6 +378,8 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, Union[str, List[str]]]] = {
         'ru': '🥹 Прошёл ровно месяц с твоего последнего занятия. '
         'Ни на что не намекаю, но, кажется, отличный момент'
         ' продолжить.',
+        'sr': '🥹Prošlo je tačno mesec dana od tvoje poslednje sesije. '
+        'Bez pritiska, ali možda je sada sjajno vreme da nastaviš?',
         'tr': '🥹 Son oturumundan tam bir ay geçti. Baskı yapmıyorum '
         'ama belki şimdi devam etmek için harika bir zaman?',
         'uk': '🥹 Минув рівно місяць з твого останнього заняття. Без '
@@ -345,6 +392,8 @@ REMINDERS_TRANSLATIONS: Dict[str, Dict[str, Union[str, List[str]]]] = {
         'Никакви напомняния повече — ще ми липсваш тихо...',
         'ru': '🤗 Прошло уже немало времени с твоего последнего занятия. '
         'Никаких напоминаний больше — буду скучать молча...',
+        'sr': '🤗Prošlo je dosta vremena od tvoje poslednje sesije. '
+        'Nema više podsetnika — nedostajaćeš mi tiho...',
         'tr': '🤗 Son oturumundan bu yana epey zaman geçti. '
         'Artık hatırlatma yok — sessizce özleyeceğim...',
         'uk': '🤗 Минуло вже чимало часу з твого останнього заняття. '
@@ -376,6 +425,7 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'bg': '☕️ Подкрепи и продължи сега',
         'tr': '☕️ Destekle ve hemen devam et',
         'uk': '☕️ Підтримати і продовжити зараз',
+        'sr': '☕️ Podrži i nastavi sada',
     },
     PaymentMessages.TITLE: {
         'ru': '☕️ Поддержать',
@@ -383,6 +433,7 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'bg': '☕️ Подкрепа',
         'tr': '☕️ Destek',
         'uk': '☕️ Підтримка',
+        'sr': '☕️ Podrška',
     },
     PaymentMessages.DESCRIPTION_NEW_SESSION: {
         'ru': 'Поддержите проект — и еще одна сессия '
@@ -392,6 +443,7 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'bg': 'Подкрепете проекта — и следващата '
         'сесия ще се отключи веднага',
         'tr': 'Projeyi destekle — bir sonraki ' 'oturum hemen açılacak',
+        'sr': 'Podržite projekat — i sledeća ' 'sesija će se odmah otvoriti',
         'uk': 'Підтримайте проєкт — і наступна ' 'сесія відкриється одразу',
     },
     PaymentMessages.DESCRIPTION_FOR_NOTHING: {
@@ -403,6 +455,8 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         '— това ни помага да се развиваме и подобряваме упражненията',
         'tr': 'Proje işinize yarıyorsa destek olun '
         '— gelişmemize ve alıştırmaları iyileştirmemize yardımcı olur',
+        'sr': 'Ako vam je projekat koristan, podržite ga '
+        '— to nam pomaže da rastemo i poboljšavamo vežbe',
         'uk': 'Якщо проєкт корисний для вас — підтримайте його. '
         'Це допомагає нам розвиватися і вдосконалювати вправи',
     },
@@ -411,6 +465,7 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'en': 'Open one session',
         'bg': 'Отвори една сесия',
         'tr': 'Bir oturum aç',
+        'sr': 'Otvori jednu sesiju',
         'uk': 'Відкрити одну сесію',
     },
     PaymentMessages.THANKS_ANSWER: {
@@ -418,6 +473,7 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'bg': 'Благодаря за подкрепата! ❤️',
         'ru': 'Спасибо за поддержку! ❤️',
         'tr': 'Desteğiniz için teşekkürler! ❤️',
+        'sr': 'Hvala na podršci! ❤️',
         'uk': 'Дякуємо за підтримку! ❤️',
     },
     PaymentMessages.ITEM_LABEL_TIER_1: {
@@ -425,6 +481,7 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'en': '💧 A drop of support',
         'bg': '💧 Капка подкрепа',
         'tr': '💧 Bir damla destek',
+        'sr': '💧 Kap podrške',
         'uk': '💧 Крапля підтримки',
     },
     PaymentMessages.ITEM_LABEL_TIER_2: {
@@ -432,6 +489,7 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'en': '☕ A cup of coffee',
         'bg': '☕ Чаша кафе',
         'tr': '☕ Bir fincan kahve',
+        'sr': '☕ Šolja kafe',
         'uk': '☕ Чашка кави',
     },
     PaymentMessages.ITEM_LABEL_TIER_3: {
@@ -439,6 +497,7 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'en': '🏃‍♂️ Keep it going',
         'bg': '🏃‍♂️ Продължаваме напред',
         'tr': '🏃‍♂️ Devam edelim',
+        'sr': '🏃‍♂️ Idemo dalje',
         'uk': '🏃‍♂️ Рухаємось далі',
     },
     PaymentMessages.ITEM_LABEL_TIER_4: {
@@ -446,6 +505,7 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'en': '💡 Believe in the idea',
         'bg': '💡 Вярвам в идеята',
         'tr': '💡 Fikre inanıyorum',
+        'sr': '💡 Verujem u ideju',
         'uk': '💡 Вірю в ідею',
     },
     PaymentMessages.ITEM_LABEL_TIER_5: {
@@ -453,6 +513,7 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'en': '🚀 Help with growth',
         'bg': '🚀 За развитието на проекта',
         'tr': '🚀 Projeye katkı',
+        'sr': '🚀 Za razvoj projekta',
         'uk': '🚀 У розвиток проєкту',
     },
     PaymentMessages.ITEM_LABEL_TIER_6: {
@@ -460,6 +521,7 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'en': '👑 Legendary support',
         'bg': '👑 Легендарна подкрепа',
         'tr': '👑 Efsanevi destek',
+        'sr': '👑 Legendarna podrška',
         'uk': '👑 Легендарна підтримка',
     },
     PaymentMessages.REPORT_DONATION_BUTTON_TEXT: {
@@ -467,6 +529,7 @@ PAYMENT_TRANSLATIONS: Dict[PaymentMessages, Dict[str, str]] = {
         'en': '☕️ Support the project',
         'bg': '☕️ Подкрепи проекта',
         'tr': '☕️ Projeyi destekle',
+        'sr': '☕️ Podrži projekat',
         'uk': '☕️ Підтримати проект',
     },
 }

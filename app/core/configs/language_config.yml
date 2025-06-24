@@ -1,0 +1,25 @@
+Bulgarian:
+  bot_id: "Bulgarian"
+  language_code: "bg"
+  telegram_upload_bot_token_name: "BG"
+  topics_exclude_from_generation:
+    - "emergencies"
+    - "tech"
+    - "education"
+    - "pharmacy"
+  exercise_type_distribution:
+    fill_in_the_blank: 0.40
+    choose_sentence: 0.30
+    choose_accent: 0.10
+    story_comprehension: 0.20
+
+Serbian:
+  bot_id: "Serbian"
+  language_code: "sr"
+  telegram_upload_bot_token_name: "SRP"
+  exercise_type_distribution:
+    fill_in_the_blank: 0.50
+    choose_sentence: 0.30
+    story_comprehension: 0.20
+  exercise_types_exclude_from_generation:
+    - "choose_accent"

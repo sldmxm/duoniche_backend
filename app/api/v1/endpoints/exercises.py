@@ -13,8 +13,8 @@ from fastapi.routing import APIRoute
 
 from app.api.dependencies import (
     get_exercise_service,
+    get_language_config_service,
     get_user_bot_profile_service,
-    get_user_service,
 )
 from app.api.errors import NotFoundError
 from app.api.schemas.answer import (
@@ -23,9 +23,8 @@ from app.api.schemas.answer import (
 )
 from app.api.schemas.validation_result import ValidationResultSchema
 from app.core.entities.exercise import Exercise
-from app.core.entities.user_bot_profile import BotID
 from app.core.services.exercise import ExerciseService
-from app.core.services.user import UserService
+from app.core.services.language_config import LanguageConfigService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.value_objects.answer import (
     create_answer_model_validate,
@@ -37,7 +36,7 @@ router = APIRouter(route_class=APIRoute)
 
 async def _validate_exercise_attempt_handler(
     exercise_service: ExerciseService,
-    user_service: UserService,
+    language_config_service: LanguageConfigService,
     user_bot_profile_service: UserBotProfileService,
     answer: Union[
         FillInTheBlankAnswerSchema,
@@ -73,12 +72,6 @@ async def _validate_exercise_attempt_handler(
         )
 
     try:
-        user = await user_service.get_by_id(user_id)
-        if not user:
-            raise NotFoundError(
-                'User with provided ID not found in the database'
-            )
-
         exercise: Optional[
             Exercise
         ] = await exercise_service.get_exercise_by_id(effective_exercise_id)
@@ -93,8 +86,10 @@ async def _validate_exercise_attempt_handler(
                 f'"{exercise.exercise_type.value}".'
             )
 
+        bot_id = exercise.exercise_language
         try:
-            bot_id = BotID(exercise.exercise_language)
+            if bot_id not in language_config_service.get_all_bot_ids():
+                raise ValueError(f"Unsupported language '{bot_id}'")
         except ValueError as e:
             logger.error(
                 f"Invalid exercise_language '{exercise.exercise_language}' "
@@ -163,7 +158,9 @@ async def validate_exercise_attempt(
     exercise_service: Annotated[
         ExerciseService, Depends(get_exercise_service)
     ],
-    user_service: Annotated[UserService, Depends(get_user_service)],
+    language_config_service: Annotated[
+        LanguageConfigService, Depends(get_language_config_service)
+    ],
     user_bot_profile_service: Annotated[
         UserBotProfileService, Depends(get_user_bot_profile_service)
     ],
@@ -187,7 +184,7 @@ async def validate_exercise_attempt(
     """
     return await _validate_exercise_attempt_handler(
         exercise_service=exercise_service,
-        user_service=user_service,
+        language_config_service=language_config_service,
         user_bot_profile_service=user_bot_profile_service,
         answer=answer,
         user_id=user_id,
@@ -211,7 +208,9 @@ async def validate_exercise_attempt_legacy(
     exercise_service: Annotated[
         ExerciseService, Depends(get_exercise_service)
     ],
-    user_service: Annotated[UserService, Depends(get_user_service)],
+    language_config_service: Annotated[
+        LanguageConfigService, Depends(get_language_config_service)
+    ],
     user_bot_profile_service: Annotated[
         UserBotProfileService, Depends(get_user_bot_profile_service)
     ],
@@ -239,7 +238,7 @@ async def validate_exercise_attempt_legacy(
     """
     return await _validate_exercise_attempt_handler(
         exercise_service=exercise_service,
-        user_service=user_service,
+        language_config_service=language_config_service,
         user_bot_profile_service=user_bot_profile_service,
         answer=answer,
         user_id=user_id,

@@ -1,4 +1,5 @@
 import logging
+import random
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -9,7 +10,6 @@ from app.core.entities.next_action_result import (
 )
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import (
-    BotID,
     UserBotProfile,
     UserStatusInBot,
 )
@@ -50,7 +50,7 @@ class UserProgressService:
         self.payment_service = payment_service
         self.user_settings_service = user_settings_service
 
-    async def get_next_action(self, user_id: int, bot_id: BotID) -> NextAction:
+    async def get_next_action(self, user_id: int, bot_id: str) -> NextAction:
         async def _start_new_session() -> UserBotProfile:
             updated_profile = await (
                 self.user_bot_profile_service.reset_and_start_new_session(
@@ -135,7 +135,7 @@ class UserProgressService:
                 BACKEND_USER_METRICS['frozen_attempts'].labels(
                     cohort=user.cohort,
                     plan=user.plan,
-                    target_language=user_bot_profile.bot_id.value,
+                    target_language=user_bot_profile.bot_id,
                     user_language=user_bot_profile.user_language,
                     language_level=user_bot_profile.language_level.value,
                 ).inc()
@@ -201,7 +201,7 @@ class UserProgressService:
             BACKEND_USER_METRICS['full_sessions'].labels(
                 cohort=user.cohort,
                 plan=user.plan,
-                target_language=user_bot_profile.bot_id.value,
+                target_language=user_bot_profile.bot_id,
                 user_language=user_bot_profile.user_language,
                 language_level=user_bot_profile.language_level.value,
             ).inc()
@@ -254,7 +254,7 @@ class UserProgressService:
             try:
                 next_exercise = await self._get_next_exercise(
                     user_id=user.user_id,
-                    target_language=user_bot_profile.bot_id.value,
+                    target_language=user_bot_profile.bot_id,
                     user_language=user_bot_profile.user_language,
                     language_level=user_bot_profile.language_level,
                     user_settings=user_settings,
@@ -330,9 +330,21 @@ class UserProgressService:
         )
         logger.debug(f'Next exercise topic: {topic.value} for user {user_id}')
 
-        exercise_type = ExerciseType.get_next_type(
-            distribution=user_settings.exercise_type_distribution
-        )
+        distribution = user_settings.exercise_type_distribution
+
+        if not distribution:
+            logger.error(
+                f'Exercise type distribution not found for user {user_id}'
+            )
+            distribution = {
+                ex_type: 1 / len(ExerciseType) for ex_type in ExerciseType
+            }
+
+        population = list(distribution.keys())
+        weights = list(distribution.values())
+        exercise_type = random.choices(population=population, weights=weights)[
+            0
+        ]
 
         exercise = await self.exercise_service.get_next_exercise(
             user_id=user_id,

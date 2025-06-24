@@ -9,7 +9,6 @@ from sqlalchemy.orm import joinedload
 
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import (
-    BotID,
     UserBotProfile,
     UserStatusInBot,
 )
@@ -58,7 +57,7 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
         ]
 
     @override
-    async def get(self, user_id: int, bot_id: BotID) -> UserBotProfile | None:
+    async def get(self, user_id: int, bot_id: str) -> UserBotProfile | None:
         db_profile = await self.session.get(
             DBUserBotProfile,
             (user_id, bot_id),
@@ -177,7 +176,7 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
     @override
     async def calc_and_store_ratings_for_profiles(
         self,
-    ) -> Dict[Tuple[int, BotID], float]:
+    ) -> Dict[Tuple[int, str], float]:
         """
         Calculates ratings for all users per bot_id based on their
         attempt history and updates the DBUserBotProfile.
@@ -250,36 +249,30 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
         result = await self.session.execute(text(sql_query))
         calculated_ratings: Dict[Tuple[int, str], float] = {}
         for row in result.fetchall():
-            user_id, lang_str, _, _, _, rating = row
+            user_id, bot_id, _, _, _, rating = row
             if rating is not None:
-                calculated_ratings[(user_id, lang_str)] = float(rating)
+                calculated_ratings[(user_id, bot_id)] = float(rating)
 
-        updated_ratings_map: Dict[Tuple[int, BotID], float] = {}
+        updated_ratings_map: Dict[Tuple[int, str], float] = {}
         now = datetime.now(timezone.utc)
 
-        for (user_id, lang_str), rating_value in calculated_ratings.items():
+        for (user_id, bot_id), rating_value in calculated_ratings.items():
             try:
-                bot_id_enum = BotID(lang_str)
                 stmt = (
                     update(DBUserBotProfile)
                     .where(
                         DBUserBotProfile.user_id == user_id,
-                        DBUserBotProfile.bot_id == bot_id_enum,
+                        DBUserBotProfile.bot_id == bot_id,
                     )
                     .values(rating=rating_value, rating_last_calculated_at=now)
                     .execution_options(synchronize_session=False)
                 )
                 await self.session.execute(stmt)
-                updated_ratings_map[(user_id, bot_id_enum)] = rating_value
-            except ValueError:
-                logger.warning(
-                    f"Unknown language string '{lang_str}' encountered "
-                    f'in rating calculation, cannot map to BotID.',
-                )
+                updated_ratings_map[(user_id, bot_id)] = rating_value
             except Exception as e:
                 logger.error(
                     f'Error updating rating for '
-                    f'user {user_id}, bot {lang_str}: {e}',
+                    f'user {user_id}, bot {bot_id}: {e}',
                     exc_info=True,
                 )
 

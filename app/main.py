@@ -13,6 +13,7 @@ from app.api.v1.api import api_router
 from app.arq_config import WorkerSettings
 from app.config import settings
 from app.core.services.async_task_cache import AsyncTaskCache
+from app.core.services.language_config import LanguageConfigService
 from app.db.db import init_db
 from app.infrastructure.redis_client import (
     close_redis_client,
@@ -50,6 +51,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     app.state.arq_pool = await create_pool(WorkerSettings.redis_settings)
     app.state.async_task_cache = AsyncTaskCache(app.state.redis_client)
     app.state.async_task_cache.clear()
+    app.state.language_config_service = LanguageConfigService()
     app.state.file_storage_service = R2FileStorageService()
     app.state.tts_service = GoogleTTSService()
     app.state.llm_service = LLMService(http_client=app.state.http_client)
@@ -71,6 +73,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
             file_storage_service=app.state.file_storage_service,
             http_client=app.state.http_client,
             stop_event=stop_event,
+            language_config_service=app.state.language_config_service,
         ),
         name='exercise_refill_loop',
     )

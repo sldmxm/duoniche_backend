@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.services.async_task_cache import AsyncTaskCache
 from app.core.services.exercise import ExerciseService
+from app.core.services.language_config import LanguageConfigService
 from app.core.services.payment import PaymentService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
@@ -43,6 +44,16 @@ def get_user_bot_profile_service(
     return UserBotProfileService(SQLAlchemyUserBotProfileRepository(session))
 
 
+async def get_language_config_service(
+    request: Request,
+) -> LanguageConfigService:
+    if not hasattr(request.app.state, 'language_config_service'):
+        raise RuntimeError(
+            'LanguageConfigService not initialized in app.state'
+        )
+    return request.app.state.language_config_service
+
+
 async def get_redis_dependency(request: Request) -> AsyncRedis:
     if not hasattr(request.app.state, 'redis_client'):
         raise RuntimeError('Redis client not initialized in app.state')
@@ -61,12 +72,16 @@ def get_user_settings_service(
         UserBotProfileService, Depends(get_user_bot_profile_service)
     ],
     redis_client: Annotated[AsyncRedis, Depends(get_redis_dependency)],
+    language_config_service: Annotated[
+        LanguageConfigService, Depends(get_language_config_service)
+    ],
 ) -> UserSettingsService:
     """Dependency to get the user settings service."""
     return UserSettingsService(
         user_service=user_service,
         user_bot_profile_service=user_bot_profile_service,
         redis_client=redis_client,
+        language_config_service=language_config_service,
     )
 
 

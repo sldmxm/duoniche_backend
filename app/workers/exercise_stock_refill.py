@@ -9,7 +9,6 @@ import httpx
 from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
-from app.core.entities.user_bot_profile import BotID
 from app.core.enums import (
     ExerciseStatus,
     ExerciseType,
@@ -18,6 +17,7 @@ from app.core.enums import (
 from app.core.generation.config import PERSONAS, ExerciseTopic
 from app.core.generation.persona import Persona
 from app.core.generation.selector import select_persona_for_topic
+from app.core.services.language_config import LanguageConfigService
 from app.core.value_objects.exercise import (
     ChooseAccentExerciseData,
     StoryComprehensionExerciseData,
@@ -41,13 +41,7 @@ MIN_EXERCISE_COUNT_TO_GENERATE_NEW = 5
 EXERCISE_REFILL_INTERVAL = 60 * 10
 CHANCE_TO_GENERATE_PERSONA_FOR_TOPIC: float = 0.5
 TTS_COOLDOWN_SECONDS = 60 * 60
-
-EXCLUDE_TOPICS = [
-    ExerciseTopic.TECH,
-    ExerciseTopic.PHARMACY,
-    ExerciseTopic.EMERGENCIES,
-    ExerciseTopic.EDUCATION,
-]
+DEFAULT_VOICE_NAMES = ['Leda', 'Enceladus']
 
 exercise_generation_semaphore = asyncio.Semaphore(5)
 
@@ -200,7 +194,6 @@ async def _generate_and_upload_audio(
         )
         return None, None, True
 
-    DEFAULT_VOICE_NAMES = ['Leda', 'Enceladus']
     if not voice_name:
         voice_name = random.choice(DEFAULT_VOICE_NAMES)
 
@@ -404,6 +397,7 @@ async def generate_and_save_exercise(
     tts_service: GoogleTTSService,
     file_storage_service: R2FileStorageService,
     http_client: httpx.AsyncClient,
+    language_config_service: LanguageConfigService,
 ) -> Tuple[bool, bool]:
     tts_failed_this_generation = False
     created_by: str = 'LLM'
@@ -413,8 +407,15 @@ async def generate_and_save_exercise(
             language_level = LanguageLevel.get_next_exercise_level(
                 settings.default_language_level,
             )
+
+            exclude_topics = (
+                language_config_service.get_topics_excluded_from_generation(
+                    target_language
+                )
+            )
+
             topic = ExerciseTopic.get_topic_for_generation(
-                exclude_topics=EXCLUDE_TOPICS,
+                exclude_topics=exclude_topics
             )
 
             persona: Optional[Persona] = None
@@ -619,6 +620,7 @@ async def exercise_stock_refill(
     tts_service: GoogleTTSService,
     file_storage_service: R2FileStorageService,
     http_client: httpx.AsyncClient,
+    language_config_service: LanguageConfigService,
 ) -> bool:
     any_tts_failure_in_this_cycle = False
     try:
@@ -629,14 +631,26 @@ async def exercise_stock_refill(
                 await exercise_repo.count_untouched_exercises()
             )
 
-            all_target_languages = [bot_id.value for bot_id in BotID]
-            all_exercise_types = list(ExerciseType)
+            all_target_languages = language_config_service.get_all_bot_ids()
 
             for lang in all_target_languages:
                 if lang not in available_counts_by_lang_type:
                     available_counts_by_lang_type[lang] = {}
 
-                for ex_type in all_exercise_types:
+                excluded_types = language_config_service.get_exercise_types_excluded_from_generation(  # noqa: E501
+                    lang
+                )
+
+                if excluded_types:
+                    exercise_types_to_generate = [
+                        ex_type
+                        for ex_type in ExerciseType
+                        if ex_type not in excluded_types
+                    ]
+                else:
+                    exercise_types_to_generate = list(ExerciseType)
+
+                for ex_type in exercise_types_to_generate:
                     count = available_counts_by_lang_type.get(lang, {}).get(
                         ex_type.value,
                         0,
@@ -669,6 +683,7 @@ async def exercise_stock_refill(
                                     tts_service=tts_service,
                                     file_storage_service=file_storage_service,
                                     http_client=http_client,
+                                    language_config_service=language_config_service,
                                 ),
                             )
             if tasks:
@@ -719,6 +734,7 @@ async def exercise_stock_refill_loop(
     file_storage_service: R2FileStorageService,
     http_client: httpx.AsyncClient,
     stop_event: asyncio.Event,
+    language_config_service: LanguageConfigService,
 ):
     logger.info('Exercise stock refill worker started.')
 
@@ -733,6 +749,7 @@ async def exercise_stock_refill_loop(
                     tts_service=tts_service,
                     file_storage_service=file_storage_service,
                     http_client=http_client,
+                    language_config_service=language_config_service,
                 )
                 if tts_failure_detected_in_cycle:
                     await set_tts_failure_timestamp()

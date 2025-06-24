@@ -8,11 +8,9 @@ from sqlalchemy import (
     Integer,
     String,
 )
-from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.core.entities.user_bot_profile import BotID
 from app.db.base import Base
 
 if TYPE_CHECKING:
@@ -32,9 +30,8 @@ class DBPayment(Base):
         nullable=False,
         index=True,
     )
-    bot_id: Mapped[BotID] = mapped_column(
-        SQLAlchemyEnum(BotID, name='bot_id_enum', create_type=False),
-        nullable=False,
+    bot_id: Mapped[str] = mapped_column(
+        String(50),
         index=True,
     )
 

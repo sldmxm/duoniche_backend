@@ -4,7 +4,6 @@ from typing import Dict, List, Optional, Tuple
 
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import (
-    BotID,
     UserBotProfile,
 )
 
@@ -17,7 +16,7 @@ class UserBotProfileRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get(self, user_id: int, bot_id: BotID) -> UserBotProfile | None:
+    async def get(self, user_id: int, bot_id: str) -> UserBotProfile | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -31,7 +30,7 @@ class UserBotProfileRepository(ABC):
     @abstractmethod
     async def calc_and_store_ratings_for_profiles(
         self,
-    ) -> Dict[Tuple[int, BotID], float]:
+    ) -> Dict[Tuple[int, str], float]:
         """
         Calculates ratings for the given user/bot profiles based on
         their attempt history and stores them in the DB.

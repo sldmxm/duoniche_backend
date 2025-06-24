@@ -38,6 +38,7 @@ class ExerciseTopic(Enum):
     @classmethod
     def get_topic(
         cls,
+        include_topics: Optional[List['ExerciseTopic']] = None,
         exclude_topics: Optional[List['ExerciseTopic']] = None,
         topic_weights: Optional[Dict['ExerciseTopic', float]] = None,
     ) -> 'ExerciseTopic':
@@ -45,6 +46,8 @@ class ExerciseTopic(Enum):
         Returns a topic for exercise generation,
         allowing for exclusions and weighting.
 
+        :param include_topics: A list of topics to select from.
+                                If None, all topics are considered.
         :param exclude_topics: A list of topics to exclude from selection.
         :param topic_weights: A dictionary mapping topics to their
                                 selection weights.
@@ -54,7 +57,9 @@ class ExerciseTopic(Enum):
                                 have a default weight of 1.0.
         :return: A selected ExerciseTopic.
         """
-        available_topics = list(cls)
+
+        available_topics = include_topics or list(cls)
+
         if exclude_topics:
             available_topics = [
                 topic
@@ -86,6 +91,7 @@ class ExerciseTopic(Enum):
     @classmethod
     def get_topic_for_generation(
         cls,
+        include_topics: Optional[List['ExerciseTopic']] = None,
         exclude_topics: Optional[List['ExerciseTopic']] = None,
         topic_weights: Optional[Dict['ExerciseTopic', float]] = None,
     ) -> 'ExerciseTopic':
@@ -93,6 +99,8 @@ class ExerciseTopic(Enum):
         Returns a topic for exercise generation,
         allowing for exclusions and weighting.
 
+        :param include_topics: A list of topics to select from.
+                                If None, all topics are considered.
         :param exclude_topics: A list of topics to exclude from selection.
         :param topic_weights: A dictionary mapping topics to their
                                 selection weights.
@@ -102,32 +110,11 @@ class ExerciseTopic(Enum):
                                 have a default weight of 1.0.
         :return: A selected ExerciseTopic.
         """
-        available_topics = list(cls)
-        if exclude_topics:
-            available_topics = [
-                topic
-                for topic in available_topics
-                if topic not in exclude_topics
-            ]
-
-        if not available_topics:
-            return cls.GENERAL
-
-        if topic_weights:
-            weights = []
-            valid_topics_for_weighting = []
-            for topic in available_topics:
-                valid_topics_for_weighting.append(topic)
-                weights.append(topic_weights.get(topic, 1.0))
-
-            if not valid_topics_for_weighting or all(w <= 0 for w in weights):
-                return random.choice(available_topics)
-
-            return random.choices(
-                valid_topics_for_weighting, weights=weights, k=1
-            )[0]
-        else:
-            return random.choice(available_topics)
+        return cls.get_topic(
+            include_topics=include_topics,
+            exclude_topics=exclude_topics,
+            topic_weights=topic_weights,
+        )
 
 
 TOPIC_GROUPS = {

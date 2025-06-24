@@ -2,8 +2,6 @@ import logging
 
 from fastapi import APIRouter, Query
 
-from app.core.entities.user_bot_profile import BotID
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -17,9 +15,7 @@ router = APIRouter()
 )
 async def check_notification_relevance(
     task_id: str,
-    bot_id: BotID = Query(
-        ..., description='The ID of the bot (language pair).'
-    ),
+    bot_id: str = Query(..., description='The ID of the bot (language pair).'),
     user_id: int = Query(..., description='The ID of the user.'),
 ):
     """
@@ -40,7 +36,7 @@ async def check_notification_relevance(
     """
     logger.info(
         f'Checking relevance for notification task_id: {task_id}, '
-        f'user_id: {user_id}, bot_id: {bot_id.value}'
+        f'user_id: {user_id}, bot_id: {bot_id}'
     )
 
     # TODO: Implement actual relevance check logic here.

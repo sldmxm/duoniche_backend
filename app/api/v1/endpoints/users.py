@@ -4,6 +4,7 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from app.api.dependencies import (
+    get_language_config_service,
     get_user_bot_profile_service,
     get_user_service,
 )
@@ -23,7 +24,8 @@ from app.api.schemas.user_status import (
 )
 from app.config import settings
 from app.core.entities.user import User
-from app.core.entities.user_bot_profile import BotID, UserBotProfile
+from app.core.entities.user_bot_profile import UserBotProfile
+from app.core.services.language_config import LanguageConfigService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.metrics import BACKEND_USER_METRICS
@@ -40,6 +42,9 @@ router = APIRouter()
 async def get_or_create_user(
     user_data: UserCreate,
     user_service: Annotated[UserService, Depends(get_user_service)],
+    language_config_service: Annotated[
+        LanguageConfigService, Depends(get_language_config_service)
+    ],
     user_bot_profile_service: Annotated[
         UserBotProfileService, Depends(get_user_bot_profile_service)
     ],
@@ -57,18 +62,17 @@ async def get_or_create_user(
         )
         user_from_service, is_created = await user_service.get_or_create(user)
 
-        try:
-            bot_id = BotID(user_data.target_language)
-        except ValueError as e:
+        bot_id = user_data.target_language
+        if bot_id not in language_config_service.get_all_bot_ids():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     f'Invalid target_language: '
-                    f"'{user_data.target_language}'. "
+                    f"'{bot_id}'. "
                     f'Valid values are: '
-                    f'{[member.value for member in BotID]}'
+                    f'{language_config_service.get_all_bot_ids()}'
                 ),
-            ) from e
+            )
 
         if user_from_service and user_from_service.user_id:
             user_bot_profile, _ = await user_bot_profile_service.get_or_create(
@@ -108,6 +112,9 @@ async def get_or_create_user(
 async def get_user_by_telegram_id(
     telegram_id: str,
     user_service: Annotated[UserService, Depends(get_user_service)],
+    language_config_service: Annotated[
+        LanguageConfigService, Depends(get_language_config_service)
+    ],
     user_bot_profile_service: Annotated[
         UserBotProfileService, Depends(get_user_bot_profile_service)
     ],
@@ -122,23 +129,24 @@ async def get_user_by_telegram_id(
         raise NotFoundError(detail='User not found')
 
     if bot_id_str:
-        try:
-            bot_id = BotID(bot_id_str)
-            user_bot_profile = await user_bot_profile_service.get(
-                user.user_id, bot_id
-            )
-            if not user_bot_profile:
-                raise NotFoundError(
-                    detail=f'Bot profile for bot_id {bot_id_str} '
-                    f'not found for user {telegram_id}'
-                )
-        except ValueError as e:
-            valid_bot_ids = [member.value for member in BotID]
+        bot_id = bot_id_str
+        if bot_id not in language_config_service.get_all_bot_ids():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid bot_id: '{bot_id_str}'. "
-                f'Valid values are: {valid_bot_ids}',
-            ) from e
+                detail=(
+                    f"Invalid bot_id: '{bot_id_str}'. "
+                    f'Valid values are: '
+                    f'{language_config_service.get_all_bot_ids()}'
+                ),
+            )
+        user_bot_profile = await user_bot_profile_service.get(
+            user.user_id, bot_id
+        )
+        if not user_bot_profile:
+            raise NotFoundError(
+                detail=f'Bot profile for bot_id {bot_id_str} '
+                f'not found for user {telegram_id}'
+            )
     else:
         profiles = await user_bot_profile_service.get_all_by_user_id(
             user.user_id
@@ -170,6 +178,9 @@ async def update_user_by_user_id(
     user_id: int,
     user_data: UserUpdate,
     user_service: Annotated[UserService, Depends(get_user_service)],
+    language_config_service: Annotated[
+        LanguageConfigService, Depends(get_language_config_service)
+    ],
     user_bot_profile_service: Annotated[
         UserBotProfileService, Depends(get_user_bot_profile_service)
     ],
@@ -185,22 +196,17 @@ async def update_user_by_user_id(
             telegram_data=user_data.telegram_data,
         )
 
-        try:
-            bot = BotID(user_data.target_language)
-        except ValueError as e:
+        bot_id = user_data.target_language
+        if bot_id not in language_config_service.get_all_bot_ids():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    f'Invalid target_language: '
-                    f"'{user_data.target_language}'. "
-                    f'Valid values are: {[member.value for member in BotID]}'
-                ),
-            ) from e
+                detail=(f"Invalid target_language: '{bot_id}'."),
+            )
 
         updated_user_bot_profile = (
             await user_bot_profile_service.update_profile(
                 user_id=user_id,
-                bot_id=bot,
+                bot_id=bot_id,
                 user_language=user_data.user_language,
             )
         )
@@ -224,15 +230,26 @@ async def block_bot(
         UserBotProfileService, Depends(get_user_bot_profile_service)
     ],
     user_service: Annotated[UserService, Depends(get_user_service)],
-    bot_id: Annotated[
-        BotID, Path(description='Bot ID (e.g., Bulgarian, English)')
+    language_config_service: Annotated[
+        LanguageConfigService, Depends(get_language_config_service)
+    ],
+    bot_id_str: Annotated[
+        str,
+        Path(alias='bot_id', description='Bot ID (e.g., Bulgarian, English)'),
     ],
     user_id: Annotated[int, Path(description='User ID', ge=1)],
     report: UserBlockReportPayload,
 ):
     user = await user_service.get_by_id(user_id)
+    bot_id = bot_id_str
+    if bot_id not in language_config_service.get_all_bot_ids():
+        raise HTTPException(
+            status_code=422, detail=f"Invalid bot_id: '{bot_id}'"
+        )
+
     if not user or user.telegram_id != report.telegram_id:
         raise NotFoundError(detail='User not found')
+
     try:
         await user_bot_profile_service.mark_user_blocked(
             user_id=user_id, bot_id=bot_id, reason=report.reason
@@ -278,12 +295,21 @@ async def update_session_reminders_preference(
         UserBotProfileService, Depends(get_user_bot_profile_service)
     ],
     user_service: Annotated[UserService, Depends(get_user_service)],
-    bot_id: Annotated[
-        BotID, Path(description='Bot ID (e.g., Bulgarian, English)')
+    language_config_service: Annotated[
+        LanguageConfigService, Depends(get_language_config_service)
+    ],
+    bot_id_str: Annotated[
+        str,
+        Path(alias='bot_id', description='Bot ID (e.g., Bulgarian, English)'),
     ],
     user_id: Annotated[int, Path(description='User ID', ge=1)],
     preference_data: UserPreferencesUpdate,
 ):
+    bot_id = bot_id_str
+    if bot_id not in language_config_service.get_all_bot_ids():
+        raise HTTPException(
+            status_code=422, detail=f"Invalid bot_id: '{bot_id}'"
+        )
     user = await user_service.get_by_id(user_id)
     if not user:
         raise NotFoundError(detail=f'User with id {user_id} not found')
@@ -297,13 +323,13 @@ async def update_session_reminders_preference(
     except ValueError as e:
         logger.error(
             f'Error updating session reminder preference for '
-            f'user {user_id}, bot {bot_id.value}: {e}'
+            f'user {user_id}, bot {bot_id}: {e}'
         )
         raise NotFoundError(detail=str(e)) from e
     except Exception as e:
         logger.error(
             f'Unexpected error updating session reminder '
-            f'preference for user {user_id}, bot {bot_id.value}: {e}',
+            f'preference for user {user_id}, bot {bot_id}: {e}',
             exc_info=True,
         )
         raise HTTPException(

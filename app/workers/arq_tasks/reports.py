@@ -3,7 +3,6 @@ import logging
 from datetime import timedelta
 
 from app.config import settings
-from app.core.entities.user_bot_profile import BotID
 from app.core.enums import ReportStatus
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_report import UserReportService
@@ -44,7 +43,7 @@ async def _async_generate_detailed_report_task(
 
         try:
             user_id = report.user_id
-            bot_id = BotID(report.bot_id)
+            bot_id = report.bot_id
 
             attempt_repo = SQLAlchemyExerciseAttemptRepository(session)
             user_bot_profile_service = UserBotProfileService(
@@ -114,7 +113,7 @@ async def send_detailed_report_notification_arq(ctx, report_id: int):
         user = await user_repo.get_by_id(report.user_id)
         profile_repo = SQLAlchemyUserBotProfileRepository(session)
         profile = await profile_repo.get(
-            user_id=report.user_id, bot_id=BotID(report.bot_id)
+            user_id=report.user_id, bot_id=report.bot_id
         )
 
         if not user or not profile:
@@ -248,7 +247,7 @@ async def run_report_generation_cycle_arq(ctx):
         for profile, user, report in batch:
             if not user:
                 logger.warning(
-                    f'Profile {profile.user_id}/{profile.bot_id.value} '
+                    f'Profile {profile.user_id}/{profile.bot_id} '
                     'is missing user data. Skipping notification.'
                 )
                 continue

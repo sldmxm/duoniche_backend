@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from app.config import settings
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import (
-    BotID,
     UserBotProfile,
     UserStatusInBot,
 )
@@ -46,7 +45,7 @@ class UserBotProfileService:
         profiles = await self._profile_repo.get_all_by_user_id(user_id)
         return profiles
 
-    async def get(self, user_id: int, bot_id: BotID) -> UserBotProfile | None:
+    async def get(self, user_id: int, bot_id: str) -> UserBotProfile | None:
         profile = await self._profile_repo.get(user_id, bot_id)
         return profile
 
@@ -57,7 +56,7 @@ class UserBotProfileService:
     async def get_or_create(
         self,
         user_id: int,
-        bot_id: BotID,
+        bot_id: str,
         user_language: str,
         language_level: LanguageLevel = settings.default_language_level,
     ) -> Tuple[UserBotProfile, bool]:
@@ -133,7 +132,7 @@ class UserBotProfileService:
     async def update_session(
         self,
         user_id: int,
-        bot_id: BotID,
+        bot_id: str,
         **fields_to_update: Union[int, datetime, None],
     ) -> UserBotProfile:
         profile = await self.get(user_id=user_id, bot_id=bot_id)
@@ -153,7 +152,7 @@ class UserBotProfileService:
     async def update_profile(
         self,
         user_id: int,
-        bot_id: BotID,
+        bot_id: str,
         **fields_to_update: Union[str, LanguageLevel, bool, None],
     ) -> UserBotProfile:
         profile = await self.get(user_id=user_id, bot_id=bot_id)
@@ -171,7 +170,7 @@ class UserBotProfileService:
         )
 
     async def mark_user_active(
-        self, user_id: int, bot_id: BotID
+        self, user_id: int, bot_id: str
     ) -> UserBotProfile:
         profile = await self.get(user_id=user_id, bot_id=bot_id)
         if not profile:
@@ -199,7 +198,7 @@ class UserBotProfileService:
     async def mark_user_blocked(
         self,
         user_id: int,
-        bot_id: BotID,
+        bot_id: str,
         reason: Optional[str],
     ) -> UserBotProfile:
         profile = await self.get(user_id=user_id, bot_id=bot_id)
@@ -225,7 +224,7 @@ class UserBotProfileService:
             return profile
 
     async def reset_and_start_new_session(
-        self, user_id: int, bot_id: BotID
+        self, user_id: int, bot_id: str
     ) -> UserBotProfile:
         """
         Resets all session-related counters and starts
@@ -250,9 +249,7 @@ class UserBotProfileService:
                 f'Failed to update profile for user '
                 f'{user_id}, bot {bot_id} to unlock session.'
             )
-        logger.info(
-            f'Session unlocked for user {user_id}, ' f'bot {bot_id.value}.'
-        )
+        logger.info(f'Session unlocked for user {user_id}, ' f'bot {bot_id}.')
         return updated_profile
 
     async def get_active_profiles_for_reporting(

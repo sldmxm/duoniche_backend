@@ -8,7 +8,6 @@ from app.core.entities.next_action_result import (
     TelegramPaymentItem,
 )
 from app.core.entities.payment import Payment
-from app.core.entities.user_bot_profile import BotID
 from app.core.repositories.payment import PaymentRepository
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_report import UserReportService
@@ -51,14 +50,14 @@ class PaymentService:
         self,
         source: str,
         user_id: int,
-        bot_id: BotID,
+        bot_id: str,
         item_id: int,
     ):
         invoice_payload = (
             f'{INVOICE_PAYLOAD_PREFIX}'
             f':{source}'
             f':{user_id}'
-            f':{bot_id.value}'
+            f':{bot_id}'
             f':{item_id}'
             f':{int(datetime.now(timezone.utc).timestamp())}'
         )
@@ -78,10 +77,7 @@ class PaymentService:
         user_id = int(payload_parts[2])
 
         bot_id_str = payload_parts[3]
-        try:
-            bot_id = BotID(bot_id_str)
-        except ValueError as e:
-            raise ValueError(f'Invalid bot_id: {bot_id_str}') from e
+        bot_id = bot_id_str
 
         item_id = int(payload_parts[4])
 
@@ -90,7 +86,7 @@ class PaymentService:
     def get_unlock_payment_details(
         self,
         user_id: int,
-        bot_id: BotID,
+        bot_id: str,
         user_language: str,
     ) -> TelegramPayment:
         payment_tiers = [
@@ -145,7 +141,7 @@ class PaymentService:
     async def get_report_donation_details(
         self,
         user_id: int,
-        bot_id: BotID,
+        bot_id: str,
         report_id: int,
         user_language: str,
     ) -> TelegramPayment:
@@ -193,7 +189,7 @@ class PaymentService:
         self,
         source: str,
         user_id: int,
-        bot_id: BotID,
+        bot_id: str,
         user_language: str,
         item_id: Optional[int] = None,
     ) -> TelegramPayment:
@@ -290,14 +286,12 @@ class PaymentService:
         )
 
     async def _handle_session_unlock(
-        self, user_id: int, bot_id: BotID, *args, **kwargs
+        self, user_id: int, bot_id: str, *args, **kwargs
     ) -> None:
         """
         Handles the post-payment action for a session unlock.
         """
-        logger.info(
-            f'Unlocking session for user {user_id}, bot {bot_id.value}.'
-        )
+        logger.info(f'Unlocking session for user {user_id}, bot {bot_id}.')
 
         await self._user_bot_profile_service.reset_and_start_new_session(
             user_id=user_id, bot_id=bot_id

@@ -3,9 +3,9 @@ from datetime import datetime, timedelta, timezone
 
 from redis.asyncio import Redis as AsyncRedis
 
-from app.core.entities.user_bot_profile import BotID
 from app.core.entities.user_settings import UserSettings
-from app.core.enums import UserStatus
+from app.core.enums import ExerciseType, UserStatus
+from app.core.services.language_config import LanguageConfigService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.user_settings_templates import (
@@ -23,23 +23,23 @@ class UserSettingsService:
         user_service: UserService,
         user_bot_profile_service: UserBotProfileService,
         redis_client: AsyncRedis,
+        language_config_service: LanguageConfigService,
     ):
         self._user_service = user_service
         self._profile_service = user_bot_profile_service
         self._redis = redis_client
+        self._language_config_service = language_config_service
 
-    def _get_cache_key(self, user_id: int, bot_id: BotID) -> str:
-        return f'user_settings:{user_id}:{bot_id.value}'
+    def _get_cache_key(self, user_id: int, bot_id: str) -> str:
+        return f'user_settings:{user_id}:{bot_id}'
 
-    async def invalidate_user_settings_cache(
-        self, user_id: int, bot_id: BotID
-    ):
+    async def invalidate_user_settings_cache(self, user_id: int, bot_id: str):
         key = self._get_cache_key(user_id, bot_id)
         await self._redis.delete(key)
         logger.info(f'Invalidated settings cache for user {user_id}/{bot_id}')
 
     async def get_effective_settings(
-        self, user_id: int, bot_id: BotID
+        self, user_id: int, bot_id: str
     ) -> UserSettings:
         cache_key = self._get_cache_key(user_id, bot_id)
         cached_settings = await self._redis.get(cache_key)
@@ -92,6 +92,17 @@ class UserSettingsService:
             user.status if user.status in plan_templates else UserStatus.FREE
         )
         effective_settings = plan_templates[plan_to_use].model_copy(deep=True)
+
+        lang_config = self._language_config_service.get_config(bot_id)
+        if lang_config:
+            distribution = lang_config.get('exercise_type_distribution')
+            if distribution:
+                effective_settings.exercise_type_distribution = {
+                    ExerciseType(k): v
+                    for k, v in distribution.items()
+                    if ExerciseType(k)
+                    in effective_settings.available_exercise_types
+                }
 
         if user.custom_settings:
             effective_settings = effective_settings.model_copy(

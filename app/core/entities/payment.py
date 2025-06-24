@@ -3,8 +3,6 @@ from typing import Dict, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.entities.user_bot_profile import BotID
-
 
 class Payment(BaseModel):
     """
@@ -16,7 +14,7 @@ class Payment(BaseModel):
     user_id: int = Field(
         ..., description='ID of the user who made the payment'
     )
-    bot_id: BotID = Field(
+    bot_id: str = Field(
         ..., description='ID of the bot (language pair) the payment is for'
     )
 

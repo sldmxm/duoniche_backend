@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.config import settings
 from app.core.enums import LanguageLevel
@@ -14,9 +14,8 @@ class UserStatusInBot(str, Enum):
     INACTIVE = 'inactive'
 
 
-class BotID(str, Enum):
+class BotID(str, Enum):  # for alembic backward compatibility
     BG = 'Bulgarian'
-    # SRP = 'Serbian'
 
 
 class UserBotProfile(BaseModel):
@@ -25,8 +24,9 @@ class UserBotProfile(BaseModel):
     """
 
     user_id: int = Field(..., description='ID of the associated user')
-    bot_id: BotID = Field(
-        default=BotID.BG, description='Identifier of the bot (language pair)'
+    bot_id: str = Field(
+        default='Bulgarian',
+        description='Identifier of the bot (language pair)',
     )
 
     user_language: str = Field(
@@ -93,16 +93,6 @@ class UserBotProfile(BaseModel):
         description='Bot-specific custom settings overrides, '
         'e.g., exercise distribution.',
     )
-
-    @field_validator('bot_id', mode='before')
-    @classmethod
-    def validate_bot_id(cls, v):
-        if isinstance(v, str):
-            for bot in BotID:
-                if bot.value == v:
-                    return bot
-            raise ValueError(f'Invalid bot_id value: {v}')
-        return v
 
     model_config = ConfigDict(
         from_attributes=True,

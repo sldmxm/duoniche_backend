@@ -61,7 +61,7 @@ class NotificationScheduler:
 
         logger.info(
             f'Attempting to send session reminder to user {user.user_id} '
-            f'for bot_id {profile.bot_id.value} '
+            f'for bot_id {profile.bot_id} '
             f'(session became available recently)'
         )
         success = await self.producer.prepare_and_enqueue_session_reminder(
@@ -71,7 +71,7 @@ class NotificationScheduler:
             logger.info(
                 f'Session reminder successfully enqueued for user '
                 f'{user.user_id}, '
-                f'bot_id {profile.bot_id.value}'
+                f'bot_id {profile.bot_id}'
             )
 
     async def _process_long_break_reminders(
@@ -96,7 +96,7 @@ class NotificationScheduler:
                 )
             except ValueError:
                 logger.warning(
-                    f'User {user.user_id} profile {profile.bot_id.value} '
+                    f'User {user.user_id} profile {profile.bot_id} '
                     f'has unknown last_long_break_reminder_type_sent: '
                     f'{last_sent_type}. '
                     f'Processing all reminder types.'
@@ -129,7 +129,7 @@ class NotificationScheduler:
                         time_since_last_long_break_sent.total_seconds() / 3600
                     )
                     logger.info(
-                        f'User {user.user_id}, bot_id {profile.bot_id.value} '
+                        f'User {user.user_id}, bot_id {profile.bot_id} '
                         f"eligible for long break reminder '{reminder_type}',"
                         f' but the previous one '
                         f'was sent too recently at '
@@ -140,7 +140,7 @@ class NotificationScheduler:
                     return
 
             logger.info(
-                f'User {user.user_id}, bot_id {profile.bot_id.value} '
+                f'User {user.user_id}, bot_id {profile.bot_id} '
                 f'is inactive for {time_since_last_activity.days} days. '
                 f'Attempting to send long break reminder type '
                 f"'{reminder_type}'."
@@ -156,7 +156,7 @@ class NotificationScheduler:
                 logger.info(
                     f"Long break reminder type '{reminder_type}'"
                     f' successfully enqueued '
-                    f'for user {user.user_id}, bot_id {profile.bot_id.value}'
+                    f'for user {user.user_id}, bot_id {profile.bot_id}'
                 )
                 profile_repo = self.profile_repo_class(session)
                 updated_profile_data = profile.model_copy(
@@ -198,7 +198,7 @@ class NotificationScheduler:
             except Exception as e:
                 logger.error(
                     f'Error processing profile {user_entity.user_id}'
-                    f'/{profile_entity.bot_id.value} '
+                    f'/{profile_entity.bot_id} '
                     f'for notifications: {e}',
                     exc_info=True,
                 )

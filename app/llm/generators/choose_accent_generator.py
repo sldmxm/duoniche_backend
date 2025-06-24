@@ -11,7 +11,6 @@ from pydantic import BaseModel, Field
 
 from app.core.consts import VOCABULARY_TAGS
 from app.core.entities.exercise import Exercise
-from app.core.entities.user_bot_profile import BotID
 from app.core.enums import ExerciseType, LanguageLevel
 from app.core.generation.config import ExerciseTopic
 from app.core.generation.persona import Persona
@@ -338,7 +337,7 @@ class ChooseAccentGenerator(ExerciseGenerator):
         topic: ExerciseTopic,
         persona: Optional[Persona] = None,
     ) -> Tuple[Exercise, Answer, ExerciseForAssessor]:
-        if target_language != BotID.BG.value:
+        if target_language != 'Bulgarian':
             raise ChooseAccentGenerationError(
                 f'Skipping CHOOSE_ACCENT for non-BG language: '
                 f'{target_language}'

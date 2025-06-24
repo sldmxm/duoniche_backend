@@ -2,7 +2,6 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from app.core.entities.user_bot_profile import BotID
 from app.core.enums import LanguageLevel
 
 
@@ -13,6 +12,6 @@ class UserPreferencesUpdate(BaseModel):
 
 class SessionRemindersPreferenceResponse(BaseModel):
     user_id: int
-    bot_id: BotID
+    bot_id: str
     wants_session_reminders: bool
     status: str = 'ok'

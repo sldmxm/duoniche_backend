@@ -5,7 +5,7 @@ from typing import Optional
 from arq.connections import ArqRedis
 
 from app.core.entities.user import User
-from app.core.entities.user_bot_profile import BotID, UserBotProfile
+from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.entities.user_report import UserReport
 from app.core.enums import ReportStatus
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
@@ -92,7 +92,7 @@ class UserReportService:
             current_summary = (
                 await self.attempt_repo.get_period_summary_for_user_and_bot(
                     user_id=profile.user_id,
-                    bot_id=profile.bot_id.value,
+                    bot_id=profile.bot_id,
                     start_date=start_date_current,
                     end_date=end_date_current,
                 )
@@ -105,7 +105,7 @@ class UserReportService:
             ):
                 logger.info(
                     f'Skipping report for user {profile.user_id}/'
-                    f'{profile.bot_id.value} due to low activity.'
+                    f'{profile.bot_id} due to low activity.'
                 )
                 continue
 
@@ -130,7 +130,7 @@ class UserReportService:
                 new_report = UserReport(
                     report_id=None,
                     user_id=profile.user_id,
-                    bot_id=profile.bot_id.value,
+                    bot_id=profile.bot_id,
                     week_start_date=week_start_date_current,
                     short_report=short_report_text,
                     full_report=None,
@@ -145,13 +145,13 @@ class UserReportService:
 
                 logger.info(
                     f'Successfully prepared report for user '
-                    f'{profile.user_id}/{profile.bot_id.value} '
+                    f'{profile.user_id}/{profile.bot_id} '
                     f'(report_id: {saved_report.report_id})'
                 )
             except Exception as e:
                 logger.error(
                     f'Failed to prepare report for user '
-                    f'{profile.user_id}/{profile.bot_id.value}. Error: {e}',
+                    f'{profile.user_id}/{profile.bot_id}. Error: {e}',
                     exc_info=True,
                 )
 
@@ -171,13 +171,13 @@ class UserReportService:
             raise ReportNotFoundError()
 
         latest_report = await self.user_report_repo.get_latest_by_user_and_bot(
-            user_id=profile.user_id, bot_id=profile.bot_id.value
+            user_id=profile.user_id, bot_id=profile.bot_id
         )
 
         if not latest_report:
             raise ReportNotFoundError(
                 f'No weekly report found for user {profile.user_id}, '
-                f'bot {profile.bot_id.value}'
+                f'bot {profile.bot_id}'
             )
 
         if latest_report.status in [
@@ -201,7 +201,7 @@ class UserReportService:
     async def generate_full_report_text(
         self,
         user_id: int,
-        bot_id: BotID,
+        bot_id: str,
     ) -> str:
         """Generates the full report text content using an LLM."""
 
@@ -210,18 +210,18 @@ class UserReportService:
         )
         if not profile:
             raise ReportNotFoundError(
-                f'No profile found for user {user_id} and bot {bot_id.value}',
+                f'No profile found for user {user_id} and bot {bot_id}',
             )
 
         latest_report = await self.user_report_repo.get_latest_by_user_and_bot(
             user_id=user_id,
-            bot_id=bot_id.value,
+            bot_id=bot_id,
         )
 
         if not latest_report:
             raise ReportNotFoundError(
                 f'No report found for user {profile.user_id} and bot'
-                f' {profile.bot_id.value}',
+                f' {profile.bot_id}',
             )
 
         logger.info(
@@ -241,7 +241,7 @@ class UserReportService:
         incorrect_attempts = (
             await self.attempt_repo.get_incorrect_attempts_with_details(
                 user_id=profile.user_id,
-                bot_id=profile.bot_id.value,
+                bot_id=profile.bot_id,
                 start_date=start_date_current,
                 end_date=end_date_current,
                 limit=INCORRECT_ATTEMPTS_FOR_LLM_NUMBER,
@@ -251,7 +251,7 @@ class UserReportService:
         current_summary_data = (
             await self.attempt_repo.get_period_summary_for_user_and_bot(
                 user_id=profile.user_id,
-                bot_id=profile.bot_id.value,
+                bot_id=profile.bot_id,
                 start_date=start_date_current,
                 end_date=end_date_current,
             )
@@ -263,7 +263,7 @@ class UserReportService:
         prev_summary_data = (
             await self.attempt_repo.get_period_summary_for_user_and_bot(
                 user_id=profile.user_id,
-                bot_id=profile.bot_id.value,
+                bot_id=profile.bot_id,
                 start_date=start_date_prev,
                 end_date=end_date_prev,
             )
@@ -289,7 +289,7 @@ class UserReportService:
                 self.llm_service.generate_detailed_report_text(
                     context=context,
                     user_language=profile.user_language,
-                    target_language=profile.bot_id.value,
+                    target_language=profile.bot_id,
                 )
             )
 

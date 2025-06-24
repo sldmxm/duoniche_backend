@@ -4,11 +4,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 
 from app.api.dependencies import (
+    get_language_config_service,
     get_user_bot_profile_service,
     get_user_report_service,
 )
 from app.api.schemas.report import DetailedReportResponse, ReportNotFoundDetail
-from app.core.entities.user_bot_profile import BotID
+from app.core.services.language_config import LanguageConfigService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_report import (
     ReportNotFoundError,
@@ -41,6 +42,9 @@ async def get_latest_detailed_report(
     report_service: Annotated[
         UserReportService, Depends(get_user_report_service)
     ],
+    language_config_service: Annotated[
+        LanguageConfigService, Depends(get_language_config_service)
+    ],
     user_bot_profile_service: Annotated[
         UserBotProfileService, Depends(get_user_bot_profile_service)
     ],
@@ -50,15 +54,14 @@ async def get_latest_detailed_report(
         Path(alias='bot_id', description='Bot ID (e.g., Bulgarian, English)'),
     ],
 ) -> DetailedReportResponse:
-    try:
-        bot_id = BotID(bot_id_str)
-    except ValueError as e:
+    bot_id = bot_id_str
+    if bot_id not in language_config_service.get_all_bot_ids():
         logger.warning(f'Invalid bot_id provided: {bot_id_str}')
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Invalid bot_id: '{bot_id_str}'. "
-            f'Valid values are: {[member.value for member in BotID]}',
-        ) from e
+            f'Valid values are: {language_config_service.get_all_bot_ids()}',
+        )
 
     try:
         user_profile = await user_bot_profile_service.get(user_id, bot_id)

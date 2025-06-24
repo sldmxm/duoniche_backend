@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from unicodedata import name
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -110,6 +111,21 @@ class ExerciseQualityAssessor(BaseLLMService):
                     message, issues=['Option(s) contain spaces']
                 )
 
+        if exercise.exercise_type in (
+            ExerciseType.FILL_IN_THE_BLANK,
+            ExerciseType.CHOOSE_SENTENCE,
+        ) and self._has_mixed_alphabets(exercise, target_language):
+            self._increment_rejected_metric(
+                exercise, user_language, target_language
+            )
+            message = (
+                f'Exercise rejected: incorrect options contain mixed '
+                f'alphabets. Exercise: {exercise}'
+            )
+            raise RejectedByAssessor(
+                message, issues=['Option(s) contain mixed alphabets.']
+            )
+
         review = await self._run_llm_check(
             exercise, user_language, target_language
         )
@@ -168,6 +184,21 @@ class ExerciseQualityAssessor(BaseLLMService):
         for option in exercise.options:
             if len(option.encode('utf-8')) > TELEGRAM_BUTTON_MAX_LENGTH:
                 return True
+        return False
+
+    @staticmethod
+    def _has_mixed_alphabets(exercise: ExerciseForAssessor, target_language):
+        # TODO: Перенести настройки символов в YAML языка
+        base = 'CYRILLIC' if target_language == 'Bulgarian' else 'LATIN'
+
+        for option in exercise.incorrect_options:
+            for char in option:
+                if char.isalpha():
+                    try:
+                        if base not in name(char):
+                            return True
+                    except ValueError:
+                        continue
         return False
 
     async def _run_llm_check(

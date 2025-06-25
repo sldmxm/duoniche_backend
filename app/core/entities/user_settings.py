@@ -1,10 +1,28 @@
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.config import settings
 from app.core.enums import ExerciseType
 from app.core.generation.config import ExerciseTopic
+
+
+class UserCustomSettings(BaseModel):
+    """
+    A partial UserSettings model used for storing user-specific overrides.
+    Fields are optional as only a subset might be customized.
+    This model handles automatic conversion of string keys/values to Enums.
+    """
+
+    session_exercise_limit: Optional[int] = None
+    min_session_interval_minutes: Optional[int] = None
+    exercises_in_set: Optional[int] = None
+    available_exercise_types: Optional[List[ExerciseType]] = None
+    exercise_type_distribution: Optional[Dict[ExerciseType, float]] = None
+    exclude_topics: Optional[List[ExerciseTopic]] = None
+    allowed_languages: Optional[List[str]] = None
+
+    model_config = ConfigDict(extra='forbid')
 
 
 class UserSettings(BaseModel):
@@ -35,7 +53,6 @@ class UserSettings(BaseModel):
         default_factory=dict,
         description='Distribution of exercise types for a user.',
     )
-
     exclude_topics: Optional[List[ExerciseTopic]] = Field(
         default=None,
         description='List of allowed topics. '

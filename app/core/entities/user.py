@@ -1,8 +1,9 @@
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from app.core.entities.user_settings import UserCustomSettings
 from app.core.enums import UserStatus
 
 
@@ -17,7 +18,7 @@ class User(BaseModel):
     status: UserStatus = UserStatus.FREE
     status_expires_at: Optional[datetime] = None
     status_source: Optional[str] = None
-    custom_settings: Optional[Dict] = None
+    custom_settings: Optional[UserCustomSettings] = None
     is_active: bool = True
 
     model_config = ConfigDict(

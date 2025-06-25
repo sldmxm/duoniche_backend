@@ -1,10 +1,11 @@
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.config import settings
+from app.core.entities.user_settings import UserCustomSettings
 from app.core.enums import LanguageLevel
 
 
@@ -88,7 +89,7 @@ class UserBotProfile(BaseModel):
         None, description='Timestamp when the rating was last calculated'
     )
 
-    settings: Optional[Dict] = Field(
+    settings: Optional[UserCustomSettings] = Field(
         None,
         description='Bot-specific custom settings overrides, '
         'e.g., exercise distribution.',

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from redis.asyncio import Redis as AsyncRedis
 
 from app.core.entities.user_settings import UserSettings
-from app.core.enums import ExerciseType, UserStatus
+from app.core.enums import UserStatus
 from app.core.services.language_config import LanguageConfigService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
@@ -93,26 +93,39 @@ class UserSettingsService:
         )
         effective_settings = plan_templates[plan_to_use].model_copy(deep=True)
 
-        lang_config = self._language_config_service.get_config(bot_id)
-        if lang_config:
-            distribution = lang_config.get('exercise_type_distribution')
-            if distribution:
-                effective_settings.exercise_type_distribution = {
-                    ExerciseType(k): v
-                    for k, v in distribution.items()
-                    if ExerciseType(k)
-                    in effective_settings.available_exercise_types
-                }
+        lang_service = self._language_config_service
+        distribution = lang_service.get_exercise_types_distribution(bot_id)
+        if distribution:
+            effective_settings.exercise_type_distribution = {
+                k: v
+                for k, v in distribution.items()
+                if k in effective_settings.available_exercise_types
+            }
+
+        logger.info(
+            f'Discovered effective settings from lang and plan:'
+            f' {effective_settings}'
+        )
 
         if user.custom_settings:
             effective_settings = effective_settings.model_copy(
-                update=user.custom_settings,
+                update=user.custom_settings.model_dump(exclude_unset=True),
             )
+
+        logger.info(
+            f'Discovered effective settings from user.custom_settings:'
+            f' {effective_settings}'
+        )
 
         if profile.settings:
             effective_settings = effective_settings.model_copy(
-                update=profile.settings
+                update=profile.settings.model_dump(exclude_unset=True)
             )
+
+        logger.info(
+            f'Discovered effective settings from profile.settings:'
+            f' {effective_settings}'
+        )
 
         await self._redis.set(
             cache_key,

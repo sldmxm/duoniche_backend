@@ -49,6 +49,11 @@ class SQLAlchemyUserRepository(UserRepository):
             raise ValueError(f'User with id {user.user_id} does not exist')
 
         update_data = user.model_dump(exclude_unset=True)
+        if user.custom_settings:
+            update_data['custom_settings'] = user.custom_settings.model_dump(
+                mode='json', exclude_unset=True
+            )
+
         for key, value in update_data.items():
             if key == 'user_id':
                 continue
@@ -67,6 +72,11 @@ class SQLAlchemyUserRepository(UserRepository):
     @override
     async def create(self, user: UserCore) -> UserCore:
         user_data = user.model_dump(exclude_unset=True)
+        if user.custom_settings:
+            user_data['custom_settings'] = user.custom_settings.model_dump(
+                mode='json', exclude_unset=True
+            )
+
         db_user = UserDBModel(**user_data)
         self.session.add(db_user)
         await self.session.flush()

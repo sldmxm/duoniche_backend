@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from app.core.generation.persona import Persona
 
 
-class ExerciseTopic(Enum):
+class ExerciseTopic(str, Enum):
     GENERAL = 'general'
     SHOPPING = 'shopping'
     TRAVEL = 'travel'

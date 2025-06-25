@@ -85,3 +85,19 @@ class LanguageConfigService:
             ExerciseType(t) for t in str_exercise_types_exclude_from_generation
         ]
         return exercise_types_exclude_from_generation
+
+    def get_exercise_types_distribution(
+        self, bot_id: str
+    ) -> Optional[Dict[ExerciseType, float]]:
+        config = self.get_config(bot_id)
+        if not config:
+            return None
+
+        str_distribution = config.get('exercise_type_distribution')
+        if not str_distribution:
+            return None
+        exercise_type_distribution = {
+            ExerciseType(k): v for k, v in str_distribution.items()
+        }
+
+        return exercise_type_distribution

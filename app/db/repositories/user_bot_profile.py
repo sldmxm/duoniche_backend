@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime, time, timedelta, timezone
-from enum import Enum
 from typing import Dict, List, Optional, Tuple, override
 
 from sqlalchemy import Time, cast, or_, select, text, update
@@ -31,7 +30,14 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
 
     @override
     async def create(self, profile: UserBotProfile) -> UserBotProfile:
-        new_db_profile = DBUserBotProfile(**profile.model_dump())
+        new_db_profile_data = profile.model_dump(exclude_unset=True)
+        if profile.settings:
+            new_db_profile_data['settings'] = profile.settings.model_dump(
+                mode='json', exclude_unset=True
+            )
+
+        new_db_profile = DBUserBotProfile(**new_db_profile_data)
+
         self.session.add(new_db_profile)
         try:
             await self.session.flush()
@@ -80,18 +86,23 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
             )
 
         profile_data_to_update = profile.model_dump(exclude_unset=True)
+
+        if profile.settings:
+            profile_data_to_update['settings'] = profile.settings.model_dump(
+                mode='json', exclude_unset=True
+            )
+
         for key, value in profile_data_to_update.items():
-            if isinstance(getattr(profile, key, None), Enum) and isinstance(
-                value,
-                str,
-            ):
-                enum_field = getattr(profile, key)
-                try:
-                    setattr(existing_db_profile, key, type(enum_field)(value))
-                except ValueError:
-                    setattr(existing_db_profile, key, value)
-            else:
+            if key == 'user_id' or key == 'bot_id':
+                continue
+            if hasattr(existing_db_profile, key):
                 setattr(existing_db_profile, key, value)
+            else:
+                logger.warning(
+                    f"Attempted to update non-existent field '{key}' "
+                    f'on DBUserBotProfile for '
+                    f'user {profile.user_id}, bot {profile.bot_id}'
+                )
 
         try:
             await self.session.flush()

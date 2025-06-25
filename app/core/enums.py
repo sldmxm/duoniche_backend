@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
-class ExerciseType(Enum):
+class ExerciseType(str, Enum):
     FILL_IN_THE_BLANK = 'fill_in_the_blank'
     CHOOSE_SENTENCE = 'choose_sentence'
     CHOOSE_ACCENT = 'choose_accent'

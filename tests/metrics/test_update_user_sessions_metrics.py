@@ -4,10 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.config import settings
-from app.core.entities.user_bot_profile import (
-    BotID,
-    UserStatusInBot,
-)
+from app.core.entities.user_bot_profile import UserStatusInBot
 from app.core.enums import LanguageLevel
 from app.db.models import DBUserBotProfile
 from app.db.models import User as DBUser
@@ -25,7 +22,7 @@ def mock_user_bot_profiles_data():
         (
             {  # User 1: Session completed due to past freeze
                 'user_id': 1,
-                'bot_id': BotID.BG,
+                'bot_id': 'Bulgarian',
                 'user_language': 'en',
                 'language_level': LanguageLevel.A2,
                 'status': UserStatusInBot.ACTIVE,
@@ -46,7 +43,7 @@ def mock_user_bot_profiles_data():
         (
             {  # User 2: Session completed due to timeout
                 'user_id': 2,
-                'bot_id': BotID.BG,
+                'bot_id': 'Bulgarian',
                 'user_language': 'ru',
                 'language_level': LanguageLevel.B1,
                 'status': UserStatusInBot.ACTIVE,
@@ -75,7 +72,7 @@ def mock_user_bot_profiles_data():
         (
             {  # User 3: Active session
                 'user_id': 3,
-                'bot_id': BotID.BG,
+                'bot_id': 'Bulgarian',
                 'user_language': 'en',
                 'language_level': LanguageLevel.C1,
                 'status': UserStatusInBot.ACTIVE,
@@ -96,7 +93,7 @@ def mock_user_bot_profiles_data():
         (
             {  # User 4: Active session, same labels as User 3
                 'user_id': 4,
-                'bot_id': BotID.BG,
+                'bot_id': 'Bulgarian',
                 'user_language': 'en',
                 'language_level': LanguageLevel.C1,
                 'status': UserStatusInBot.ACTIVE,
@@ -163,7 +160,7 @@ async def test_update_user_sessions_metrics_new_logic(
     labels_user1 = {
         'cohort': 'cohort_A',
         'plan': 'free',
-        'target_language': BotID.BG.value,
+        'target_language': 'Bulgarian',
         'user_language': 'en',
         'language_level': LanguageLevel.A2.value,
     }
@@ -172,7 +169,7 @@ async def test_update_user_sessions_metrics_new_logic(
     labels_user2 = {
         'cohort': 'cohort_B',
         'plan': 'premium',
-        'target_language': BotID.BG.value,
+        'target_language': 'Bulgarian',
         'user_language': 'ru',
         'language_level': LanguageLevel.B1.value,
     }
@@ -206,7 +203,7 @@ async def test_update_user_sessions_metrics_new_logic(
     labels_active_users_group = {
         'cohort': 'cohort_A',
         'plan': 'free',
-        'target_language': BotID.BG.value,
+        'target_language': 'Bulgarian',
         'user_language': 'en',
         'language_level': LanguageLevel.C1.value,
     }

@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 async def test_validate_exercise_success_legacy(
     client,
     request_data_correct_answer_for_sample_exercise,
+    mock_language_config_service,
     add_db_correct_exercise_answer,
     add_db_user,
     add_user_bot_profile,
@@ -32,6 +33,7 @@ async def test_validate_exercise_success_legacy(
 async def test_validate_exercise_bad_request(
     client,
     user_data,
+    mock_language_config_service,
     add_db_user,
     add_user_bot_profile,
 ):
@@ -71,6 +73,7 @@ async def test_validate_exercise_bad_request_answer_type(
     user_data,
     user_id_for_sample_request,
     db_sample_exercise,
+    mock_language_config_service,
     add_db_user,
     add_user_bot_profile,
 ):
@@ -106,6 +109,7 @@ async def test_validate_exercise_bad_request_answer_type(
 async def test_validate_exercise_success(
     client,
     request_data_correct_answer_for_sample_exercise,
+    mock_language_config_service,
     add_db_correct_exercise_answer,
     add_db_user,
     add_user_bot_profile,

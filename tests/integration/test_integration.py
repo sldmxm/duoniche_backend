@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.config import settings
-from app.core.entities.user_bot_profile import BotID
 from app.core.enums import ExerciseType
 from app.db.models.user import User as UserModel
 from app.db.repositories.exercise_attempt import (
@@ -151,7 +150,7 @@ async def test_multiple_requests_same_user(
     # 1. Get a new exercise (new)
     user_id = user_data.get('user_id')
 
-    bot_id = db_sample_exercise.exercise_language
+    bot_id = 'Bulgarian'
     response = await client.get(
         f'/api/v1/users/{user_id}/bots/{bot_id}/next-action/',
     )
@@ -257,7 +256,7 @@ async def test_concurrent_requests(
 
         try:
             response = await client.get(
-                f'/api/v1/users/{user_id}/bots/{BotID.BG.value}/next-action/',
+                f'/api/v1/users/{user_id}/bots/Bulgarian/next-action/',
             )
 
             assert response.status_code == 200

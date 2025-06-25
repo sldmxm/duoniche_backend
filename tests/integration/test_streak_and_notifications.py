@@ -5,7 +5,6 @@ import pytest
 
 from app.config import settings
 from app.core.entities.user_bot_profile import (
-    BotID,
     UserStatusInBot,
 )
 from app.core.enums import LanguageLevel
@@ -25,7 +24,7 @@ def mock_user_bot_profiles_data():
         (
             {
                 'user_id': 1,
-                'bot_id': BotID.BG,
+                'bot_id': 'Bulgarian',
                 'user_language': 'en',
                 'language_level': LanguageLevel.A2,
                 'status': UserStatusInBot.ACTIVE,
@@ -52,7 +51,7 @@ def mock_user_bot_profiles_data():
         (
             {
                 'user_id': 2,
-                'bot_id': BotID.BG,
+                'bot_id': 'Bulgarian',
                 'user_language': 'ru',
                 'language_level': LanguageLevel.B1,
                 'status': UserStatusInBot.ACTIVE,
@@ -88,7 +87,7 @@ def mock_user_bot_profiles_data():
         (
             {
                 'user_id': 3,
-                'bot_id': BotID.BG,
+                'bot_id': 'Bulgarian',
                 'user_language': 'en',
                 'language_level': LanguageLevel.C1,
                 'status': UserStatusInBot.ACTIVE,
@@ -115,7 +114,7 @@ def mock_user_bot_profiles_data():
         (
             {
                 'user_id': 4,
-                'bot_id': BotID.BG,
+                'bot_id': 'Bulgarian',
                 'user_language': 'en',
                 'language_level': LanguageLevel.C1,
                 'status': UserStatusInBot.ACTIVE,
@@ -214,7 +213,7 @@ async def test_update_user_sessions_metrics_new_logic(
     labels_user1 = {
         'cohort': 'cohort_A',
         'plan': 'free',
-        'target_language': BotID.BG.value,
+        'target_language': 'Bulgarian',
         'user_language': 'en',
         'language_level': LanguageLevel.A2.value,
     }
@@ -222,7 +221,7 @@ async def test_update_user_sessions_metrics_new_logic(
     labels_user2 = {
         'cohort': 'cohort_B',
         'plan': 'premium',
-        'target_language': BotID.BG.value,
+        'target_language': 'Bulgarian',
         'user_language': 'ru',
         'language_level': LanguageLevel.B1.value,
     }
@@ -253,7 +252,7 @@ async def test_update_user_sessions_metrics_new_logic(
     labels_active_users_group = {
         'cohort': 'cohort_A',
         'plan': 'free',
-        'target_language': BotID.BG.value,
+        'target_language': 'Bulgarian',
         'user_language': 'en',
         'language_level': LanguageLevel.C1.value,
     }

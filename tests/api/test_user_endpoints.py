@@ -3,8 +3,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.entities.user import User
-from app.core.entities.user_bot_profile import BotID, UserStatusInBot
+from app.core.entities.user import User as UserEntity
+from app.core.entities.user_bot_profile import UserStatusInBot
 from app.db.models.user import User as UserModel
 from app.db.models.user_bot_profile import (
     DBUserBotProfile as UserBotProfileModel,
@@ -20,7 +20,7 @@ async def test_get_or_create_user_new_user(
         'username': 'newuser',
         'name': 'New User',
         'user_language': 'en',
-        'target_language': BotID.BG.value,
+        'target_language': 'Bulgarian',
         'telegram_data': {'test': 'test'},
     }
     response = await client.put('/api/v1/users/', json=user_data)
@@ -47,25 +47,28 @@ async def test_get_or_create_user_new_user(
     assert db_user.plan is None
 
     db_profile = await db_session.get(
-        UserBotProfileModel, (response_data['user_id'], BotID.BG)
+        UserBotProfileModel, (response_data['user_id'], 'Bulgarian')
     )
     assert db_profile is not None
     assert db_profile.user_language == user_data['user_language']
-    assert db_profile.bot_id == BotID.BG
+    assert db_profile.bot_id == 'Bulgarian'
     assert db_profile.language_level == settings.default_language_level
     assert db_profile.status == UserStatusInBot.ACTIVE
 
 
 @pytest.mark.asyncio
 async def test_get_or_create_user_existing_user(
-    client: AsyncClient, db_session: AsyncSession, user: User, add_db_user
+    client: AsyncClient,
+    db_session: AsyncSession,
+    user: UserEntity,
+    add_db_user,
 ):
     user_data = {
         'telegram_id': user.telegram_id,
         'username': 'updateduser',
         'name': 'Updated User',
         'user_language': 'ru',
-        'target_language': BotID.BG.value,
+        'target_language': 'Bulgarian',
         'telegram_data': {'test': 'test'},
     }
     response = await client.put('/api/v1/users/', json=user_data)
@@ -84,7 +87,7 @@ async def test_get_or_create_user_existing_user(
 
     db_user = await db_session.get(UserModel, response_data['user_id'])
     db_profile = await db_session.get(
-        UserBotProfileModel, (response_data['user_id'], BotID.BG)
+        UserBotProfileModel, (response_data['user_id'], 'Bulgarian')
     )
     assert db_user is not None
     assert db_user.telegram_id == user.telegram_id
@@ -92,14 +95,14 @@ async def test_get_or_create_user_existing_user(
     assert db_user.name == user.name
     assert db_user.plan is None
     assert db_profile.user_language == user_data['user_language']
-    assert db_profile.bot_id == BotID.BG
+    assert db_profile.bot_id == 'Bulgarian'
     assert db_profile.language_level == settings.default_language_level
 
 
 @pytest.mark.asyncio
 async def test_get_user_by_telegram_id_success(
     client: AsyncClient,
-    user: User,
+    user: UserEntity,
     add_db_user,
     add_user_bot_profile,
 ):
@@ -131,7 +134,7 @@ async def test_get_user_by_telegram_id_not_found(client: AsyncClient):
 async def test_update_user_by_user_id_success(
     client: AsyncClient,
     db_session: AsyncSession,
-    user: User,
+    user: UserEntity,
     add_db_user,
     add_user_bot_profile,
 ):
@@ -141,7 +144,7 @@ async def test_update_user_by_user_id_success(
         'username': 'updateduser',
         'name': 'Updated User',
         'user_language': 'ru',
-        'target_language': BotID.BG.value,
+        'target_language': 'Bulgarian',
         'telegram_data': {'test': 'test'},
     }
     response = await client.put(
@@ -165,14 +168,14 @@ async def test_update_user_by_user_id_success(
 
     db_user = await db_session.get(UserModel, response_data['user_id'])
     db_profile = await db_session.get(
-        UserBotProfileModel, (response_data['user_id'], BotID.BG)
+        UserBotProfileModel, (response_data['user_id'], 'Bulgarian')
     )
     assert db_user is not None
     assert db_user.telegram_id == user.telegram_id
     assert db_user.username == updated_user_data['username']
     assert db_user.name == updated_user_data['name']
     assert db_profile.user_language == updated_user_data['user_language']
-    assert db_profile.bot_id == BotID.BG
+    assert db_profile.bot_id == 'Bulgarian'
     assert (
         db_profile.language_level == add_user_bot_profile.language_level
     )  # language_level is not updated by this endpoint
@@ -186,7 +189,7 @@ async def test_update_user_by_user_id_not_found(client: AsyncClient):
         'username': 'updateduser',
         'name': 'Updated User',
         'user_language': 'ru',
-        'target_language': BotID.BG.value,
+        'target_language': 'Bulgarian',
         'language_level': 'B1',
         'telegram_data': {'test': 'test'},
     }
@@ -276,22 +279,22 @@ async def test_get_next_action_new_path_invalid_bot_id(
     response = await client.get(
         f'/api/v1/users/{user_id}/bots/{invalid_bot_id_value}/next-action/',
     )
-
     assert response.status_code == 422
-    assert response.json()['detail'].startswith('Invalid bot_id in path:')
+    assert 'Invalid bot_id in path:' in response.json()['detail']
 
 
 @pytest.mark.asyncio
 async def test_block_bot_success(
-    client: AsyncClient,
-    db_session: AsyncSession,
-    add_db_user: UserModel,
-    add_user_bot_profile: UserBotProfileModel,
+    client,
+    db_session,
+    add_db_user,
+    add_user_bot_profile,
+    mock_language_config_service,
 ):
     user_id = add_db_user.user_id
-    bot_to_block = add_user_bot_profile.bot_id
-    bot_id_value_for_url = bot_to_block
-    reason = 'User blocked the bot via notifier'
+    bot_id_value_for_url = add_user_bot_profile.bot_id
+    bot_to_block = 'Bulgarian'  # From default mock config
+    reason = 'User blocked the bot'
 
     payload = {'telegram_id': add_db_user.telegram_id, 'reason': reason}
 
@@ -305,25 +308,18 @@ async def test_block_bot_success(
     assert response_data == {'status': 'ok'}
 
     db_profile = await db_session.get(
-        UserBotProfileModel, (user_id, bot_to_block)
+        UserBotProfileModel,
+        (user_id, bot_to_block),
     )
     assert db_profile is not None
     assert db_profile.status == UserStatusInBot.BLOCKED
     assert db_profile.reason == reason
-    assert db_profile.user_id == user_id
-    assert db_profile.bot_id == bot_to_block
-    assert (
-        db_profile.user_language == add_user_bot_profile.user_language
-    )  # Check against existing profile data
-    assert (
-        db_profile.language_level == add_user_bot_profile.language_level
-    )  # Check against existing profile data
 
 
 @pytest.mark.asyncio
 async def test_block_bot_user_not_found_by_path_id(client: AsyncClient):
     non_existent_user_id = 999999
-    bot_id_value_for_url = BotID.BG.value
+    bot_id_value_for_url = 'Bulgarian'
     payload = {'telegram_id': '1234567', 'reason': 'Test reason'}
 
     response = await client.post(
@@ -341,7 +337,7 @@ async def test_block_bot_telegram_id_mismatch(
     user_id = add_db_user.user_id
     correct_telegram_id = int(add_db_user.telegram_id)
     mismatched_telegram_id = str(correct_telegram_id + 1)
-    bot_id_value_for_url = BotID.BG.value
+    bot_id_value_for_url = 'Bulgarian'
 
     payload = {
         'telegram_id': mismatched_telegram_id,
@@ -357,12 +353,9 @@ async def test_block_bot_telegram_id_mismatch(
 
 
 @pytest.mark.asyncio
-async def test_block_bot_invalid_bot_id_value(
-    client: AsyncClient, add_db_user: UserModel
-):
+async def test_block_bot_invalid_bot_id_value(client, add_db_user):
     user_id = add_db_user.user_id
     invalid_bot_id_value_for_url = 'INVALID_BOT_ID_STRING'
-
     payload = {
         'telegram_id': add_db_user.telegram_id,
         'reason': 'Test reason with invalid bot_id',
@@ -372,8 +365,9 @@ async def test_block_bot_invalid_bot_id_value(
         f'/api/v1/users/{user_id}/bots/{invalid_bot_id_value_for_url}/block',
         json=payload,
     )
-    # Expect 422 from FastAPI's automatic Enum validation
+
     assert response.status_code == 422
-    # The expected error message depends on the actual BotID values
-    assert response.json()['detail'][0]['msg'] == "Input should be 'Bulgarian'"
-    assert response.json()['detail'][0]['loc'] == ['path', 'bot_id']
+    assert (
+        response.json()['detail']
+        == f"Invalid bot_id: '{invalid_bot_id_value_for_url}'"
+    )

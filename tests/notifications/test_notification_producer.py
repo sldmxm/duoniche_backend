@@ -7,7 +7,7 @@ from freezegun import freeze_time
 from app.celery_producer import NOTIFIER_TASK_NAME, notifier_celery_producer
 from app.config import settings
 from app.core.entities.user import User
-from app.core.entities.user_bot_profile import BotID, UserBotProfile
+from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.enums import LanguageLevel
 from app.services.notification_producer import (
     NotificationProducerService,
@@ -44,7 +44,7 @@ def sample_user_bot_profile(
 ) -> UserBotProfile:
     """Пример профиля пользователя для тестов."""
     user_bot_profile.user_id = sample_user.user_id
-    user_bot_profile.bot_id = BotID.BG
+    user_bot_profile.bot_id = 'Bulgarian'
     user_bot_profile.user_language = 'ru'
     user_bot_profile.language_level = LanguageLevel.A2
     return user_bot_profile

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from unittest.mock import ANY, AsyncMock
+from unittest.mock import ANY, AsyncMock, patch
 
 import pytest
 
@@ -11,8 +11,8 @@ from app.core.entities.next_action_result import (
     TelegramPaymentItem,
 )
 from app.core.entities.user import User
-from app.core.entities.user_bot_profile import BotID, UserBotProfile
-from app.core.entities.user_settings import UserSettings
+from app.core.entities.user_bot_profile import UserBotProfile
+from app.core.entities.user_settings import ExerciseType, UserSettings
 from app.core.enums import UserAction
 from app.core.services.exercise import ExerciseService
 from app.core.services.payment import (
@@ -168,8 +168,10 @@ async def test_get_next_action_returns_new_exercise(
         session_exercise_limit=10,
         min_session_interval_minutes=60,
         exercises_in_set=5,
-        exercise_type_distribution=None,
-        exclude_topics=None,
+        exercise_type_distribution={
+            ExerciseType.FILL_IN_THE_BLANK: 1.0,
+            ExerciseType.CHOOSE_SENTENCE: 0.0,
+        },
     )
     user_progress_service.user_settings_service.get_effective_settings = (
         AsyncMock(return_value=test_user_settings)
@@ -216,7 +218,7 @@ async def test_get_next_action_returns_new_exercise(
     )
     user_progress_service.exercise_service.get_next_exercise.assert_awaited_once_with(
         user_id=user.user_id,
-        target_language=user_bot_profile.bot_id.value,
+        target_language=user_bot_profile.bot_id,
         user_language=user_bot_profile.user_language,
         language_level=fill_in_the_blank_exercise.language_level,
         exercise_type=fill_in_the_blank_exercise.exercise_type,
@@ -409,8 +411,50 @@ async def test_get_next_action_raises_value_error_when_user_not_found(
         ValueError, match='User with provided ID not found in the database'
     ):
         await user_progress_service.get_next_action(
-            user.user_id, bot_id=BotID.BG
+            user.user_id, bot_id='Bulgarian'
         )
+
+
+@patch('random.choices')
+async def test_get_next_exercise_respects_distribution(
+    mock_random_choices,
+    user_progress_service: UserProgressService,
+    add_db_user: User,
+    add_user_bot_profile: UserBotProfile,
+    fill_in_the_blank_exercise: Exercise,
+):
+    """
+    Test that _get_next_exercise uses the distribution from UserSettings.
+    """
+    # Arrange
+    user = add_db_user
+    user_bot_profile = add_user_bot_profile
+    test_distribution = {
+        ExerciseType.FILL_IN_THE_BLANK: 0.9,
+        ExerciseType.CHOOSE_SENTENCE: 0.1,
+    }
+    mock_random_choices.return_value = [ExerciseType.FILL_IN_THE_BLANK]
+
+    test_user_settings = UserSettings(
+        exercise_type_distribution=test_distribution
+    )
+    user_progress_service.user_settings_service.get_effective_settings = (
+        AsyncMock(return_value=test_user_settings)
+    )
+    user_progress_service.exercise_service.get_next_exercise = AsyncMock(
+        return_value=fill_in_the_blank_exercise
+    )
+
+    # Act
+    await user_progress_service.get_next_action(
+        user.user_id, bot_id=user_bot_profile.bot_id
+    )
+
+    # Assert
+    mock_random_choices.assert_called_once()
+    call_kwargs = mock_random_choices.call_args.kwargs
+    assert list(call_kwargs['population']) == list(test_distribution.keys())
+    assert list(call_kwargs['weights']) == list(test_distribution.values())
 
 
 async def test_get_next_action_returns_error_when_no_exercise(

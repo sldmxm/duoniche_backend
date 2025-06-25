@@ -5,7 +5,6 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import func, select
 
-from app.core.entities.user_bot_profile import BotID
 from app.db.models.payment import DBPayment as PaymentModel
 from app.db.models.user_bot_profile import (
     DBUserBotProfile as UserBotProfileModel,
@@ -111,18 +110,18 @@ async def test_process_payment_session_unlock(
     add_db_user,
     user_bot_profile_service,
 ):
+    bot_id = 'Bulgarian'
     user = add_db_user
-    await user_bot_profile_service.get_or_create(user.user_id, BotID.BG, 'en')
+    await user_bot_profile_service.get_or_create(user.user_id, bot_id, 'en')
     await user_bot_profile_service.update_session(
         user_id=user.user_id,
-        bot_id=BotID.BG,
+        bot_id=bot_id,
         session_frozen_until=datetime.now(timezone.utc) + timedelta(hours=1),
     )
-    await db_session.commit()
 
     invoice_payload = (
         f'invoice_payload:session_unlock:{user.user_id}'
-        f':{BotID.BG.value}:-1:{int(datetime.now(timezone.utc).timestamp())}'
+        f':{bot_id}:-1:{int(datetime.now(timezone.utc).timestamp())}'
     )
     payment_data = {
         'telegram_payment_charge_id': str(uuid.uuid4()),
@@ -146,22 +145,20 @@ async def test_process_payment_session_unlock(
     assert payment is not None
     assert payment.user_id == user.user_id
 
-    profile = await db_session.get(
-        UserBotProfileModel, (user.user_id, BotID.BG.value)
-    )
+    profile = await db_session.get(UserBotProfileModel, (user.user_id, bot_id))
     assert profile.session_frozen_until is None
 
 
 async def test_process_duplicate_payment(
     client: AsyncClient, db_session, add_db_user, add_user_bot_profile
 ):
+    bot_id = 'Bulgarian'
     user = add_db_user
     invoice_payload = (
         f'invoice_payload'
         f':session_unlock'
         f':{user.user_id}'
-        f':{BotID.BG.value}'
-        f':-1'
+        f':{bot_id}:-1'
         f':{int(datetime.now(timezone.utc).timestamp())}'
     )
     payment_data = {

@@ -8,7 +8,7 @@ from arq.connections import ArqRedis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.entities.user import User
-from app.core.entities.user_bot_profile import BotID, UserBotProfile
+from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.enums import ExerciseType, LanguageLevel, ReportStatus
 from app.core.generation.config import ExerciseTopic
 from app.core.services.user_bot_profile import UserBotProfileService
@@ -63,7 +63,7 @@ async def fill_sample_exercises(
         ),
         ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
-            exercise_language=BotID.BG.value,
+            exercise_language='Bulgarian',
             language_level=LanguageLevel.A2.value,
             topic=ExerciseTopic.GENERAL.value,
             exercise_text='Попълнете празното място в изречението.',
@@ -105,7 +105,7 @@ async def active_user_with_attempts(
     bulgarian_exercise = next(
         ex
         for ex in fill_sample_exercises
-        if ex.exercise_language == BotID.BG.value
+        if ex.exercise_language == 'Bulgarian'
     )
 
     for _ in range(MIN_ATTEMPTS_FOR_WEEKLY_REPORT):
@@ -170,7 +170,7 @@ async def user_with_few_attempts(
     bulgarian_exercise = next(
         ex
         for ex in fill_sample_exercises
-        if ex.exercise_language == BotID.BG.value
+        if ex.exercise_language == 'Bulgarian'
     )
 
     attempt = ExerciseAttemptModel(
@@ -237,7 +237,7 @@ async def test_generate_and_save_short_weekly_reports_for_active_user(
     assert 'Your progress this week' in db_report.short_report
 
     updated_profile = await service_db_session.get(
-        DBUserBotProfile, (profile.user_id, profile.bot_id.value)
+        DBUserBotProfile, (profile.user_id, profile.bot_id)
     )
     assert updated_profile.last_report_generated_at is not None
 
@@ -277,7 +277,7 @@ async def test_request_detailed_report_enqueues_task(
     user, profile = active_user_with_attempts
     report = UserReportModel(
         user_id=user.user_id,
-        bot_id=profile.bot_id.value,
+        bot_id=profile.bot_id,
         week_start_date=date.today() - timedelta(days=7),
         short_report='Test',
         status=ReportStatus.PENDING.value,
@@ -323,7 +323,7 @@ async def test_generate_full_report_text(
     user, profile = active_user_with_attempts
     report = UserReportModel(
         user_id=user.user_id,
-        bot_id=profile.bot_id.value,
+        bot_id=profile.bot_id,
         week_start_date=fixed_test_time.date() - timedelta(days=7),
         short_report='Test',
     )

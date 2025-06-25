@@ -10,12 +10,14 @@ from app.core.value_objects.answer import (
 )
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.llm_service import LLMService
+from tests.conftest import mock_http_client
 
 pytestmark = pytest.mark.asyncio
 
 llm_service = LLMService(
     openai_api_key=settings.openai_api_key,
     model_name=settings.openai_test_model_name,
+    http_client=mock_http_client,
 )
 
 

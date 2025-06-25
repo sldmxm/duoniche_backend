@@ -123,7 +123,7 @@ async def test_generate_exercise_metrics(
     # Act
     await llm_service.generate_exercise(
         user_language=user_bot_profile.user_language,
-        target_language=user_bot_profile.bot_id.value,
+        target_language=user_bot_profile.bot_id,
         language_level=language_level,
         exercise_type=exercise_type,
         topic=topic,
@@ -137,7 +137,7 @@ async def test_generate_exercise_metrics(
     mock_generate.assert_called_once_with(
         user_language=user_language_for_prompt,
         user_language_code=user_bot_profile.user_language,
-        target_language=user_bot_profile.bot_id.value,
+        target_language=user_bot_profile.bot_id,
         language_level=language_level,
         topic=topic,
         persona=persona_to_pass,
@@ -149,7 +149,7 @@ async def test_generate_exercise_metrics(
         exercise_type=exercise_type.value,
         level=language_level.value,
         user_language=user_bot_profile.user_language,
-        target_language=user_bot_profile.bot_id.value,
+        target_language=user_bot_profile.bot_id,
         llm_model=mock_llm_model.model_name,
     )
     exercises_created_metric.labels().inc.assert_called_once()
@@ -162,7 +162,7 @@ async def test_generate_exercise_metrics(
         exercise_type=exercise_type.value,
         level=language_level.value,
         user_language=user_bot_profile.user_language,
-        target_language=user_bot_profile.bot_id.value,
+        target_language=user_bot_profile.bot_id,
         llm_model=mock_llm_model.model_name,
     )
     exercises_creation_time_metric.labels().time.assert_called_once()

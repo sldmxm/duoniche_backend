@@ -1,13 +1,13 @@
 import os
 import sys
 from datetime import datetime
-from typing import Any, AsyncGenerator, List
+from typing import Any, AsyncGenerator, Dict, List, Optional
 from unittest.mock import AsyncMock, create_autospec, patch
 
-import arq
 import httpx
 import pytest
 import pytest_asyncio
+from arq import ArqRedis
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
@@ -19,11 +19,11 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.api.v1.api import api_router
-from app.core.entities.user_bot_profile import BotID, UserBotProfile
 from app.core.generation.config import ExerciseTopic
 from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.services.async_task_cache import AsyncTaskCache
 from app.core.services.exercise import ExerciseService
+from app.core.services.language_config import LanguageConfigService
 from app.core.services.payment import PaymentService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
@@ -47,10 +47,12 @@ sys.path.insert(
     os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')),
 )
 
+from app.api.dependencies import get_language_config_service
 from app.config import settings
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.user import User
+from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.enums import (
     ExerciseStatus,
     ExerciseType,
@@ -229,12 +231,14 @@ async def user_settings_service(
     user_service: UserService,
     user_bot_profile_service: UserBotProfileService,
     redis: Redis,
+    mock_language_config_service,
 ):
     """Create UserBotProfileService with test repositories"""
     return UserSettingsService(
         user_service=user_service,
         user_bot_profile_service=user_bot_profile_service,
         redis_client=redis,
+        language_config_service=mock_language_config_service,
     )
 
 
@@ -259,10 +263,82 @@ async def user_progress_service(
 
 
 @pytest_asyncio.fixture
-async def mock_arq_create_pool():
-    """Mock httpx.AsyncClient for testing."""
-    pool = create_autospec(arq.create_pool())
-    yield pool
+async def mock_arq_create_pool() -> AsyncMock:
+    """
+    Mocks the ARQ Redis pool to prevent actual Redis connections for task
+    queuing and to allow for assertions on task enqueuing.
+    """
+    mock_pool = AsyncMock(spec=ArqRedis)
+    yield mock_pool
+
+
+@pytest.fixture(scope='session')
+def default_language_config() -> Dict[str, Any]:
+    """Provides a default language configuration for tests."""
+    return {
+        'Bulgarian': {
+            'bot_id': 'Bulgarian',
+            'language_code': 'bg',
+            'telegram_upload_bot_token_name': 'BG',
+            'exercise_type_distribution': {
+                'fill_in_the_blank': 1.0,
+            },
+        },
+        'Serbian': {
+            'bot_id': 'Serbian',
+            'language_code': 'sr',
+            'telegram_upload_bot_token_name': 'SRP',
+            'exercise_type_distribution': {
+                'fill_in_the_blank': 1.0,
+            },
+        },
+    }
+
+
+@pytest.fixture
+def mock_language_config_service_factory(default_language_config):
+    """Factory fixture to create a mocked LanguageConfigService."""
+
+    def _get_exercise_types_distribution_for_bot(
+        bot_id: str, config_dict: Dict[str, Any]
+    ) -> Optional[Dict[ExerciseType, float]]:
+        bot_config = config_dict.get(bot_id)
+        if not bot_config:
+            return None
+        str_distribution = bot_config.get('exercise_type_distribution')
+        if not str_distribution:
+            return None
+        exercise_type_distribution = {
+            ExerciseType(k): v for k, v in str_distribution.items()
+        }
+        return exercise_type_distribution
+
+    def factory(config_dict=None):
+        if config_dict is None:
+            config_dict = default_language_config
+
+        mock_service = create_autospec(LanguageConfigService, instance=True)
+        mock_service.get_config.side_effect = lambda bot_id: config_dict.get(
+            bot_id
+        )
+        mock_service.get_all_bot_ids.return_value = list(config_dict.keys())
+        mock_service.get_language_code.side_effect = (
+            lambda bot_id: config_dict.get(bot_id, {}).get('language_code')
+        )
+        mock_service.get_exercise_types_distribution.side_effect = (
+            lambda bot_id: _get_exercise_types_distribution_for_bot(
+                bot_id, config_dict
+            )
+        )
+        return mock_service
+
+    return factory
+
+
+@pytest.fixture
+def mock_language_config_service(mock_language_config_service_factory):
+    """A default mocked LanguageConfigService for general use."""
+    return mock_language_config_service_factory()
 
 
 @pytest_asyncio.fixture(scope='function')
@@ -271,6 +347,7 @@ async def client(
     redis: Redis,
     mock_http_client: httpx.AsyncClient,
     mock_arq_create_pool,
+    mock_language_config_service: LanguageConfigService,
 ) -> AsyncGenerator[AsyncClient, Any]:
     """Create test client with proper transaction handling
     and dependency overrides."""
@@ -278,6 +355,8 @@ async def client(
     test_app.include_router(api_router, prefix='/api/v1')
 
     test_app.state.async_task_cache = AsyncTaskCache(redis)
+    # This state is for worker, not for API tests.
+    # test_app.state.language_config_service = mock_language_config_service
     test_app.state.llm_service = LLMService(http_client=mock_http_client)
     test_app.state.translator = LLMTranslator()
     test_app.state.http_client = mock_http_client
@@ -291,6 +370,9 @@ async def client(
 
     test_app.dependency_overrides[get_async_session] = (
         override_get_async_session
+    )
+    test_app.dependency_overrides[get_language_config_service] = (
+        lambda: mock_language_config_service
     )
 
     async with AsyncClient(
@@ -332,7 +414,7 @@ async def add_db_user(
 def user_bot_profile_data():
     return {
         'user_id': 12345,
-        'bot_id': BotID.BG.value,
+        'bot_id': 'Bulgarian',
         'user_language': 'en',
         'language_level': LanguageLevel.A2,
     }
@@ -366,7 +448,7 @@ async def db_sample_exercise(async_session_maker: async_sessionmaker, user):
     )
     exercise = ExerciseModel(
         exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
-        exercise_language=BotID.BG.value,
+        exercise_language='Bulgarian',
         language_level=settings.default_language_level.value,
         topic=ExerciseTopic.GENERAL.value,
         exercise_text='Fill in the blank in the sentence.',
@@ -474,7 +556,7 @@ async def fill_sample_exercises(
         ),
         ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
-            exercise_language=BotID.BG.value,  # Bulgarian
+            exercise_language='Bulgarian',
             language_level=LanguageLevel.A1.value,
             topic=ExerciseTopic.GENERAL.value,
             exercise_text='Попълнете празното място в изречението.',
@@ -485,7 +567,7 @@ async def fill_sample_exercises(
         ),
         ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
-            exercise_language=BotID.BG.value,  # Bulgarian
+            exercise_language='Bulgarian',
             language_level=LanguageLevel.A2.value,
             topic=ExerciseTopic.GENERAL.value,
             exercise_text='Попълнете празното място в изречението.',
@@ -496,7 +578,7 @@ async def fill_sample_exercises(
         ),
         ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
-            exercise_language=BotID.BG.value,  # Bulgarian
+            exercise_language='Bulgarian',
             language_level=LanguageLevel.B1.value,
             topic=ExerciseTopic.GENERAL.value,
             exercise_text='Попълнете празното място в изречението.',

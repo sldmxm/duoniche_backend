@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.entities.user import User
-from app.core.entities.user_bot_profile import BotID, UserBotProfile
+from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.enums import ExerciseType, LanguageLevel, ReportStatus
 from app.core.generation.config import ExerciseTopic
 from app.core.services.user_bot_profile import UserBotProfileService
@@ -108,7 +108,7 @@ async def fill_sample_exercises(
         ),
         ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
-            exercise_language=BotID.BG.value,
+            exercise_language='Bulgarian',
             language_level=LanguageLevel.A1.value,
             topic=ExerciseTopic.GENERAL.value,
             exercise_text='Попълнете празното място в изречението.',
@@ -119,7 +119,7 @@ async def fill_sample_exercises(
         ),
         ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
-            exercise_language=BotID.BG.value,
+            exercise_language='Bulgarian',
             language_level=LanguageLevel.A2.value,
             topic=ExerciseTopic.GENERAL.value,
             exercise_text='Попълнете празното място в изречението.',
@@ -130,7 +130,7 @@ async def fill_sample_exercises(
         ),
         ExerciseModel(
             exercise_type=ExerciseType.FILL_IN_THE_BLANK.value,
-            exercise_language=BotID.BG.value,
+            exercise_language='Bulgarian',
             language_level=LanguageLevel.B1.value,
             topic=ExerciseTopic.GENERAL.value,
             exercise_text='Попълнете празното място в изречението.',
@@ -163,7 +163,7 @@ async def add_user_with_active_attempts(
     bulgarian_exercises = [
         ex
         for ex in fill_sample_exercises
-        if ex.exercise_language == BotID.BG.value
+        if ex.exercise_language == 'Bulgarian'
     ]
 
     user = DBUser(**user_data)
@@ -283,7 +283,7 @@ async def test_get_period_summary_for_user_and_bot(
     bg_exercises = [
         ex
         for ex in fill_sample_exercises
-        if ex.exercise_language == BotID.BG.value
+        if ex.exercise_language == 'Bulgarian'
     ]
 
     bg_exercises[0].grammar_tags = {

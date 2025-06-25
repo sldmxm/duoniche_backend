@@ -3,7 +3,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.entities.user import User
-from app.core.entities.user_bot_profile import BotID, UserBotProfile
+from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.enums import ExerciseType, LanguageLevel, UserAction, UserStatus
 from app.core.generation.config import ExerciseTopic
 from app.core.services.user import UserService
@@ -21,7 +21,7 @@ async def setup_user_and_profile(
     user_id: int,
     telegram_id: str,
     user_status: UserStatus,
-    bot_id: BotID = BotID.BG,
+    bot_id: str = 'Bulgarian',
     language_level: LanguageLevel = LanguageLevel.A1,
     user_language: str = 'en',
     custom_settings_for_user: dict = None,
@@ -62,7 +62,7 @@ async def test_free_plan_session_limit_via_custom_settings(
 ):
     free_user_id = 101
     free_telegram_id = 'free_user_tg'
-    bot_id = BotID.BG
+    bot_id = 'Bulgarian'
 
     session_limit = 2
     custom_user_settings_values = {
@@ -82,7 +82,7 @@ async def test_free_plan_session_limit_via_custom_settings(
 
     for _ in range(custom_user_settings_values['session_exercise_limit']):
         response = await client.get(
-            f'/api/v1/users/{db_user.user_id}/bots/{bot_id.value}/next-action/'
+            f'/api/v1/users/{db_user.user_id}/bots/{bot_id}/next-action/'
         )
         assert response.status_code == 200
         action_data = response.json()
@@ -90,7 +90,7 @@ async def test_free_plan_session_limit_via_custom_settings(
         assert action_data['exercise'] is not None
 
     response_after_limit = await client.get(
-        f'/api/v1/users/{db_user.user_id}/bots/{bot_id.value}/next-action/'
+        f'/api/v1/users/{db_user.user_id}/bots/{bot_id}/next-action/'
     )
     assert response_after_limit.status_code == 200
     action_data_after_limit = response_after_limit.json()
@@ -108,7 +108,7 @@ async def test_premium_plan_session_limit_via_custom_settings(
 ):
     premium_user_id = 102
     premium_telegram_id = 'premium_user_tg'
-    bot_id = BotID.BG
+    bot_id = 'Bulgarian'
 
     session_limit = 3
     custom_user_settings_values = {
@@ -128,14 +128,14 @@ async def test_premium_plan_session_limit_via_custom_settings(
 
     for _ in range(custom_user_settings_values['session_exercise_limit']):
         response = await client.get(
-            f'/api/v1/users/{db_user.user_id}/bots/{bot_id.value}/next-action/'
+            f'/api/v1/users/{db_user.user_id}/bots/{bot_id}/next-action/'
         )
         assert response.status_code == 200
         action_data = response.json()
         assert action_data['action'] == UserAction.new_exercise.value
 
     response_after_limit = await client.get(
-        f'/api/v1/users/{db_user.user_id}/bots/{bot_id.value}/next-action/'
+        f'/api/v1/users/{db_user.user_id}/bots/{bot_id}/next-action/'
     )
     assert response_after_limit.status_code == 200
     action_data_after_limit = response_after_limit.json()
@@ -152,14 +152,14 @@ async def test_user_settings_exclude_topics_via_custom_settings(
 ):
     user_id = 103
     telegram_id = 'exclude_topic_user_tg'
-    bot_id = BotID.BG
+    bot_id = 'Bulgarian'
     excluded_topic = ExerciseTopic.TRAVEL
 
     custom_user_settings_values = {
         'session_exercise_limit': 10,
         'min_session_interval_minutes': 10,
         'exercises_in_set': 2,
-        'exclude_topics': [excluded_topic.value],  # MODIFIED HERE
+        'exclude_topics': [excluded_topic],
     }
 
     db_user, _ = await setup_user_and_profile(
@@ -174,7 +174,7 @@ async def test_user_settings_exclude_topics_via_custom_settings(
     generated_topics = set()
     for _ in range(5):  # Request a few exercises
         response = await client.get(
-            f'/api/v1/users/{db_user.user_id}/bots/{bot_id.value}/next-action/'
+            f'/api/v1/users/{db_user.user_id}/bots/{bot_id}/next-action/'
         )
         assert response.status_code == 200
         action_data = response.json()
@@ -203,7 +203,7 @@ async def test_user_settings_exercise_type_distribution_via_custom_settings(
 ):
     user_id = 104
     telegram_id = 'type_dist_user_tg'
-    bot_id = BotID.BG
+    bot_id = 'Bulgarian'
 
     specific_distribution_values = {ExerciseType.FILL_IN_THE_BLANK.value: 1.0}
     for ex_type in ExerciseType:
@@ -229,7 +229,7 @@ async def test_user_settings_exercise_type_distribution_via_custom_settings(
     generated_exercise_types = set()
     for _ in range(5):  # Request a few exercises
         response = await client.get(
-            f'/api/v1/users/{db_user.user_id}/bots/{bot_id.value}/next-action/'
+            f'/api/v1/users/{db_user.user_id}/bots/{bot_id}/next-action/'
         )
         assert response.status_code == 200
         action_data = response.json()

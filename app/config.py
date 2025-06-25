@@ -5,7 +5,7 @@ from typing import Dict, List
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.core.enums import LanguageLevel
+from app.core.configs.enums import LanguageLevel
 
 
 class Settings(BaseSettings):  # type: ignore
@@ -41,6 +41,11 @@ class Settings(BaseSettings):  # type: ignore
     tts_model: str = ''
     google_tts_proxy_url: str = ''
     generate_audio: bool = True
+
+    min_exercise_count_to_generate_new: int = 5
+    exercise_refill_interval: int = 60 * 10
+    chance_to_generate_persona_for_topic: float = 0.5
+    tts_cooldown_seconds: int = 60 * 60
 
     cloudflare_r2_account_id: str = ''
     cloudflare_r2_access_key_id: str = ''

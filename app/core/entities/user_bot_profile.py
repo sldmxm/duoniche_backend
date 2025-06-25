@@ -5,8 +5,8 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.config import settings
+from app.core.configs.enums import LanguageLevel
 from app.core.entities.user_settings import UserCustomSettings
-from app.core.enums import LanguageLevel
 
 
 class UserStatusInBot(str, Enum):

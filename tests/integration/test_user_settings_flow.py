@@ -2,10 +2,15 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.core.configs.enums import (
+    ExerciseType,
+    LanguageLevel,
+    UserAction,
+    UserStatus,
+)
+from app.core.configs.generation.config import ExerciseTopic
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import UserBotProfile
-from app.core.enums import ExerciseType, LanguageLevel, UserAction, UserStatus
-from app.core.generation.config import ExerciseTopic
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.db.repositories.user import SQLAlchemyUserRepository

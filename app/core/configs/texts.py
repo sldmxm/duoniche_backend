@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Any, Dict, List, Union, cast
 
 from app.config import settings
-from app.core.enums import ExerciseType
+from app.core.configs.enums import ExerciseType
 
 
 class Messages(str, Enum):
@@ -31,7 +31,7 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
         'tr': '🥺Üzgünüm, limitinize ulaştınız. '
         'Bir sonraki egzersiz {pause_time}’te hazır olacak.',
         'sr': '🥺Žao nam je, dostigli ste limit za sada. '
-        'Molimo vas, sačekajte. '
+        'Samo malo strpljenja! '
         'Sledeća vežba će biti dostupna za {pause_time}',
     },
     Messages.PRAISE_AND_NEXT_SET: {
@@ -40,20 +40,20 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
             '👏Awesome progress! Let’s keep the streak alive!',
             '💪You’re crushing it! On to the next one!\n'
             'Want to change the interface language? Current is 🇬🇧, '
-            'but you can switch to 🇧🇬🇷🇺🇹🇷🇺🇦 via /my_language',
+            'but you can switch to 🇧🇬🇷🇸🇷🇺🇹🇷🇺🇦 via /my_language',
         ],
         'bg': [
             '🎉Справяте се чудесно! Продължавайте!',
             '👏Страхотен напредък! Не спирайте!',
             '💪Перфектна работа! Напред към следващото!\n'
             'Искаш ли да смениш езика на интерфейса? В момента е 🇧🇬, '
-            'но можеш да избереш друг: 🇬🇧🇷🇺🇹🇷🇺🇦 — с /my_language',
+            'но можеш да избереш друг: 🇬🇧🇷🇸🇷🇺🇹🇷🇺🇦 — с /my_language',
         ],
         'tr': [
             '🎉Harika gidiyorsunuz! Devam edin!',
             '👏Süper ilerleme! Aynen böyle devam!',
             '💪Müthişsiniz! Hadi sıradaki!\n'
-            'Arayüz dili şu anda 🇹🇷, ama 🇧🇬🇬🇧🇷🇺🇺🇦 dillerinden '
+            'Arayüz dili şu anda 🇹🇷, ama 🇧🇬🇬🇧🇷🇸🇷🇺🇺🇦 dillerinden '
             'birini /my_language ile seçebilirsin',
         ],
         'ru': [
@@ -61,14 +61,14 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
             '👏Отличный прогресс! Продолжайте в том же духе!',
             '💪Вы молодец! Вперёд к следующему!\n'
             'Хочешь изменить язык интерфейса? Сейчас выбран 🇷🇺, '
-            'но можно выбрать другой: 🇧🇬🇬🇧🇹🇷🇺🇦 — через /my_language',
+            'но можно выбрать другой: 🇧🇬🇬🇧🇷🇸🇹🇷🇺🇦 — через /my_language',
         ],
         'uk': [
             '🎉Ви чудово справляєтесь! Продовжуйте!',
             '👏Супер прогрес! Не зупиняйтесь!',
             '💪Молодці! Рухаймось далі!\n'
             'Хочеш змінити мову інтерфейсу? Зараз вибрано 🇺🇦, '
-            'але можна обрати іншу: 🇧🇬🇬🇧🇷🇺🇹🇷 — через /my_language',
+            'але можна обрати іншу: 🇧🇬🇬🇧🇷🇸🇷🇺🇹🇷 — через /my_language',
         ],
         'sr': [
             '🎉Odlično ti ide! Samo tako nastavi!',
@@ -96,7 +96,7 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
         'Наступна вправа буде доступна через {pause_time}. 💪',
         'sr': '🥳Sjajno! Uspešno si uradio/la {exercise_num} vežbi!\n'
         '🕑Vreme je za kratku pauzu — dostigao/la si limit za sada. '
-        'Nova vežba će biti spremna za {pause_time}. 💪',
+        'Sledeća vežba stiže za {pause_time}. 💪',
     },
     Messages.CONGRATULATIONS_AND_WAIT_STREAK: {
         'en': '🥳Awesome! Exercises completed: {exercise_num}! '
@@ -144,10 +144,10 @@ MESSAGES_TRANSLATIONS: Dict[Messages, Dict[str, Union[str, List[str]]]] = {
         'Искате ли подробен разбор със съвети и анализ на грешките '
         '(готов след 10–15 минути)?',
         'sr': '📈Vaš napredak ove nedelje:\n'
-        '- dana sa vežbanjem: {active_days} / 7\n'
+        '- aktivnih dana: {active_days} / 7\n'
         '- urađenih vežbi: {total_attempts}\n'
         '- tačnost: {accuracy:.0f}%\n'
-        'Hoćete li detaljan pregled sa savetima i analizom grešaka '
+        'Želiš detaljan pregled sa savetima i analizom grešaka '
         '(biće spreman za 10–15 minuta)?',
         'tr': '📈Bu haftaki ilerlemen:\n'
         '- aktif gün: {active_days} / 7\n'

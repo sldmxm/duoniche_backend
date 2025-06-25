@@ -3,12 +3,12 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from app.config import settings
+from app.core.configs.enums import LanguageLevel
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import (
     UserBotProfile,
     UserStatusInBot,
 )
-from app.core.enums import LanguageLevel
 from app.core.repositories.user_bot_profile_repository import (
     UserBotProfileRepository,
 )

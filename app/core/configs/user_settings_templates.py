@@ -1,5 +1,5 @@
+from app.core.configs.enums import ExerciseType
 from app.core.entities.user_settings import UserSettings
-from app.core.enums import ExerciseType
 
 FREE_PLAN_SETTINGS = UserSettings(
     available_exercise_types=[

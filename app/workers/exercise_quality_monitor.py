@@ -3,7 +3,7 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import ExerciseStatus
+from app.core.configs.enums import ExerciseStatus
 from app.db.db import async_session_maker
 from app.db.repositories.exercise import SQLAlchemyExerciseRepository
 from app.db.repositories.user_bot_profile import (

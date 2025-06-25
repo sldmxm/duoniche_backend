@@ -4,6 +4,13 @@ from unittest.mock import ANY, AsyncMock, patch
 import pytest
 
 from app.config import settings
+from app.core.configs.enums import UserAction
+from app.core.configs.texts import (
+    MESSAGES_TRANSLATIONS,
+    Messages,
+    PaymentMessages,
+    get_text,
+)
 from app.core.entities.exercise import Exercise
 from app.core.entities.next_action_result import (
     NextAction,
@@ -13,7 +20,6 @@ from app.core.entities.next_action_result import (
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.entities.user_settings import ExerciseType, UserSettings
-from app.core.enums import UserAction
 from app.core.services.exercise import ExerciseService
 from app.core.services.payment import (
     INITIATE_PAYMENT_PREFIX,
@@ -23,12 +29,6 @@ from app.core.services.payment import (
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_progress import UserProgressService
-from app.core.texts import (
-    MESSAGES_TRANSLATIONS,
-    Messages,
-    PaymentMessages,
-    get_text,
-)
 
 
 @pytest.fixture

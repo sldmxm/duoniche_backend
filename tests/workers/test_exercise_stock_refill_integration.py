@@ -5,12 +5,12 @@ import pytest
 from sqlalchemy import select
 
 from app.config import settings
-from app.core.enums import (
+from app.core.configs.enums import (
     ExerciseStatus,
     ExerciseType,
     LanguageLevel,
 )
-from app.core.generation.config import ExerciseTopic
+from app.core.configs.generation.config import ExerciseTopic
 from app.core.value_objects.exercise import (
     ChooseAccentExerciseData,
     StoryComprehensionExerciseData,

@@ -6,11 +6,11 @@ from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from app.config import settings
+from app.core.configs.enums import ExerciseType, LanguageLevel
+from app.core.configs.generation.config import ExerciseTopic
+from app.core.configs.generation.persona import Persona
+from app.core.configs.texts import get_text
 from app.core.entities.exercise import Exercise
-from app.core.enums import ExerciseType, LanguageLevel
-from app.core.generation.config import ExerciseTopic
-from app.core.generation.persona import Persona
-from app.core.texts import get_text
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.assessors.quality_assessor import ExerciseForAssessor

@@ -6,7 +6,7 @@ from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.enums import ExerciseStatus
+from app.core.configs.enums import ExerciseStatus
 from app.db.base import Base
 
 if TYPE_CHECKING:

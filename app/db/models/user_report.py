@@ -12,7 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.core.enums import ReportStatus
+from app.core.configs.enums import ReportStatus
 from app.db.base import Base
 
 if TYPE_CHECKING:

@@ -3,16 +3,16 @@ from datetime import datetime, timedelta, timezone
 
 from redis.asyncio import Redis as AsyncRedis
 
-from app.core.entities.user_settings import UserSettings
-from app.core.enums import UserStatus
-from app.core.services.language_config import LanguageConfigService
-from app.core.services.user import UserService
-from app.core.services.user_bot_profile import UserBotProfileService
-from app.core.user_settings_templates import (
+from app.core.configs.enums import UserStatus
+from app.core.configs.user_settings_templates import (
     FREE_PLAN_SETTINGS,
     PREMIUM_PLAN_SETTINGS,
     TRIAL_PLAN_SETTINGS,
 )
+from app.core.entities.user_settings import UserSettings
+from app.core.services.language_config import LanguageConfigService
+from app.core.services.user import UserService
+from app.core.services.user_bot_profile import UserBotProfileService
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,10 @@ class UserSettingsService:
         cache_key = self._get_cache_key(user_id, bot_id)
         cached_settings = await self._redis.get(cache_key)
         if cached_settings:
+            logger.info(
+                f'CACHE HIT for user_settings:{user_id}:{bot_id}. '
+                f'Using cached data.'
+            )
             try:
                 return UserSettings.model_validate_json(cached_settings)
             except Exception as e:
@@ -52,6 +56,10 @@ class UserSettingsService:
                     f'{e}. Re-fetching.'
                 )
 
+        logger.info(
+            f'CACHE MISS for user_settings:{user_id}:{bot_id}. '
+            f'Calculating new settings.'
+        )
         user = await self._user_service.get_by_id(user_id)
         if not user:
             raise ValueError(f'User not found: {user_id}')
@@ -102,30 +110,15 @@ class UserSettingsService:
                 if k in effective_settings.available_exercise_types
             }
 
-        logger.info(
-            f'Discovered effective settings from lang and plan:'
-            f' {effective_settings}'
-        )
-
         if user.custom_settings:
             effective_settings = effective_settings.model_copy(
                 update=user.custom_settings.model_dump(exclude_unset=True),
             )
 
-        logger.info(
-            f'Discovered effective settings from user.custom_settings:'
-            f' {effective_settings}'
-        )
-
         if profile.settings:
             effective_settings = effective_settings.model_copy(
                 update=profile.settings.model_dump(exclude_unset=True)
             )
-
-        logger.info(
-            f'Discovered effective settings from profile.settings:'
-            f' {effective_settings}'
-        )
 
         await self._redis.set(
             cache_key,

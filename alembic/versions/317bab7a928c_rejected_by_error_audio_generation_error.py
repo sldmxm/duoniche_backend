@@ -9,7 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 
-from app.core.enums import ExerciseStatus
+from app.core.configs.enums import ExerciseStatus
 
 # revision identifiers, used by Alembic.
 revision: str = '317bab7a928c'

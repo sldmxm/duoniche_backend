@@ -3,8 +3,8 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from app.core.configs.enums import UserStatus
 from app.core.entities.user_settings import UserCustomSettings
-from app.core.enums import UserStatus
 
 
 class User(BaseModel):

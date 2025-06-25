@@ -8,9 +8,8 @@ Create Date: 2025-06-06 14:55:31.736256
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
 
-from app.core.enums import ExerciseStatus
+from app.core.configs.enums import ExerciseStatus
 
 # revision identifiers, used by Alembic.
 revision: str = '7c2c98f6df06'

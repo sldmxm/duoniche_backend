@@ -5,6 +5,8 @@ import pytest
 from freezegun import freeze_time
 
 from app.config import settings
+from app.core.configs.enums import LanguageLevel, UserAction
+from app.core.configs.texts import Messages, PaymentMessages, get_text
 from app.core.entities.next_action_result import (
     TelegramPayment,
     TelegramPaymentItem,
@@ -12,14 +14,12 @@ from app.core.entities.next_action_result import (
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import BotID, UserBotProfile
 from app.core.entities.user_settings import UserSettings
-from app.core.enums import LanguageLevel, UserAction
 from app.core.services.payment import (
     INITIATE_PAYMENT_PREFIX,
     SESSION_UNLOCK_PREFIX,
     PaymentService,
 )
 from app.core.services.user_progress import UserProgressService
-from app.core.texts import Messages, PaymentMessages, get_text
 
 
 @pytest.fixture

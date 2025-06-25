@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-from app.core.enums import ExerciseStatus
+from app.core.configs.enums import ExerciseStatus
 
 # revision identifiers, used by Alembic.
 revision: str = 'ffa998e24036'

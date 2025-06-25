@@ -1,4 +1,4 @@
-from app.core.enums import ExerciseType, ExerciseUiTemplates
+from app.core.configs.enums import ExerciseType, ExerciseUiTemplates
 
 EXERCISE_UI_TEMPLATE_MAP = {
     ExerciseType.FILL_IN_THE_BLANK: ExerciseUiTemplates.FILL_IN_THE_BLANK,

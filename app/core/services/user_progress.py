@@ -4,6 +4,13 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.config import settings
+from app.core.configs.enums import (
+    ExerciseType,
+    LanguageLevel,
+    UserAction,
+)
+from app.core.configs.generation.config import ExerciseTopic
+from app.core.configs.texts import Messages, PaymentMessages, get_text
 from app.core.entities.exercise import Exercise
 from app.core.entities.next_action_result import (
     NextAction,
@@ -14,12 +21,6 @@ from app.core.entities.user_bot_profile import (
     UserStatusInBot,
 )
 from app.core.entities.user_settings import UserSettings
-from app.core.enums import (
-    ExerciseType,
-    LanguageLevel,
-    UserAction,
-)
-from app.core.generation.config import ExerciseTopic
 from app.core.services.exercise import ExerciseService
 from app.core.services.payment import (
     INITIATE_PAYMENT_PREFIX,
@@ -29,7 +30,6 @@ from app.core.services.payment import (
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_settings import UserSettingsService
-from app.core.texts import Messages, PaymentMessages, get_text
 from app.metrics import BACKEND_EXERCISE_METRICS, BACKEND_USER_METRICS
 
 logger = logging.getLogger(__name__)
@@ -122,7 +122,7 @@ class UserProgressService:
             new_streak_days = 1
 
         logger.info(
-            f'Exercise in session: '
+            f'Exercise in session user {user_id}: '
             f' {user_bot_profile.exercises_get_in_session}'
         )
 
@@ -328,7 +328,6 @@ class UserProgressService:
         topic = ExerciseTopic.get_topic(
             exclude_topics=user_settings.exclude_topics
         )
-        logger.debug(f'Next exercise topic: {topic.value} for user {user_id}')
 
         distribution = user_settings.exercise_type_distribution
 
@@ -345,6 +344,12 @@ class UserProgressService:
         exercise_type = random.choices(population=population, weights=weights)[
             0
         ]
+
+        logger.info(
+            f'Next exercise topic: {topic.value}, exercise type '
+            f'{exercise_type.value} for user'
+            f' {user_id}'
+        )
 
         exercise = await self.exercise_service.get_next_exercise(
             user_id=user_id,

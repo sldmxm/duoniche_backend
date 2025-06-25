@@ -6,12 +6,12 @@ import pytest
 import pytest_asyncio
 
 from app.config import settings
+from app.core.configs.enums import ExerciseType
+from app.core.configs.generation.config import ExerciseTopic
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
-from app.core.enums import ExerciseType
-from app.core.generation.config import ExerciseTopic
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.repositories.exercise import ExerciseRepository

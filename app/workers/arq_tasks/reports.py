@@ -3,7 +3,7 @@ import logging
 from datetime import timedelta
 
 from app.config import settings
-from app.core.enums import ReportStatus
+from app.core.configs.enums import ReportStatus
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_report import UserReportService
 from app.db.db import async_session_maker

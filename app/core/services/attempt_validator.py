@@ -2,10 +2,10 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+from app.core.configs.enums import ExerciseType
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
-from app.core.enums import ExerciseType
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.repositories.exercise_answer import ExerciseAnswerRepository

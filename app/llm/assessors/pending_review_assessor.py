@@ -6,8 +6,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from app.config import settings
+from app.core.configs.enums import ExerciseType
 from app.core.entities.exercise import Exercise
-from app.core.enums import ExerciseType
 from app.core.value_objects.answer import Answer
 from app.core.value_objects.exercise import ChooseAccentExerciseData
 from app.llm.llm_base import BaseLLMService

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from app.config import settings
+from app.core.configs.texts import PaymentMessages, get_text
 from app.core.entities.next_action_result import (
     TelegramPayment,
     TelegramPaymentItem,
@@ -11,7 +12,6 @@ from app.core.entities.payment import Payment
 from app.core.repositories.payment import PaymentRepository
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_report import UserReportService
-from app.core.texts import PaymentMessages, get_text
 
 logger = logging.getLogger(__name__)
 

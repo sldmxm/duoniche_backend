@@ -6,16 +6,16 @@ from unittest.mock import AsyncMock, create_autospec, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.entities.exercise import Exercise as ExerciseEntity
-from app.core.entities.exercise_answer import (
-    ExerciseAnswer as ExerciseAnswerEntity,
-)
-from app.core.enums import (
+from app.core.configs.enums import (
     ExerciseStatus,
     ExerciseType,
     LanguageLevel,
 )
-from app.core.generation.config import ExerciseTopic
+from app.core.configs.generation.config import ExerciseTopic
+from app.core.entities.exercise import Exercise as ExerciseEntity
+from app.core.entities.exercise_answer import (
+    ExerciseAnswer as ExerciseAnswerEntity,
+)
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import (
     ChooseAccentExerciseData,

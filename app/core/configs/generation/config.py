@@ -2,7 +2,7 @@ import random
 from enum import Enum
 from typing import Dict, List, Optional
 
-from app.core.generation.persona import Persona
+from app.core.configs.generation.persona import Persona
 
 
 class ExerciseTopic(str, Enum):

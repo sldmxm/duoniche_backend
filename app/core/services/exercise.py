@@ -3,10 +3,10 @@ from datetime import datetime
 from typing import Optional
 
 from app.config import settings
+from app.core.configs.enums import ExerciseType, LanguageLevel
+from app.core.configs.generation.config import ExerciseTopic
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
-from app.core.enums import ExerciseType, LanguageLevel
-from app.core.generation.config import ExerciseTopic
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.repositories.exercise import ExerciseRepository

@@ -1,4 +1,4 @@
-from app.core.consts import GRAMMAR_TAGS, VOCABULARY_TAGS
+from app.core.configs.consts import GRAMMAR_TAGS, VOCABULARY_TAGS
 
 BASE_SYSTEM_PROMPT_FOR_VALIDATION = (
     'You are a language learning assistant specializing in '

@@ -9,12 +9,12 @@ from langchain_core.prompts import ChatPromptTemplate
 from lxml import html
 from pydantic import BaseModel, Field
 
-from app.core.consts import VOCABULARY_TAGS
+from app.core.configs.consts import VOCABULARY_TAGS
+from app.core.configs.enums import ExerciseType, LanguageLevel
+from app.core.configs.generation.config import ExerciseTopic
+from app.core.configs.generation.persona import Persona
+from app.core.configs.texts import get_text
 from app.core.entities.exercise import Exercise
-from app.core.enums import ExerciseType, LanguageLevel
-from app.core.generation.config import ExerciseTopic
-from app.core.generation.persona import Persona
-from app.core.texts import get_text
 from app.core.value_objects.answer import Answer, ChooseAccentAnswer
 from app.core.value_objects.exercise import ChooseAccentExerciseData
 from app.llm.assessors.quality_assessor import ExerciseForAssessor

@@ -3,8 +3,8 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
+from app.core.configs.enums import UserAction
 from app.core.entities.exercise import Exercise
-from app.core.enums import UserAction
 
 
 class TelegramPaymentItem(BaseModel):

@@ -17,8 +17,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.config import settings
+from app.core.configs.enums import LanguageLevel
 from app.core.entities.user_bot_profile import UserStatusInBot
-from app.core.enums import LanguageLevel
 from app.db.base import Base
 
 if TYPE_CHECKING:

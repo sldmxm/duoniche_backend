@@ -7,16 +7,16 @@ from typing import Optional, Tuple
 import httpx
 
 from app.config import settings
-from app.core.entities.exercise import Exercise
-from app.core.entities.exercise_answer import ExerciseAnswer
-from app.core.enums import (
+from app.core.configs.enums import (
     ExerciseStatus,
     ExerciseType,
     LanguageLevel,
 )
-from app.core.generation.config import PERSONAS, ExerciseTopic
-from app.core.generation.persona import Persona
-from app.core.generation.selector import select_persona_for_topic
+from app.core.configs.generation.config import PERSONAS, ExerciseTopic
+from app.core.configs.generation.persona import Persona
+from app.core.configs.generation.selector import select_persona_for_topic
+from app.core.entities.exercise import Exercise
+from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.services.language_config import LanguageConfigService
 from app.core.value_objects.exercise import (
     ChooseAccentExerciseData,
@@ -37,11 +37,18 @@ from app.services.tts_service import GoogleTTSService
 
 logger = logging.getLogger(__name__)
 
-MIN_EXERCISE_COUNT_TO_GENERATE_NEW = 5
-EXERCISE_REFILL_INTERVAL = 60 * 10
-CHANCE_TO_GENERATE_PERSONA_FOR_TOPIC: float = 0.5
-TTS_COOLDOWN_SECONDS = 60 * 60
-DEFAULT_VOICE_NAMES = ['Leda', 'Enceladus']
+MIN_EXERCISE_COUNT_TO_GENERATE_NEW = (
+    settings.min_exercise_count_to_generate_new
+)
+EXERCISE_REFILL_INTERVAL = settings.exercise_refill_interval
+CHANCE_TO_GENERATE_PERSONA_FOR_TOPIC = (
+    settings.chance_to_generate_persona_for_topic
+)
+TTS_COOLDOWN_SECONDS = settings.tts_cooldown_seconds
+DEFAULT_VOICE_NAMES = [
+    'Leda',
+    'Enceladus',
+]
 
 exercise_generation_semaphore = asyncio.Semaphore(5)
 

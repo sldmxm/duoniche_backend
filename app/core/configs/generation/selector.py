@@ -1,13 +1,13 @@
 import random
 from typing import Optional
 
-from app.core.generation.config import (
+from app.core.configs.generation.config import (
     PERSONA_TOPICS,
     PERSONAS,
     TOPIC_GROUPS,
     ExerciseTopic,
 )
-from app.core.generation.persona import Persona
+from app.core.configs.generation.persona import Persona
 
 TOPIC_TO_GROUP_MAP = {
     topic: group for group, topics in TOPIC_GROUPS.items() for topic in topics

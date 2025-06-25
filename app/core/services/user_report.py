@@ -4,14 +4,14 @@ from typing import Optional
 
 from arq.connections import ArqRedis
 
+from app.core.configs.enums import ReportStatus
+from app.core.configs.texts import Messages, get_text
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.entities.user_report import UserReport
-from app.core.enums import ReportStatus
 from app.core.repositories.exercise_attempt import ExerciseAttemptRepository
 from app.core.repositories.user_report import UserReportRepository
 from app.core.services.user_bot_profile import UserBotProfileService
-from app.core.texts import Messages, get_text
 from app.llm.llm_service import LLMService
 
 logger = logging.getLogger(__name__)

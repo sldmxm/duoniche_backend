@@ -8,18 +8,18 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.celery_producer import NOTIFIER_TASK_NAME, notifier_celery_producer
 from app.config import settings
+from app.core.configs.texts import (
+    DEFAULT_LONG_BREAK_REMINDER,
+    PaymentMessages,
+    Reminder,
+    get_text,
+)
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.entities.user_report import UserReport
 from app.core.services.payment import (
     INITIATE_PAYMENT_PREFIX,
     REPORT_DONATION_PREFIX,
-)
-from app.core.texts import (
-    DEFAULT_LONG_BREAK_REMINDER,
-    PaymentMessages,
-    Reminder,
-    get_text,
 )
 from app.metrics import BACKEND_NOTIFICATION_METRICS
 

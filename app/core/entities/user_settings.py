@@ -3,8 +3,8 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.config import settings
-from app.core.enums import ExerciseType
-from app.core.generation.config import ExerciseTopic
+from app.core.configs.enums import ExerciseType
+from app.core.configs.generation.config import ExerciseTopic
 
 
 class UserCustomSettings(BaseModel):

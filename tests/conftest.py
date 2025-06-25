@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.api.v1.api import api_router
-from app.core.generation.config import ExerciseTopic
+from app.core.configs.generation.config import ExerciseTopic
 from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.services.async_task_cache import AsyncTaskCache
 from app.core.services.exercise import ExerciseService
@@ -49,15 +49,15 @@ sys.path.insert(
 
 from app.api.dependencies import get_language_config_service
 from app.config import settings
-from app.core.entities.exercise import Exercise
-from app.core.entities.exercise_answer import ExerciseAnswer
-from app.core.entities.user import User
-from app.core.entities.user_bot_profile import UserBotProfile
-from app.core.enums import (
+from app.core.configs.enums import (
     ExerciseStatus,
     ExerciseType,
     LanguageLevel,
 )
+from app.core.entities.exercise import Exercise
+from app.core.entities.exercise_answer import ExerciseAnswer
+from app.core.entities.user import User
+from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.value_objects.answer import (
     ChooseAccentAnswer,
     FillInTheBlankAnswer,
@@ -745,7 +745,9 @@ def fill_in_the_blank_answer():
 @pytest.fixture(autouse=True)
 def mock_get_next_exercise_level():
     """Mocks LanguageLevel.get_next_exercise_level for all tests."""
-    with patch('app.core.enums.LanguageLevel.get_next_exercise_level') as mock:
+    with patch(
+        'app.core.configs.enums.LanguageLevel.get_next_exercise_level'
+    ) as mock:
         mock.return_value = LanguageLevel.A2
         yield mock
 
@@ -753,7 +755,9 @@ def mock_get_next_exercise_level():
 @pytest.fixture(autouse=True)
 def mock_get_next_topic():
     """Mocks ExerciseTopic.get_next_topic for all tests."""
-    with patch('app.core.generation.config.ExerciseTopic.get_topic') as mock:
+    with patch(
+        'app.core.configs.generation.config.ExerciseTopic.get_topic'
+    ) as mock:
         mock.return_value = ExerciseTopic.GENERAL
         yield mock
 
@@ -761,7 +765,7 @@ def mock_get_next_topic():
 @pytest.fixture(autouse=True)
 def mock_get_next_type():
     """Mocks ExerciseType.get_next_type for all tests."""
-    with patch('app.core.enums.ExerciseType.get_next_type') as mock:
+    with patch('app.core.configs.enums.ExerciseType.get_next_type') as mock:
         mock.return_value = ExerciseType.FILL_IN_THE_BLANK
         yield mock
 

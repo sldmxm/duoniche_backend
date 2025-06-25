@@ -7,10 +7,10 @@ import pytest_asyncio
 from arq.connections import ArqRedis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.configs.enums import ExerciseType, LanguageLevel, ReportStatus
+from app.core.configs.generation.config import ExerciseTopic
 from app.core.entities.user import User
 from app.core.entities.user_bot_profile import UserBotProfile
-from app.core.enums import ExerciseType, LanguageLevel, ReportStatus
-from app.core.generation.config import ExerciseTopic
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_report import (
     MIN_ATTEMPTS_FOR_WEEKLY_REPORT,

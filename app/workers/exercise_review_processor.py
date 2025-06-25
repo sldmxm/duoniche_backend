@@ -5,11 +5,11 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
+from app.core.configs.enums import ExerciseStatus
 from app.core.entities.exercise import Exercise as ExerciseEntity
 from app.core.entities.exercise_answer import (
     ExerciseAnswer as ExerciseAnswerEntity,
 )
-from app.core.enums import ExerciseStatus
 from app.db.db import async_session_maker
 from app.db.repositories.exercise import SQLAlchemyExerciseRepository
 from app.db.repositories.exercise_answers import (

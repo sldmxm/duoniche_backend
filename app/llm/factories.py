@@ -1,6 +1,6 @@
 import httpx
 
-from app.core.enums import ExerciseType
+from app.core.configs.enums import ExerciseType
 from app.llm.generators.choose_accent_generator import ChooseAccentGenerator
 from app.llm.generators.choose_sentence_generator import (
     ChooseSentenceGenerator,

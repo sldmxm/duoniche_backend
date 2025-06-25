@@ -2,14 +2,14 @@ from typing import Optional, Union
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.core.enums import (
+from app.core.configs.enums import (
     ExerciseStatus,
     ExerciseType,
     ExerciseUiTemplates,
     LanguageLevel,
 )
-from app.core.exercise_templates import EXERCISE_UI_TEMPLATE_MAP
-from app.core.generation.config import ExerciseTopic
+from app.core.configs.exercise_templates import EXERCISE_UI_TEMPLATE_MAP
+from app.core.configs.generation.config import ExerciseTopic
 from app.core.value_objects.exercise import (
     ChooseAccentExerciseData,
     ChooseSentenceExerciseData,

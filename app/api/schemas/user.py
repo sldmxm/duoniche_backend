@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from app.config import settings
-from app.core.enums import UserStatus
+from app.core.configs.enums import UserStatus
 
 
 class UserCreate(BaseModel):

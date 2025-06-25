@@ -6,7 +6,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from app.config import settings
-from app.core.enums import ExerciseType, LanguageLevel
+from app.core.configs.enums import ExerciseType, LanguageLevel
 from app.llm.assessors.prompts import SYSTEM_PROMPT_TEMPLATE
 from app.llm.llm_base import BaseLLMService
 from app.metrics import BACKEND_LLM_METRICS

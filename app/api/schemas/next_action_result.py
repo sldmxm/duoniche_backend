@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel
 
 from app.api.schemas.exercise import ExerciseSchema
-from app.core.enums import UserAction
+from app.core.configs.enums import UserAction
 
 
 class NextActionSchema(BaseModel):

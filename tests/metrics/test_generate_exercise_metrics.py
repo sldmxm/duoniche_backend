@@ -2,11 +2,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.configs.enums import ExerciseType, LanguageLevel
+from app.core.configs.generation.config import ExerciseTopic
+from app.core.configs.generation.persona import Persona
 from app.core.entities.exercise import Exercise
 from app.core.entities.user import User
-from app.core.enums import ExerciseType, LanguageLevel
-from app.core.generation.config import ExerciseTopic
-from app.core.generation.persona import Persona
 from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.assessors.quality_assessor import (

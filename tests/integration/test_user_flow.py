@@ -6,8 +6,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.api.dependencies import get_language_config_service
 from app.config import settings
+from app.core.configs.enums import LanguageLevel, UserAction
+from app.core.configs.texts import Messages, PaymentMessages, get_text
 from app.core.entities.user import User
-from app.core.enums import LanguageLevel, UserAction
 from app.core.services.payment import (
     INITIATE_PAYMENT_PREFIX,
     SESSION_UNLOCK_PREFIX,
@@ -15,7 +16,6 @@ from app.core.services.payment import (
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
 from app.core.services.user_progress import UserProgressService
-from app.core.texts import Messages, PaymentMessages, get_text
 from app.db.models.exercise import Exercise as ExerciseModel
 from app.db.repositories.user import SQLAlchemyUserRepository
 from app.db.repositories.user_bot_profile import (
@@ -252,8 +252,8 @@ async def test_full_user_flow_for_new_language(
     }
 
     # 2. Add a dummy serbian exercise to DB
-    from app.core.enums import ExerciseType, LanguageLevel
-    from app.core.generation.config import ExerciseTopic
+    from app.core.configs.enums import ExerciseType, LanguageLevel
+    from app.core.configs.generation.config import ExerciseTopic
 
     async with async_session_maker() as session:
         exercise = ExerciseModel(

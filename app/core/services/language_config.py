@@ -4,8 +4,8 @@ from typing import Any, Dict, List, Optional
 
 import yaml  # type: ignore
 
-from app.core.enums import ExerciseType
-from app.core.generation.config import ExerciseTopic
+from app.core.configs.enums import ExerciseType
+from app.core.configs.generation.config import ExerciseTopic
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class LanguageConfigService:
         if not str_distribution:
             return None
         exercise_type_distribution = {
-            ExerciseType(k): v for k, v in str_distribution.items()
+            ExerciseType(k): float(v) for k, v in str_distribution.items()
         }
 
         return exercise_type_distribution

@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 
 from app.core.entities.user_bot_profile import BotID
-from app.core.enums import LanguageLevel
+from app.core.configs.enums import LanguageLevel
 
 # revision identifiers, used by Alembic.
 revision: str = 'b9e3695ff304'

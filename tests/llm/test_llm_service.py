@@ -1,9 +1,9 @@
 import pytest
 
 from app.config import settings
+from app.core.configs.enums import ExerciseType, LanguageLevel
+from app.core.configs.generation.config import ExerciseTopic
 from app.core.entities.exercise import Exercise
-from app.core.enums import ExerciseType, LanguageLevel
-from app.core.generation.config import ExerciseTopic
 from app.core.value_objects.answer import (
     ChooseSentenceAnswer,
     FillInTheBlankAnswer,

@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.config import settings
+from app.core.configs.enums import LanguageLevel
 from app.core.entities.user_bot_profile import UserStatusInBot
-from app.core.enums import LanguageLevel
 from app.db.models import DBUserBotProfile
 from app.db.models import User as DBUser
 from app.workers.metrics_updater import (

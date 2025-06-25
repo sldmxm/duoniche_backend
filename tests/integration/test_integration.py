@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.config import settings
-from app.core.enums import ExerciseType
+from app.core.configs.enums import ExerciseType
 from app.db.models.user import User as UserModel
 from app.db.repositories.exercise_attempt import (
     SQLAlchemyExerciseAttemptRepository,

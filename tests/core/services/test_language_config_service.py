@@ -2,7 +2,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from app.core.generation.config import ExerciseTopic
+from app.core.configs.generation.config import ExerciseTopic
 from app.core.services.language_config import LanguageConfigService
 
 

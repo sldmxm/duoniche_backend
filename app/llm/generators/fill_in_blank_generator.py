@@ -1,8 +1,6 @@
 import re
 from typing import Optional, Tuple
 
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from app.config import settings
@@ -15,10 +13,9 @@ from app.core.value_objects.answer import FillInTheBlankAnswer
 from app.core.value_objects.exercise import FillInTheBlankExerciseData
 from app.llm.assessors.quality_assessor import ExerciseForAssessor
 from app.llm.generators.prompt_templates import (
-    BASE_SYSTEM_PROMPT_FOR_GENERATION,
     FILL_IN_THE_BLANK_GENERATION_INSTRUCTIONS,
 )
-from app.llm.interfaces.exercise_generator import ExerciseGenerator
+from app.llm.interfaces.exercise_generator import BaseExerciseGenerator
 from app.llm.llm_base import BaseLLMService
 
 
@@ -47,9 +44,9 @@ class FillInTheBlankExerciseLLMOutput(BaseModel):
     )
 
 
-class FillInTheBlankGenerator(ExerciseGenerator):
+class FillInTheBlankGenerator(BaseExerciseGenerator):
     def __init__(self, llm_service: BaseLLMService):
-        self.llm_service = llm_service
+        super().__init__(llm_service)
 
     async def generate(
         self,
@@ -60,61 +57,23 @@ class FillInTheBlankGenerator(ExerciseGenerator):
         topic: ExerciseTopic,
         persona: Optional[Persona] = None,
     ) -> Tuple[Exercise, FillInTheBlankAnswer, ExerciseForAssessor]:
-        """Generate a fill-in-the-blank exercise."""
+        """Генерирует упражнение 'fill-in-the-blank'."""
 
-        parser = PydanticOutputParser(
-            pydantic_object=FillInTheBlankExerciseLLMOutput
-        )
-
-        system_prompt_template = BASE_SYSTEM_PROMPT_FOR_GENERATION.replace(
-            '{specific_exercise_generation_instructions}',
-            FILL_IN_THE_BLANK_GENERATION_INSTRUCTIONS,
-        )
-
-        user_prompt_template = (
-            'Please generate the fill-in-the-blank exercise now, '
-            'following all system instructions.'
-        )
-
-        chat_prompt = ChatPromptTemplate.from_messages(
-            [
-                ('system', system_prompt_template),
-                ('user', user_prompt_template),
-            ]
-        )
-
-        chain = await self.llm_service.create_llm_chain(
-            chat_prompt, parser, is_chat_prompt=True
-        )
-
-        persona_instructions = ''
-        if persona:
-            parts = [f'Persona: {persona.name}.']
-            if persona.role:
-                parts.append(f'Role: {persona.role}.')
-            if persona.emotion:
-                parts.append(f'Emotion: {persona.emotion}.')
-            if persona.motivation:
-                parts.append(f'Motivation: {persona.motivation}.')
-            if persona.communication_style:
-                parts.append(
-                    f'Communication Style: {persona.communication_style}.'
-                )
-            persona_instructions = ' '.join(parts)
-
-        request_data = {
-            'user_language': user_language,
-            'exercise_language': target_language,
-            'language_level': language_level.value,
-            'topic': topic.value,
-            'persona_instructions': persona_instructions,
-            'format_instructions': parser.get_format_instructions(),
-        }
-
-        llm_output: FillInTheBlankExerciseLLMOutput = (
-            await self.llm_service.run_llm_chain(
-                chain=chain,
-                input_data=request_data,
+        llm_output: FillInTheBlankExerciseLLMOutput = await (
+            self._run_llm_generation_chain(
+                pydantic_output_model=FillInTheBlankExerciseLLMOutput,
+                specific_instructions=(
+                    FILL_IN_THE_BLANK_GENERATION_INSTRUCTIONS
+                ),
+                user_language_code=user_language,
+                target_language=target_language,
+                language_level=language_level,
+                topic=topic,
+                persona=persona,
+                user_prompt_text=(
+                    'Please generate the fill-in-the-blank exercise now, '
+                    'following all system instructions.'
+                ),
             )
         )
 

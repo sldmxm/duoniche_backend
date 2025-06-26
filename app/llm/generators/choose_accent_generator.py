@@ -4,8 +4,6 @@ import unicodedata
 from typing import List, Optional, Tuple
 
 import httpx
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from lxml import html
 from pydantic import BaseModel, Field
 
@@ -18,8 +16,11 @@ from app.core.entities.exercise import Exercise
 from app.core.value_objects.answer import Answer, ChooseAccentAnswer
 from app.core.value_objects.exercise import ChooseAccentExerciseData
 from app.llm.assessors.quality_assessor import ExerciseForAssessor
-from app.llm.interfaces.exercise_generator import ExerciseGenerator
+from app.llm.interfaces.exercise_generator import BaseExerciseGenerator
 from app.llm.llm_base import BaseLLMService
+from app.utils.language_code_converter import (
+    convert_iso639_language_code_to_full_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,23 +67,23 @@ class ChooseAccentGenerationError(Exception):
     pass
 
 
-class ChooseAccentGenerator(ExerciseGenerator):
+class ChooseAccentGenerator(BaseExerciseGenerator):
     def __init__(
         self, llm_service: BaseLLMService, http_client: httpx.AsyncClient
     ):
-        self.llm_service = llm_service
-        self.http_client = http_client
+        super().__init__(llm_service, http_client)
 
     async def _assess_word_suitability_llm(
         self,
         word_no_accent: str,
         target_language_full_name: str,
-        user_language_description: str,
+        user_language: str,  # ISO code
         language_level: LanguageLevel,
     ) -> Optional[WordSuitabilityAssessment]:
-        parser = PydanticOutputParser(
-            pydantic_object=WordSuitabilityAssessment
+        user_language_description = convert_iso639_language_code_to_full_name(
+            user_language
         )
+
         system_prompt_template = (
             'You are an AI language expert. Your task is to assess a word '
             'from {target_language_full_name} for a '
@@ -111,25 +112,25 @@ class ChooseAccentGenerator(ExerciseGenerator):
             '(HIGH, MEDIUM, LOW)?\n\n'
             '{format_instructions}'
         )
-        chat_prompt = ChatPromptTemplate.from_messages(
-            [
-                ('system', system_prompt_template),
-                ('user', user_prompt_template),
-            ]
-        )
-        chain = await self.llm_service.create_llm_chain(
-            chat_prompt, parser, is_chat_prompt=True
-        )
-        request_data = {
-            'target_language_full_name': target_language_full_name,
-            'user_language_description': user_language_description,
-            'language_level_value': language_level.value,
-            'word_to_assess': word_no_accent,
-            'format_instructions': parser.get_format_instructions(),
-        }
+
         try:
             assessment: WordSuitabilityAssessment = (
-                await self.llm_service.run_llm_chain(chain, request_data)
+                await self._run_llm_generation_chain(
+                    pydantic_output_model=WordSuitabilityAssessment,
+                    specific_instructions='',
+                    user_language_code=user_language,
+                    target_language=target_language_full_name,
+                    language_level=language_level,
+                    topic=ExerciseTopic.GENERAL,
+                    user_prompt_text=user_prompt_template,
+                    system_prompt_override=system_prompt_template,
+                    additional_request_data={
+                        'target_language_full_name': target_language_full_name,
+                        'user_language_description': user_language_description,
+                        'language_level_value': language_level.value,
+                        'word_to_assess': word_no_accent,
+                    },
+                )
             )
             return assessment
         except Exception as e:
@@ -147,9 +148,6 @@ class ChooseAccentGenerator(ExerciseGenerator):
         target_language_full_name: str,
         language_level: LanguageLevel,
     ) -> Optional[WordDefinitionAndExamples]:
-        parser = PydanticOutputParser(
-            pydantic_object=WordDefinitionAndExamples
-        )
         system_prompt_template = (
             'You are a helpful AI language assistant. Your task is to '
             'provide a dictionary-like entry '
@@ -172,25 +170,25 @@ class ChooseAccentGenerator(ExerciseGenerator):
             "the word's meaning.\n\n"
             '{format_instructions}'
         )
-        chat_prompt = ChatPromptTemplate.from_messages(
-            [
-                ('system', system_prompt_template),
-                ('user', user_prompt_template),
-            ]
-        )
-        chain = await self.llm_service.create_llm_chain(
-            chat_prompt, parser, is_chat_prompt=True
-        )
-        request_data = {
-            'target_language_full_name': target_language_full_name,
-            'language_level_value': language_level.value,
-            'word_to_define': word_no_accent,
-            'word_for_context': word_with_accent,
-            'format_instructions': parser.get_format_instructions(),
-        }
+
         try:
             definition_and_examples: WordDefinitionAndExamples = (
-                await self.llm_service.run_llm_chain(chain, request_data)
+                await self._run_llm_generation_chain(
+                    pydantic_output_model=WordDefinitionAndExamples,
+                    specific_instructions='',
+                    user_language_code='en',
+                    target_language=target_language_full_name,
+                    language_level=language_level,
+                    topic=ExerciseTopic.GENERAL,
+                    user_prompt_text=user_prompt_template,
+                    system_prompt_override=system_prompt_template,
+                    additional_request_data={
+                        'target_language_full_name': target_language_full_name,
+                        'language_level_value': language_level.value,
+                        'word_to_define': word_no_accent,
+                        'word_for_context': word_with_accent,
+                    },
+                )
             )
             return definition_and_examples
         except Exception as e:
@@ -202,6 +200,9 @@ class ChooseAccentGenerator(ExerciseGenerator):
             return None
 
     async def _fetch_word_candidate(self) -> Optional[str]:
+        if not self.http_client:
+            logger.error('HTTPX client not provided')
+            return None
         try:
             resp = await self.http_client.get(
                 'https://rechnik.chitanka.info/random',

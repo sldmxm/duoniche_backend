@@ -9,7 +9,7 @@ from app.llm.generators.fill_in_blank_generator import FillInTheBlankGenerator
 from app.llm.generators.story_comprehension_generator import (
     StoryComprehensionGenerator,
 )
-from app.llm.interfaces.exercise_generator import ExerciseGenerator
+from app.llm.interfaces.exercise_generator import BaseExerciseGenerator
 from app.llm.interfaces.exercise_validator import ExerciseValidator
 from app.llm.llm_base import BaseLLMService
 from app.llm.validators.choose_sentence_validator import (
@@ -24,7 +24,7 @@ class ExerciseGeneratorFactory:
         exercise_type: ExerciseType,
         llm_service: BaseLLMService,
         http_client: httpx.AsyncClient,
-    ) -> ExerciseGenerator:
+    ) -> BaseExerciseGenerator:
         """Create an appropriate exercise generator based on exercise type."""
         generators = {
             ExerciseType.FILL_IN_THE_BLANK: FillInTheBlankGenerator,

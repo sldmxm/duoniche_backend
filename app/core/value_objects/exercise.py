@@ -13,6 +13,7 @@ from app.core.value_objects.answer import (
     FillInTheBlankAnswer,
     StoryComprehensionAnswer,
 )
+from app.utils import transliteration
 
 
 class ExerciseData(ABC, BaseModel):
@@ -22,6 +23,12 @@ class ExerciseData(ABC, BaseModel):
 
     @abstractmethod
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def to_cyrillic(self) -> ExerciseData:
+        """Returns a new instance of the data with text fields
+        transliterated to Cyrillic."""
         raise NotImplementedError
 
 
@@ -57,6 +64,14 @@ class FillInTheBlankExerciseData(ExerciseData):
 
         return result
 
+    def to_cyrillic(self) -> FillInTheBlankExerciseData:
+        new_data = self.model_copy(deep=True)
+        new_data.text_with_blanks = transliteration.to_cyrillic(
+            self.text_with_blanks
+        )
+        new_data.words = [transliteration.to_cyrillic(w) for w in self.words]
+        return new_data
+
 
 class ChooseSentenceExerciseData(ExerciseData):
     type: Literal['ChooseSentenceExerciseData'] = Field(
@@ -69,6 +84,13 @@ class ChooseSentenceExerciseData(ExerciseData):
         if not isinstance(answer, ChooseSentenceAnswer):
             raise ValueError('Answer must be ChooseSentenceAnswer')
         return answer.answer
+
+    def to_cyrillic(self) -> ChooseSentenceExerciseData:
+        new_data = self.model_copy(deep=True)
+        new_data.options = [
+            transliteration.to_cyrillic(opt) for opt in self.options
+        ]
+        return new_data
 
 
 class ChooseAccentExerciseData(ExerciseData):
@@ -88,6 +110,15 @@ class ChooseAccentExerciseData(ExerciseData):
         if not isinstance(answer, ChooseAccentAnswer):
             raise ValueError('Answer must be ChooseAccentAnswer')
         return answer.answer
+
+    def to_cyrillic(self) -> ChooseAccentExerciseData:
+        new_data = self.model_copy(deep=True)
+        new_data.options = [
+            transliteration.to_cyrillic(opt) for opt in self.options
+        ]
+        if new_data.meaning:
+            new_data.meaning = transliteration.to_cyrillic(self.meaning)
+        return new_data
 
 
 class StoryComprehensionExerciseData(ExerciseData):
@@ -109,6 +140,14 @@ class StoryComprehensionExerciseData(ExerciseData):
             raise ValueError('Answer must be StoryComprehensionAnswer')
         return answer.answer
 
+    def to_cyrillic(self) -> StoryComprehensionExerciseData:
+        new_data = self.model_copy(deep=True)
+        new_data.content_text = transliteration.to_cyrillic(self.content_text)
+        new_data.options = [
+            transliteration.to_cyrillic(opt) for opt in self.options
+        ]
+        return new_data
+
 
 class SentenceConstructionExerciseData(ExerciseData):
     type: Literal['SentenceConstructionExerciseData'] = Field(
@@ -118,6 +157,9 @@ class SentenceConstructionExerciseData(ExerciseData):
     words: List[str] = Field(description='List of words')
 
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
+        raise NotImplementedError
+
+    def to_cyrillic(self) -> SentenceConstructionExerciseData:
         raise NotImplementedError
 
 
@@ -131,6 +173,9 @@ class MultipleChoiceExerciseData(ExerciseData):
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
         raise NotImplementedError
 
+    def to_cyrillic(self) -> MultipleChoiceExerciseData:
+        raise NotImplementedError
+
 
 class TranslationExerciseData(ExerciseData):
     type: Literal['TranslationExerciseData'] = Field(
@@ -139,4 +184,7 @@ class TranslationExerciseData(ExerciseData):
     translations: List[str] = Field(description='List of translations')
 
     def get_answered_by_user_exercise_text(self, answer: Answer) -> str:
+        raise NotImplementedError
+
+    def to_cyrillic(self) -> TranslationExerciseData:
         raise NotImplementedError

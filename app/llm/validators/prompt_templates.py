@@ -5,6 +5,10 @@ BASE_SYSTEM_PROMPT_FOR_VALIDATION = (
     '{exercise_language}.\n'
     'Provide feedback in {user_language}.\n'
     'General Instructions for feedback:\n'
+    "- IMPORTANT: When you quote the user's answer, the correct answer, or "
+    'any other text in {exercise_language}, you MUST wrap it in '
+    '<code>...</code> tags. For example: <code>цитата</code>. '
+    'Do NOT use regular quotation marks ("" or \'\') for this purpose.\n'
     '- If the answer is correct, the feedback should be an empty string.\n'
     '- If the answer is incorrect, clearly and concisely explain the '
     'errors (grammatical, spelling, syntactic, semantic, etc.) AND '

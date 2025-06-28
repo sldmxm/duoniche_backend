@@ -7,6 +7,7 @@ from app.api.dependencies import (
     get_language_config_service,
     get_user_bot_profile_service,
     get_user_service,
+    get_user_settings_service,
 )
 from app.api.errors import NotFoundError
 from app.api.schemas.user import (
@@ -16,6 +17,8 @@ from app.api.schemas.user import (
 )
 from app.api.schemas.user_preferences import (
     SessionRemindersPreferenceResponse,
+    UserBotPreferencesResponse,
+    UserBotPreferencesUpdate,
     UserPreferencesUpdate,
 )
 from app.api.schemas.user_status import (
@@ -28,6 +31,7 @@ from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.services.language_config import LanguageConfigService
 from app.core.services.user import UserService
 from app.core.services.user_bot_profile import UserBotProfileService
+from app.core.services.user_settings import UserSettingsService
 from app.metrics import BACKEND_USER_METRICS
 
 logger = logging.getLogger(__name__)
@@ -358,4 +362,54 @@ async def update_session_reminders_preference(
         user_id=updated_profile.user_id,
         bot_id=updated_profile.bot_id,
         wants_session_reminders=wants_session_reminders,
+    )
+
+
+@router.put(
+    '/{user_id}/bots/{bot_id}/preferences',
+    response_model=UserBotPreferencesResponse,
+    summary="Update user's bot-specific preferences, like alphabet",
+    status_code=status.HTTP_200_OK,
+)
+async def update_user_preferences(
+    user_bot_profile_service: Annotated[
+        UserBotProfileService, Depends(get_user_bot_profile_service)
+    ],
+    user_settings_service: Annotated[
+        UserSettingsService, Depends(get_user_settings_service)
+    ],
+    language_config_service: Annotated[
+        LanguageConfigService, Depends(get_language_config_service)
+    ],
+    user_id: Annotated[int, Path(description='User ID', ge=1)],
+    bot_id: Annotated[
+        str,
+        Path(description='Bot ID (e.g., Bulgarian, Serbian)'),
+    ],
+    preferences: UserBotPreferencesUpdate,
+):
+    if bot_id not in language_config_service.get_all_bot_ids():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid bot_id: '{bot_id}'",
+        )
+
+    try:
+        updated_profile = await user_bot_profile_service.update_preferences(
+            user_id=user_id,
+            bot_id=bot_id,
+            preferences_to_update=preferences.model_dump(exclude_unset=True),
+        )
+        await user_settings_service.invalidate_user_settings_cache(
+            user_id, bot_id
+        )
+    except ValueError as e:
+        raise NotFoundError(str(e)) from e
+
+    return UserBotPreferencesResponse(
+        user_id=updated_profile.user_id,
+        bot_id=updated_profile.bot_id,
+        settings=updated_profile.settings.model_dump(exclude_unset=True)
+        if updated_profile.settings
+        else {},
     )

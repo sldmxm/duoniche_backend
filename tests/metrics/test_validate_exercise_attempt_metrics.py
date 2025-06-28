@@ -1,7 +1,8 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from asyncpg.pgproto.pgproto import timedelta
 
 from app.core.configs.enums import ExerciseType, LanguageLevel
 from app.core.configs.generation.config import ExerciseTopic
@@ -27,8 +28,6 @@ def user():
         telegram_id='123',
         username='testuser',
         name='Test User',
-        user_language='en',
-        target_language='bg',
     )
 
 
@@ -85,19 +84,32 @@ def mock_answer_repo(exercise, answer_vo):
 
 
 @pytest.fixture
-def mock_attempt_repo():
+def mock_attempt_repo(answer_vo):
     mock = AsyncMock(spec=ExerciseAttemptRepository)
 
-    def create_side_effect(attempt_to_save):
+    def create_side_effect(
+        attempt_to_save: ExerciseAttempt,
+    ) -> ExerciseAttempt:
         if attempt_to_save.attempt_id is None:
             attempt_to_save.attempt_id = 456
         return attempt_to_save
 
-    def update_side_effect(attempt_id, **kwargs):
-        updated_attempt_mock = MagicMock(spec=ExerciseAttempt)
-        updated_attempt_mock.attempt_id = attempt_id
-        updated_attempt_mock.is_correct = kwargs.get('is_correct')
-        return updated_attempt_mock
+    def update_side_effect(attempt_id, **kwargs) -> ExerciseAttempt:
+        updated_attempt = ExerciseAttempt(
+            attempt_id=attempt_id,
+            user_id=1,
+            exercise_id=1,
+            answer=answer_vo,
+            is_correct=None,
+            feedback=None,
+            answer_id=None,
+            error_tags=None,
+        )
+        for key, value in kwargs.items():
+            if hasattr(updated_attempt, key):
+                setattr(updated_attempt, key, value)
+
+        return updated_attempt
 
     mock.create = AsyncMock(side_effect=create_side_effect)
     mock.update = AsyncMock(side_effect=update_side_effect)
@@ -150,6 +162,7 @@ async def test_validate_exercise_attempt_metrics(
     mock_llm_service,
     mock_translator,
     user,
+    user_bot_profile,
     exercise,
     answer_vo: FillInTheBlankAnswer,
     mock_backend_exercise_metrics,
@@ -161,14 +174,15 @@ async def test_validate_exercise_attempt_metrics(
         'Wrong!',
         {'grammar': 'error1', 'vocabulary': 'error2'},
     )
+    user_bot_profile.last_exercise_at = datetime.now(timezone.utc) - timedelta(
+        minutes=3
+    )
 
     # Act
     await exercise_service.validate_exercise_attempt(
-        user_id=user.user_id,
-        user_language='en',
-        last_exercise_at=datetime.now(timezone.utc) - timedelta(seconds=10),
         exercise=exercise,
         answer=answer_vo,
+        user_bot_profile=user_bot_profile,
     )
 
     # Assert

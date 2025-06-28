@@ -6,6 +6,7 @@ from app.core.configs.enums import ExerciseType
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
+from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.repositories.exercise_answer import ExerciseAnswerRepository
@@ -17,9 +18,16 @@ from app.core.services.async_task_cache import (
     serialize_exercise_answer,
     serialize_exercise_attempt,
 )
-from app.core.value_objects.answer import Answer
-from app.core.value_objects.exercise import ChooseAccentExerciseData
+from app.core.value_objects.answer import (
+    Answer,
+    ChooseOneAnswer,
+    FillInTheBlankAnswer,
+)
+from app.core.value_objects.exercise import (
+    ChooseAccentExerciseData,
+)
 from app.metrics import BACKEND_EXERCISE_METRICS
+from app.utils import transliteration
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +49,7 @@ class AttemptValidator:
 
     async def validate_exercise_attempt(
         self,
-        user_id: int,
-        user_language: str,
-        last_exercise_at: Optional[datetime],
+        user_bot_profile: UserBotProfile,
         exercise: Exercise,
         answer: Answer,
     ) -> ExerciseAttempt:
@@ -51,8 +57,31 @@ class AttemptValidator:
         Validate a user's answer to an exercise,
         handling caching and database operations.
         """
+        user_id = user_bot_profile.user_id
+        user_language = user_bot_profile.user_language
+        last_exercise_at = user_bot_profile.last_exercise_at
 
-        async def _get_answer_from_db() -> Optional[ExerciseAnswer]:
+        user_settings = user_bot_profile.settings
+        is_serbian_cyrillic = (
+            user_settings
+            and exercise.exercise_language == 'Serbian'
+            and user_settings.alphabet == 'cyrillic'
+        )
+
+        answer_for_validation = answer
+        if is_serbian_cyrillic:
+            answer_for_validation = answer.model_copy(deep=True)
+            if isinstance(answer_for_validation, FillInTheBlankAnswer):
+                answer_for_validation.words = [
+                    transliteration.to_latin(w)
+                    for w in answer_for_validation.words
+                ]
+            elif isinstance(answer_for_validation, ChooseOneAnswer):
+                answer_for_validation.answer = transliteration.to_latin(
+                    answer_for_validation.answer
+                )
+
+        async def _get_answer_from_db(ans: Answer) -> Optional[ExerciseAnswer]:
             if exercise.exercise_id is None:
                 raise ValueError('Cannot validate an exercise without an ID')
             all_answers = (
@@ -60,7 +89,7 @@ class AttemptValidator:
                     exercise.exercise_id, answer
                 )
             )
-            logger.debug(f'All answers from DB: {all_answers}')
+            logger.debug(f'All answers from DB for `{ans}`: {all_answers}')
             correct_answer: Optional[ExerciseAnswer] = next(
                 (a for a in all_answers if a.is_correct), None
             )
@@ -94,12 +123,17 @@ class AttemptValidator:
             user_id: int,
             user_language: str,
             exercise: Exercise,
-            answer: Answer,
+            original_answer: Answer,
+            validation_answer: Answer,
         ) -> ExerciseAttempt:
-            db_answer = await _get_answer_from_db()
-            if db_answer and (
-                db_answer.is_correct
-                or db_answer.feedback_language == user_language
+            db_answer = await _get_answer_from_db(validation_answer)
+            if (
+                db_answer
+                and db_answer.answer_id
+                and (
+                    db_answer.is_correct
+                    or db_answer.feedback_language == user_language
+                )
             ):
                 if exercise.exercise_id is None:
                     raise ValueError(
@@ -110,7 +144,7 @@ class AttemptValidator:
                     attempt_id=None,
                     user_id=user_id,
                     exercise_id=exercise.exercise_id,
-                    answer=answer,
+                    answer=original_answer,
                     is_correct=db_answer.is_correct,
                     feedback=db_answer.feedback,
                     answer_id=db_answer.answer_id,
@@ -127,7 +161,7 @@ class AttemptValidator:
                 attempt_id=None,
                 user_id=user_id,
                 exercise_id=exercise.exercise_id,
-                answer=answer,
+                answer=original_answer,
                 is_correct=None,
                 feedback=None,
                 answer_id=None,
@@ -149,10 +183,15 @@ class AttemptValidator:
                         exercise.exercise_id
                     )
                 )
-                feedback = '✅'
-                feedback += ', '.join(
+                correct_answers_text = ', '.join(
                     [a.answer.get_answer_text() for a in correct_answers]
                 )
+                if is_serbian_cyrillic:
+                    correct_answers_text = transliteration.to_cyrillic(
+                        correct_answers_text
+                    )
+                feedback = '✅'
+                feedback += correct_answers_text
                 if (
                     isinstance(exercise.data, ChooseAccentExerciseData)
                     and exercise.data.meaning
@@ -173,7 +212,7 @@ class AttemptValidator:
                 incorrect_answer = ExerciseAnswer(
                     answer_id=None,
                     exercise_id=exercise.exercise_id,
-                    answer=answer,
+                    answer=answer_for_validation,
                     is_correct=False,
                     feedback=feedback,
                     feedback_language=user_language,
@@ -199,7 +238,7 @@ class AttemptValidator:
                         user_id=user_id,
                         user_language=user_language,
                         exercise=exercise,
-                        answer=answer,
+                        answer=validation_answer,
                     )
 
             if pre_saved_attempt.attempt_id is None:
@@ -235,6 +274,7 @@ class AttemptValidator:
                 exercise_type=exercise.exercise_type.value,
                 level=exercise.language_level.value,
             ).observe(answer_duration)
+
         with (
             BACKEND_EXERCISE_METRICS['validation_time']
             .labels(
@@ -250,22 +290,34 @@ class AttemptValidator:
                 f'_{hash(answer.get_answer_text())}'
             )
 
-            exercise_attempt = await self.async_task_cache.get_or_create_task(
-                key=attempt_key,
-                task_func=lambda: _handle_exercise_attempt(
-                    user_id=user_id,
-                    user_language=user_language,
-                    exercise=exercise,
-                    answer=answer,
-                ),
-                serializer=serialize_exercise_attempt,
-                deserializer=deserialize_exercise_attempt,
+            exercise_attempt: ExerciseAttempt = await (
+                self.async_task_cache.get_or_create_task(
+                    key=attempt_key,
+                    task_func=lambda: _handle_exercise_attempt(
+                        user_id=user_id,
+                        user_language=user_language,
+                        exercise=exercise,
+                        original_answer=answer,
+                        validation_answer=answer_for_validation,
+                    ),
+                    serializer=serialize_exercise_attempt,
+                    deserializer=deserialize_exercise_attempt,
+                )
             )
             if exercise_attempt.is_correct is False:
                 BACKEND_EXERCISE_METRICS['incorrect_attempts'].labels(
                     exercise_type=exercise.exercise_type.value,
                     level=exercise.language_level.value,
                 ).inc()
+
+        if exercise_attempt.feedback and is_serbian_cyrillic:
+            logger.debug(f'Transliterating feedback for user {user_id}')
+            exercise_attempt.feedback = (
+                transliteration.transliterate_code_blocks(
+                    text=exercise_attempt.feedback,
+                    transliterator=transliteration.to_cyrillic,
+                )
+            )
 
         return exercise_attempt
 

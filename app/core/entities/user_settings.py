@@ -21,6 +21,7 @@ class UserCustomSettings(BaseModel):
     exercise_type_distribution: Optional[Dict[ExerciseType, float]] = None
     exclude_topics: Optional[List[ExerciseTopic]] = None
     allowed_languages: Optional[List[str]] = None
+    alphabet: Optional[str] = None
 
     model_config = ConfigDict(extra='forbid')
 

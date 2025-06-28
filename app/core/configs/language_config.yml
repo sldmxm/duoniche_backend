@@ -16,7 +16,7 @@ Bulgarian:
 Serbian:
   bot_id: "Serbian"
   language_code: "sr"
-  telegram_upload_bot_token_name: "SRP"
+  telegram_upload_bot_token_name: "SR"
   exercise_type_distribution:
     fill_in_the_blank: 0.50
     choose_sentence: 0.30

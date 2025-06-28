@@ -290,6 +290,10 @@ class UserProgressService:
                 level=next_exercise.language_level.value,
             ).inc()
 
+            next_exercise = next_exercise.transliterate_to_cyrillic_if_needed(
+                user_bot_profile
+            )
+
             return NextAction(
                 exercise=next_exercise,
                 action=UserAction.new_exercise,

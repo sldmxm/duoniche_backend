@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 from typing import Optional
 
 from app.config import settings
@@ -7,6 +6,7 @@ from app.core.configs.enums import ExerciseType, LanguageLevel
 from app.core.configs.generation.config import ExerciseTopic
 from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_attempt import ExerciseAttempt
+from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.repositories.exercise import ExerciseRepository
@@ -80,16 +80,12 @@ class ExerciseService:
 
     async def validate_exercise_attempt(
         self,
-        user_id: int,
-        user_language: str,
-        last_exercise_at: Optional[datetime],
+        user_bot_profile: UserBotProfile,
         exercise: Exercise,
         answer: Answer,
     ) -> ExerciseAttempt:
         return await self.attempt_validator.validate_exercise_attempt(
-            user_id=user_id,
-            user_language=user_language,
-            last_exercise_at=last_exercise_at,
             exercise=exercise,
+            user_bot_profile=user_bot_profile,
             answer=answer,
         )

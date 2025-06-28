@@ -9,6 +9,7 @@ from app.core.entities.user_bot_profile import (
     UserBotProfile,
     UserStatusInBot,
 )
+from app.core.entities.user_settings import UserCustomSettings
 from app.core.repositories.user_bot_profile_repository import (
     UserBotProfileRepository,
 )
@@ -36,7 +37,10 @@ _ALLOWED_PROFILE_UPDATE_FIELDS = {
 
 
 class UserBotProfileService:
-    def __init__(self, profile_repo: UserBotProfileRepository):
+    def __init__(
+        self,
+        profile_repo: UserBotProfileRepository,
+    ):
         self._profile_repo = profile_repo
 
     async def get_all_by_user_id(
@@ -259,3 +263,28 @@ class UserBotProfileService:
         return await self._profile_repo.get_active_profiles_for_reporting(
             since=since,
         )
+
+    async def update_preferences(
+        self,
+        user_id: int,
+        bot_id: str,
+        preferences_to_update: Dict[str, Any],
+    ) -> UserBotProfile:
+        """
+        Updates bot-specific user preferences (settings) and saves the profile.
+        """
+        profile = await self.get(user_id=user_id, bot_id=bot_id)
+        if not profile:
+            raise ValueError(
+                f'Profile for user {user_id} and bot {bot_id} not found.'
+            )
+
+        current_settings = profile.settings or UserCustomSettings()
+
+        for key, value in preferences_to_update.items():
+            setattr(current_settings, key, value)
+
+        profile.settings = current_settings
+        updated_profile = await self.save(profile)
+
+        return updated_profile

@@ -114,10 +114,8 @@ async def _validate_exercise_attempt_handler(
         user_answer = create_answer_model_validate(answer.model_dump())
 
         exercise_attempt = await exercise_service.validate_exercise_attempt(
-            user_id=user_id,
-            user_language=user_bot_profile.user_language,
-            last_exercise_at=user_bot_profile.last_exercise_at,
             exercise=exercise,
+            user_bot_profile=user_bot_profile,
             answer=user_answer,
         )
 

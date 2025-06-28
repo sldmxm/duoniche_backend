@@ -27,6 +27,7 @@ dependencies = [
     "google-genai>=1.17.0",
     "aioboto3>=14.3.0",
     "greenlet>=3.2.3",
+    "cyrtranslit>=1.1.1",
 ]
 
 [dependency-groups]

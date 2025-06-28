@@ -12,6 +12,7 @@ from app.core.entities.exercise import Exercise
 from app.core.entities.exercise_answer import ExerciseAnswer
 from app.core.entities.exercise_attempt import ExerciseAttempt
 from app.core.entities.user import User
+from app.core.entities.user_bot_profile import UserBotProfile
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.interfaces.translate_provider import TranslateProvider
 from app.core.repositories.exercise import ExerciseRepository
@@ -252,6 +253,7 @@ class TestExerciseServiceValidation:
         exercise: Exercise,
         answer_vo: Answer,
         db_answer_correct: ExerciseAnswer,
+        user_bot_profile: UserBotProfile,
     ):
         """
         Scenario: An existing correct answer is found
@@ -266,11 +268,9 @@ class TestExerciseServiceValidation:
 
         # Act
         result_attempt = await exercise_service.validate_exercise_attempt(
-            user_id=user.user_id,
             exercise=exercise,
             answer=answer_vo,
-            user_language='en',
-            last_exercise_at=None,
+            user_bot_profile=user_bot_profile,
         )
 
         # Assert
@@ -308,6 +308,7 @@ class TestExerciseServiceValidation:
         answer_vo: Answer,
         # Re-use correct answer fixture but modify it
         db_answer_correct: ExerciseAnswer,
+        user_bot_profile,
     ):
         """
         Scenario: An existing answer (not marked correct) is found in DB
@@ -328,11 +329,9 @@ class TestExerciseServiceValidation:
 
         # Act
         result_attempt = await exercise_service.validate_exercise_attempt(
-            user_id=user.user_id,
             exercise=exercise,
             answer=answer_vo,
-            user_language='en',
-            last_exercise_at=None,
+            user_bot_profile=user_bot_profile,
         )
 
         # Assert
@@ -379,11 +378,9 @@ class TestExerciseServiceValidation:
 
         # Act
         result_attempt = await exercise_service.validate_exercise_attempt(
-            user_id=user.user_id,
             exercise=exercise,
             answer=answer_vo,
-            user_language='en',
-            last_exercise_at=None,
+            user_bot_profile=user_bot_profile,
         )
 
         # Assert
@@ -479,11 +476,9 @@ class TestExerciseServiceValidation:
 
         # Act
         result_attempt = await exercise_service.validate_exercise_attempt(
-            user_id=user.user_id,
             exercise=exercise,
             answer=answer_vo,
-            user_language='en',
-            last_exercise_at=None,
+            user_bot_profile=user_bot_profile,
         )
 
         # Assert
@@ -579,20 +574,16 @@ class TestExerciseServiceValidation:
         # Simulate two concurrent requests
         task1 = asyncio.create_task(
             exercise_service.validate_exercise_attempt(
-                user_id=user.user_id,
                 exercise=fill_in_the_blank_exercise,
                 answer=fill_in_the_blank_answer,
-                user_language='en',
-                last_exercise_at=None,
+                user_bot_profile=user_bot_profile,
             ),
         )
         task2 = asyncio.create_task(
             exercise_service.validate_exercise_attempt(
-                user_id=user.user_id,
                 exercise=fill_in_the_blank_exercise,
                 answer=fill_in_the_blank_answer,
-                user_language='en',
-                last_exercise_at=None,
+                user_bot_profile=user_bot_profile,
             ),
         )
 

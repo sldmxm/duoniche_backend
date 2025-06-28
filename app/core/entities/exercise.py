@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -19,6 +19,9 @@ from app.core.value_objects.exercise import (
     StoryComprehensionExerciseData,
     TranslationExerciseData,
 )
+
+if TYPE_CHECKING:
+    from app.core.entities.user_bot_profile import UserBotProfile
 
 
 class Exercise(BaseModel):
@@ -55,6 +58,26 @@ class Exercise(BaseModel):
     @model_validator(mode='after')
     def assign_ui_template(self) -> 'Exercise':
         self.ui_template = EXERCISE_UI_TEMPLATE_MAP[self.exercise_type]
+        return self
+
+    def transliterate_to_cyrillic_if_needed(
+        self, user_bot_profile: 'UserBotProfile'
+    ) -> 'Exercise':
+        """
+        Returns a new Exercise instance transliterated to Cyrillic
+        if the user's settings for Serbian require it.
+        Otherwise, returns itself.
+        """
+        user_settings = user_bot_profile.settings
+        if (
+            user_settings
+            and self.exercise_language == 'Serbian'
+            and user_settings.alphabet == 'cyrillic'
+        ):
+            new_exercise = self.model_copy(deep=True)
+            new_exercise.data = self.data.to_cyrillic()
+            return new_exercise
+
         return self
 
     def __str__(self):

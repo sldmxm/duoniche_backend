@@ -6,10 +6,22 @@ upstream bot_bg_upstream {
     # server bot_bg_backup:3000 backup;
 }
 
+upstream bot_sr_upstream {
+    zone bot_sr_zone 64k;
+    server bot_sr:3000 resolve max_fails=3 fail_timeout=10s;
+    # server bot_sr_backup:3000 backup;
+}
+
 upstream miniapp_bg_upstream {
     zone miniapp_bg_zone 64k;  # Добавляем shared memory zone
     server miniapp_bg:3000 resolve max_fails=3 fail_timeout=10s;
     # server miniapp_bg_backup:3000 backup;
+}
+
+upstream miniapp_sr_upstream {
+    zone miniapp_sr_zone 64k;  # Добавляем shared memory zone
+    server miniapp_sr:3000 resolve max_fails=3 fail_timeout=10s;
+    # server miniapp_sr_backup:3000 backup;
 }
 
 # proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=app_cache:10m max_size=1g inactive=60m;
@@ -68,6 +80,24 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+        location $WEBHOOK_PATH_SR {
+        proxy_intercept_errors on;
+
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 10s;
+        proxy_read_timeout 10s;
+
+        proxy_next_upstream error timeout http_502 http_503 http_504;
+        proxy_next_upstream_timeout 2s;
+        proxy_next_upstream_tries 3;
+
+        proxy_pass http://bot_sr_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     location $MINIAPP_PATH_BG {
         proxy_intercept_errors on;
 
@@ -80,6 +110,25 @@ server {
         proxy_next_upstream_tries 3;
 
         proxy_pass http://miniapp_bg_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+    }
+
+    location $MINIAPP_PATH_SR {
+        proxy_intercept_errors on;
+
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 10s;
+        proxy_read_timeout 10s;
+
+        proxy_next_upstream error timeout http_502 http_503 http_504;
+        proxy_next_upstream_timeout 2s;
+        proxy_next_upstream_tries 3;
+
+        proxy_pass http://miniapp_sr_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

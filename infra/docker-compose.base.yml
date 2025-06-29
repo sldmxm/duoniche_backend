@@ -94,6 +94,8 @@ services:
     environment:
       - WEBHOOK_PATH_BG=${WEBHOOK_PATH_BG}
       - MINIAPP_PATH_BG=${MINIAPP_PATH_BG}
+      - WEBHOOK_PATH_SR=${WEBHOOK_PATH_SR}
+      - MINIAPP_PATH_SR=${MINIAPP_PATH_SR}
       - HOST=${HOST}
     volumes:
       - ./nginx/:/etc/nginx/templates

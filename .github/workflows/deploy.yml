@@ -55,8 +55,8 @@ jobs:
           SENTRY_DSN=${{ secrets.SENTRY_DSN }}
           WEBHOOK_PATH_BG=${{ secrets.WEBHOOK_PATH_BG }}
           MINIAPP_PATH_BG=${{ secrets.MINIAPP_PATH_BG }}
-          WEBHOOK_PATH_BG=${{ secrets.WEBHOOK_PATH_SR }}
-          MINIAPP_PATH_BG=${{ secrets.MINIAPP_PATH_SR }}
+          WEBHOOK_PATH_SR=${{ secrets.WEBHOOK_PATH_SR }}
+          MINIAPP_PATH_SR=${{ secrets.MINIAPP_PATH_SR }}
           HOST=${{ secrets.HOST }}
           BACKEND_IMAGE_TAG=${{ steps.build-image.outputs.tag }}
           EOF

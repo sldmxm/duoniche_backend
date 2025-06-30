@@ -77,7 +77,7 @@ def mock_answer_repo(mocker):
         return answer
 
     mock.create.side_effect = _save_answer
-    mock.get_all_by_user_answer.return_value = []
+    mock.get_all_by_answer_text.return_value = []
     return mock
 
 
@@ -262,7 +262,7 @@ class TestExerciseServiceValidation:
         no cache/LLM/translate calls.
         """
         # Arrange
-        mock_answer_repo.get_all_by_user_answer.return_value = [
+        mock_answer_repo.get_all_by_answer_text.return_value = [
             db_answer_correct
         ]
 
@@ -274,7 +274,7 @@ class TestExerciseServiceValidation:
         )
 
         # Assert
-        mock_answer_repo.get_all_by_user_answer.assert_awaited_once_with(
+        mock_answer_repo.get_all_by_answer_text.assert_awaited_once_with(
             exercise.exercise_id,
             answer_vo,
         )
@@ -323,7 +323,7 @@ class TestExerciseServiceValidation:
             'Feedback in correct language but answer wrong.'
         )
 
-        mock_answer_repo.get_all_by_user_answer.return_value = [
+        mock_answer_repo.get_all_by_answer_text.return_value = [
             db_answer_correct_lang
         ]
 
@@ -335,7 +335,7 @@ class TestExerciseServiceValidation:
         )
 
         # Assert
-        mock_answer_repo.get_all_by_user_answer.assert_awaited_once_with(
+        mock_answer_repo.get_all_by_answer_text.assert_awaited_once_with(
             exercise.exercise_id,
             answer_vo,
         )
@@ -372,7 +372,7 @@ class TestExerciseServiceValidation:
                 translation, update attempt.
         """
         # Arrange
-        mock_answer_repo.get_all_by_user_answer.return_value = [
+        mock_answer_repo.get_all_by_answer_text.return_value = [
             db_answer_wrong_lang
         ]
 
@@ -384,7 +384,7 @@ class TestExerciseServiceValidation:
         )
 
         # Assert
-        mock_answer_repo.get_all_by_user_answer.assert_awaited_once_with(
+        mock_answer_repo.get_all_by_answer_text.assert_awaited_once_with(
             exercise.exercise_id,
             answer_vo,
         )
@@ -472,7 +472,7 @@ class TestExerciseServiceValidation:
             for LLM validation, update attempt.
         """
         # Arrange
-        mock_answer_repo.get_all_by_user_answer.return_value = []  # DB miss
+        mock_answer_repo.get_all_by_answer_text.return_value = []
 
         # Act
         result_attempt = await exercise_service.validate_exercise_attempt(
@@ -482,7 +482,7 @@ class TestExerciseServiceValidation:
         )
 
         # Assert
-        mock_answer_repo.get_all_by_user_answer.assert_awaited_once_with(
+        mock_answer_repo.get_all_by_answer_text.assert_awaited_once_with(
             exercise.exercise_id,
             answer_vo,
         )
@@ -551,7 +551,7 @@ class TestExerciseServiceValidation:
             'Wrong!',
             {'grammar': 'error1', 'vocabulary': 'error2'},
         )
-        mock_answer_repo.get_all_by_user_answer.return_value = []
+        mock_answer_repo.get_all_by_answer_text.return_value = []
         mock_attempt_repo.create.return_value = ExerciseAttempt(
             attempt_id=1,
             user_id=user.user_id,
@@ -594,7 +594,7 @@ class TestExerciseServiceValidation:
         )
 
         # Assertions
-        assert mock_answer_repo.get_all_by_user_answer.assert_awaited_once
+        assert mock_answer_repo.get_all_by_answer_text.assert_awaited_once
         mock_llm_service.validate_attempt.assert_awaited_once_with(
             user_language=user_bot_profile.user_language,
             exercise=fill_in_the_blank_exercise,

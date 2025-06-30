@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Set, Type
+from typing import Any, Callable, Dict, List, Optional, Set, Type
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -23,6 +23,15 @@ class Answer(BaseModel):
         """
         raise NotImplementedError
 
+    def get_transliterated_copy(
+        self, translit_func: Callable[[str], str]
+    ) -> 'Answer':
+        """
+        Returns a new, transliterated copy of the answer object.
+        By default, it returns an unmodified deep copy.
+        """
+        raise NotImplementedError
+
     def __str__(self) -> str:
         return self.model_dump_json()
 
@@ -33,12 +42,26 @@ class FillInTheBlankAnswer(Answer):
     def get_answer_text(self) -> str:
         return ';'.join(self.words)
 
+    def get_transliterated_copy(
+        self, translit_func: Callable[[str], str]
+    ) -> 'FillInTheBlankAnswer':
+        new_copy = self.model_copy(deep=True)
+        new_copy.words = [translit_func(word) for word in new_copy.words]
+        return new_copy
+
 
 class ChooseOneAnswer(Answer):
     answer: str = Field(description='Chosen answer')
 
     def get_answer_text(self) -> str:
         return self.answer
+
+    def get_transliterated_copy(
+        self, translit_func: Callable[[str], str]
+    ) -> 'ChooseOneAnswer':
+        new_copy = self.model_copy(deep=True)
+        new_copy.answer = translit_func(new_copy.answer)
+        return new_copy
 
 
 class ChooseSentenceAnswer(ChooseOneAnswer):

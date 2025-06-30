@@ -20,8 +20,6 @@ from app.core.services.async_task_cache import (
 )
 from app.core.value_objects.answer import (
     Answer,
-    ChooseOneAnswer,
-    FillInTheBlankAnswer,
 )
 from app.core.value_objects.exercise import (
     ChooseAccentExerciseData,
@@ -70,23 +68,16 @@ class AttemptValidator:
 
         answer_for_validation = answer
         if is_serbian_cyrillic:
-            answer_for_validation = answer.model_copy(deep=True)
-            if isinstance(answer_for_validation, FillInTheBlankAnswer):
-                answer_for_validation.words = [
-                    transliteration.to_latin(w)
-                    for w in answer_for_validation.words
-                ]
-            elif isinstance(answer_for_validation, ChooseOneAnswer):
-                answer_for_validation.answer = transliteration.to_latin(
-                    answer_for_validation.answer
-                )
+            answer_for_validation = answer.get_transliterated_copy(
+                transliteration.to_latin
+            )
 
         async def _get_answer_from_db(ans: Answer) -> Optional[ExerciseAnswer]:
             if exercise.exercise_id is None:
                 raise ValueError('Cannot validate an exercise without an ID')
-            all_answers = (
-                await self.exercise_answer_repository.get_all_by_user_answer(
-                    exercise.exercise_id, answer
+            all_answers = await (
+                self.exercise_answer_repository.get_all_by_answer_text(
+                    exercise.exercise_id, ans
                 )
             )
             logger.debug(f'All answers from DB for `{ans}`: {all_answers}')

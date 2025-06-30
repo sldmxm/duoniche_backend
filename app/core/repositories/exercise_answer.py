@@ -27,7 +27,7 @@ class ExerciseAnswerRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_all_by_user_answer(
+    async def get_all_by_answer_text(
         self,
         exercise_id: int,
         answer: Answer,

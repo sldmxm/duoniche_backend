@@ -67,7 +67,7 @@ class SQLAlchemyExerciseAnswerRepository(ExerciseAnswerRepository):
         await self.session.refresh(db_answer)
         return self._to_entity(db_answer)
 
-    async def get_all_by_user_answer(
+    async def get_all_by_answer_text(
         self,
         exercise_id: int,
         answer: Answer,

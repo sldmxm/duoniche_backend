@@ -296,18 +296,20 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
     @override
     async def get_active_profiles_for_reporting(
         self,
-        since: datetime,
+        activity_since: datetime,
+        report_due_before: datetime,
     ) -> List[Tuple[UserBotProfile, User]]:
         """
-        Get profiles of users who have made at least one attempt since the
-        specified datetime.
+        Get profiles of users who have made at least one attempt since
+        activity_since and are due for a new report (last report was generated
+        before report_due_before).
         """
 
         subquery = (
             select(
                 ExerciseAttemptModel.user_id,
             )
-            .where(ExerciseAttemptModel.created_at >= since)
+            .where(ExerciseAttemptModel.created_at >= activity_since)
             .distinct()
         )
         stmt = (
@@ -316,7 +318,8 @@ class SQLAlchemyUserBotProfileRepository(UserBotProfileRepository):
                 DBUserBotProfile.user_id.in_(subquery),
                 or_(
                     DBUserBotProfile.last_report_generated_at.is_(None),
-                    DBUserBotProfile.last_report_generated_at <= since,
+                    DBUserBotProfile.last_report_generated_at
+                    <= report_due_before,
                 ),
             )
             .options(joinedload(DBUserBotProfile.user))

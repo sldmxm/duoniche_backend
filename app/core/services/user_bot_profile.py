@@ -258,10 +258,12 @@ class UserBotProfileService:
 
     async def get_active_profiles_for_reporting(
         self,
-        since: datetime,
+        activity_since: datetime,
+        report_due_before: datetime,
     ) -> List[Tuple[UserBotProfile, User]]:
         return await self._profile_repo.get_active_profiles_for_reporting(
-            since=since,
+            activity_since,
+            report_due_before,
         )
 
     async def update_preferences(

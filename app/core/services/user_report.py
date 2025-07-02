@@ -72,13 +72,15 @@ class UserReportService:
             hour=0, minute=0, second=0, microsecond=0
         )
 
-        end_date_current = current_week_start
-        start_date_current = end_date_current - timedelta(days=7)
-        week_start_date_current = start_date_current.date()
+        report_end_date = current_week_start
+        report_start_date = report_end_date - timedelta(days=7)
+        report_due_before = report_start_date + timedelta(days=1)
+        report_week_start_date = report_start_date.date()
 
         active_profiles = await (
             self.profile_service.get_active_profiles_for_reporting(
-                since=start_date_current,
+                activity_since=report_start_date,
+                report_due_before=report_due_before,
             )
         )
 
@@ -93,8 +95,8 @@ class UserReportService:
                 await self.attempt_repo.get_period_summary_for_user_and_bot(
                     user_id=profile.user_id,
                     bot_id=profile.bot_id,
-                    start_date=start_date_current,
-                    end_date=end_date_current,
+                    start_date=report_start_date,
+                    end_date=report_end_date,
                 )
             )
 
@@ -131,7 +133,7 @@ class UserReportService:
                     report_id=None,
                     user_id=profile.user_id,
                     bot_id=profile.bot_id,
-                    week_start_date=week_start_date_current,
+                    week_start_date=report_week_start_date,
                     short_report=short_report_text,
                     full_report=None,
                     generated_at=datetime.now(timezone.utc),
@@ -229,21 +231,21 @@ class UserReportService:
             f'(report_id: {latest_report.report_id}) on-demand.',
         )
 
-        start_date_current = datetime.combine(
+        report_start_date = datetime.combine(
             latest_report.week_start_date,
             datetime.min.time(),
             tzinfo=timezone.utc,
         )
-        end_date_current = start_date_current + timedelta(days=7)
-        end_date_prev = start_date_current
-        start_date_prev = end_date_prev - timedelta(days=7)
+        report_end_date = report_start_date + timedelta(days=7)
+        prev_report_end_date = report_start_date
+        prev_report_start_date = prev_report_end_date - timedelta(days=7)
 
         incorrect_attempts = (
             await self.attempt_repo.get_incorrect_attempts_with_details(
                 user_id=profile.user_id,
                 bot_id=profile.bot_id,
-                start_date=start_date_current,
-                end_date=end_date_current,
+                start_date=report_start_date,
+                end_date=report_end_date,
                 limit=INCORRECT_ATTEMPTS_FOR_LLM_NUMBER,
             )
         )
@@ -252,8 +254,8 @@ class UserReportService:
             await self.attempt_repo.get_period_summary_for_user_and_bot(
                 user_id=profile.user_id,
                 bot_id=profile.bot_id,
-                start_date=start_date_current,
-                end_date=end_date_current,
+                start_date=report_start_date,
+                end_date=report_end_date,
             )
         )
         current_summary = UserReportService._prepare_summary_context(
@@ -264,8 +266,8 @@ class UserReportService:
             await self.attempt_repo.get_period_summary_for_user_and_bot(
                 user_id=profile.user_id,
                 bot_id=profile.bot_id,
-                start_date=start_date_prev,
-                end_date=end_date_prev,
+                start_date=prev_report_start_date,
+                end_date=prev_report_end_date,
             )
         )
         prev_summary = UserReportService._prepare_summary_context(

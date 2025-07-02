@@ -40,6 +40,8 @@ class UserBotProfileRepository(ABC):
 
     @abstractmethod
     async def get_active_profiles_for_reporting(
-        self, since: datetime
+        self,
+        activity_since: datetime,
+        report_due_before: datetime,
     ) -> List[Tuple[UserBotProfile, User]]:
         raise NotImplementedError

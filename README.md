@@ -4,6 +4,11 @@
 
 DuoNiche Backend is a FastAPI-based service that leverages Large Language Models (LLMs) to generate and assess language-learning exercises. It provides RESTful endpoints for user management, exercise generation and validation, payment processing (Telegram Stars), and notification scheduling.
 
+For a deeper dive into the project's architecture and workflows, please see:
+
+-   [**Detailed Project Overview (EN)**](./docs/project_overview_en.md)
+-   [**Подробный обзор проекта (RU)**](./docs/project_overview_ru.md)
+
 The working Telegram bot for learning Bulgarian can be found at: [https://t.me/DuoBG_bot](https://t.me/DuoBG_bot)
 
 ## Table of Contents
@@ -31,14 +36,14 @@ The working Telegram bot for learning Bulgarian can be found at: [https://t.me/D
 -   **User Management**: Handles user registration, profile updates, and status (active/blocked).
 -   **User Progress Tracking**: Manages user sessions, sets, exercise limits, and streaks.
 -   **Payment Processing**: Integrates with Telegram Stars for unlocking additional sessions.
--   **Background Workers**:
-    -   `exercise_stock_refill`: Periodically generates new exercises to maintain a stock.
-    -   `metrics_updater`: Updates user activity metrics for Prometheus.
-    -   `notification_scheduler`: Schedules and enqueues user notifications (e.g., session ready, long break reminders) via Celery.
 -   **Monitoring**: Prometheus instrumentation for application metrics.
 -   **Error Tracking**: Sentry integration for real-time error reporting.
 -   **Database Migrations**: Uses Alembic for managing database schema changes.
 -   **Specific Exercise Generators**: Includes a custom generator for Bulgarian accent exercises by scraping external resources.
+-   **Background Audio Generation**: Creates audio for story exercises using Google TTS and stores it in Cloudflare R2.
+-   **On-demand Detailed Reports**: Asynchronously generates and delivers detailed weekly user reports using ARQ workers.
+-   **Automated Quality Monitoring**: Automatically identifies and flags potentially flawed exercises for review based on user performance.
+-   **Multi-language Support**: Designed to support multiple languages for UI and exercise generation (e.g., Bulgarian, Serbian).
 
 ## Tech Stack
 
@@ -46,9 +51,11 @@ The working Telegram bot for learning Bulgarian can be found at: [https://t.me/D
 -   **Framework**: FastAPI
 -   **Database**: PostgreSQL (with `asyncpg` and `SQLAlchemy 2.0`)
 -   **Migrations**: Alembic
--   **Cache/Queue**: Redis (used for asynchronous task caching and as a Celery broker)
--   **LLM**: OpenAI API (via `LangChain`)
--   **Task Queue**: Celery (producer side, for sending tasks to a separate Notifier service)
+-   **Cache/Queue**: Redis (used for asynchronous task caching and as a broker for Celery and ARQ)
+-   **LLM & External Services**: OpenAI API (via `LangChain`), Google TTS, Cloudflare R2
+-   **Task Queues**:
+    -   `Celery`: For producing notification tasks.
+    -   `arq`: For background report generation.
 -   **HTTP Client**: `httpx`
 -   **Containerization**: Docker & Docker Compose
 -   **CI/CD**: GitHub Actions
@@ -67,40 +74,26 @@ The working Telegram bot for learning Bulgarian can be found at: [https://t.me/D
 ├── alembic/              # Database migration scripts
 ├── app/                  # Main application package
 │   ├── api/              # HTTP API definition (FastAPI)
-│   │   ├── schemas/      # Pydantic schemas for API requests/responses
-│   │   └── v1/           # API version 1
-│   │       ├── endpoints/ # API endpoint handlers
-│   │       └── api.py     # Main router for API v1
 │   ├── core/             # Core business logic and domain entities
-│   │   ├── entities/     # Pydantic domain models
-│   │   ├── interfaces/   # Abstract interfaces (e.g., for LLM, Repositories)
-│   │   ├── repositories/ # Abstract repository interfaces
-│   │   ├── services/     # Business logic services
-│   │   └── value_objects/ # Value Objects
 │   ├── db/               # Database interaction layer
-│   │   ├── models/       # SQLAlchemy ORM models
-│   │   ├── repositories/ # SQLAlchemy repository implementations
-│   │   └── db.py         # Database engine and session setup
 │   ├── infrastructure/   # Infrastructure clients (e.g., Redis)
 │   ├── llm/              # LLM interaction logic (generation, validation, translation)
-│   ├── services/         # External/specific services (e.g., accent generator, notification producer)
+│   ├── services/         # External service clients (TTS, File Storage, etc.)
 │   ├── utils/            # Utility functions
-│   ├── workers/          # Background worker tasks
+│   ├── workers/          # Background worker tasks (Celery, ARQ based)
+│   ├── arq_config.py     # ARQ worker configuration
 │   ├── celery_producer.py # Celery producer setup
 │   ├── config.py         # Application settings
-│   ├── logging_config.py # Logging setup
-│   ├── main.py           # FastAPI app entrypoint & lifespan management
-│   ├── metrics.py        # Prometheus metrics definitions
-│   └── sentry_sdk.py     # Sentry SDK setup
+│   ├── main.py           # FastAPI app entrypoint
+│   └── ...
 ├── infra/                # Infrastructure configurations (Docker, Nginx, Prometheus)
+├── docs/                 # Detailed project documentation
 ├── tests/                # Automated tests
 ├── Dockerfile            # Dockerfile for application image
 ├── entrypoint.sh         # Docker entrypoint script (runs migrations)
 ├── pyproject.toml        # Project configuration (dependencies, tools)
 └── README.md             # This file
 ```
-
-## Prerequisites
 
 -   Python 3.12+
 -   Redis
@@ -119,7 +112,7 @@ The working Telegram bot for learning Bulgarian can be found at: [https://t.me/D
     ```bash
     python -m venv .venv
     source .venv/bin/activate
-    uv pip install -r requirements.txt --dev # Install dev dependencies too
+    uv pip install -r requirements.txt --dev
     ```
 3.  **Install pre-commit hooks**
     ```bash
